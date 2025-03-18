@@ -67,9 +67,8 @@ extern bool SD_notFoundV20(AsyncWebServerRequest *request);
 extern AsyncWebServer server;
 // ################  VERSION  ###########################################
 // String Version = "1.1"; // Programme version, see change log at end
-String Version = "3.1";    //  <-- Ver1.1 + Ver2.0
-// ################ VARIABLES ###########################################
 
+// ################ VARIABLES ###########################################
 typedef struct
 {
   String filename;

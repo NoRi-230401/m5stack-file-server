@@ -70,9 +70,8 @@ extern AsyncWebServer server;
 
 // ################  VERSION  ###########################################
 //  String    Version = "2.0";   // Programme version, see change log at end
-extern String Version;
-// ################ VARIABLES ###########################################
 
+// ################ VARIABLES ###########################################
 typedef struct
 {
   String filename;

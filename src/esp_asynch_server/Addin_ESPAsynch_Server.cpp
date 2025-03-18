@@ -20,20 +20,22 @@ extern String EncryptionType(wifi_auth_mode_t encryptionType);
 // -------------------------------------------------------
 
 extern AsyncWebServer server;
-extern String Version;
+extern String VERSION;
 extern String webpage;
 extern int start, downloadtime, uploadtime, downloadsize, uploadsize, downloadrate, uploadrate, numfiles;
 extern float Temperature; // for example new page, amend in a sensor function if required
 extern String Name;
 
-// #############################################################################################
+
+extern String IP_ADDR;
+extern String SERVER_NAME;
+
 void Home()
 {
   webpage = HTML_Header();
-  webpage += "<h1>Home Page</h1>";
-  webpage += "<h2>ESP Asychronous WebServer Example</h2>";
-  webpage += "<img src = 'icon' alt='icon'>";
-  webpage += "<h3>File Management - Directory, Upload, Download, Stream and Delete File Examples</h3>";
+  webpage += "<br>";
+  webpage += "<img src='icon.gif' alt='icon'>";
+  webpage += "<h3>[&nbsp;Home&nbsp;]　" + SERVER_NAME + "　IP=" + IP_ADDR + "</h3>";
   webpage += HTML_Footer();
 }
 
@@ -138,15 +140,6 @@ String HTML_Header()
   // --- end of style ---
   page += "</style></head><body>";
 
-  // ---- TOPNAV ----
-  // page += "<div class = 'topnav'>";
-  // page += "<a href='/' target='Home'>Home</a>";
-  // page += "<a href='/dir'>Files</a> ";
-  // page += "<a href='/upload'>Upload</a> ";
-  // page += "<a href='/delete'>Delete</a> ";
-  // page += "<a href='/rename'>Rename</a> ";
-  // page += "</div>";
-
   page += "<div class = 'topnav'>";
   page += "SPIFFS:　<a href='/dir'>Files</a>";
   page += "<a href='/upload'>Upload</a> ";
@@ -181,97 +174,24 @@ String HTML_Header()
   page += "<a href='/'>Home</a>";
   page += "<a href='/system'>StatusA</a>";
   page += "<a href='/SD_system'>StatusB</a>";
-  page += "<a href='/newpage'>New Page</a>";
-  page += "<a href='/logout'>[Log-out]</a>";
+  // page += "<a href='/newpage'>New Page</a>";
+  // page += "<a href='/logout'>[Log-out]</a>";
   page += "</div>";
-
-  // // ---- TOPNAV2 ----
-  // page += "<br><br>";
-  // // page += "<br>";
-  // page += "<div class = 'topnav2'>";
-  // page += "<a href=" + sAPP1_HTML + " target=" + NAME_sAPP1 + "'>" + NAME_sAPP1 + "</a> ";
-  // page += "<a href=" + sAPP2_HTML + " target=" + NAME_sAPP2 + "'>" + NAME_sAPP2 + "</a> ";
-  // page += "<a href=" + sAPP3_HTML + " target=" + NAME_sAPP3 + "'>" + NAME_sAPP3 + "</a> ";
-  // page += "<a href=" + sAPP4_HTML + " target=" + NAME_sAPP4 + "'>" + NAME_sAPP4 + "</a> ";
-  // page += "<a href=" + sAPP5_HTML + " target=" + NAME_sAPP5 + "'>" + NAME_sAPP5 + "</a> ";
-  // page += "</div>";
-
-  // // ---- TOPNAV3 ----
-  // page += "<br><br>";
-  // // page += "<br>";
-  // page += "<div class = 'topnav3'>";
-  // page += "<a href=" + uAPP1_HTML + " target=" + NAME_uAPP1 + "'>" + NAME_uAPP1 + "</a> ";
-  // page += "<a href=" + uAPP2_HTML + " target=" + NAME_uAPP2 + "'>" + NAME_uAPP2 + "</a> ";
-  // page += "<a href=" + uAPP3_HTML + " target=" + NAME_uAPP3 + "'>" + NAME_uAPP3 + "</a> ";
-  // // page += "<a href=" + uAPP4_HTML + " target=" + NAME_uAPP4 + "'>" + NAME_uAPP4 + "</a> ";
-  // // page += "<a href=" + uAPP5_HTML + " target=" + NAME_uAPP5 + "'>" + NAME_uAPP5 + "</a> ";
-  // page += "<a href=" + GITHUB_URL + " target='Support'>Support</a>";
-  // page += "</div>";
-  // page += "<br><br>";
-  // // page += "<br>";
-
+  
   return page;
 }
 
-// // #############################################################################################
-// String HTML_Header()
+
+// #############################################################################################
+// String HTML_Footer()
 // {
 //   String page;
-//   page = "<!DOCTYPE html>";
-//   page += "<html lang = 'en'>";
-//   page += "<head>";
-//   page += "<title>Web Server</title>";
-//   page += "<meta charset='UTF-8'>"; // Needed if you want to display special characters like the ° symbol
-//   page += "<style>";
-//   page += "body {width:75em;margin-left:auto;margin-right:auto;font-family:Arial,Helvetica,sans-serif;font-size:16px;color:blue;background-color:#e1e1ff;text-align:center;}";
-//   page += "footer {padding:0.08em;background-color:cyan;font-size:1.1em;}";
-//   page += "table {font-family:arial,sans-serif;border-collapse:collapse;width:70%;}"; // 70% of 75em!
-//   page += "table.center {margin-left:auto;margin-right:auto;}";
-//   page += "td, th {border:1px solid #dddddd;text-align:left;padding:8px;}";
-//   page += "tr:nth-child(even) {background-color:#dddddd;}";
-//   page += "h4 {color:slateblue;font:0.8em;text-align:left;font-style:oblique;text-align:center;}";
-//   page += ".center {margin-left:auto;margin-right:auto;}";
-//   page += ".topnav {overflow: hidden;background-color:lightcyan;}";
-//   page += ".topnav a {float:left;color:blue;text-align:center;padding:0.6em 0.6em;text-decoration:none;font-size:1.3em;}";
-//   page += ".topnav a:hover {background-color:deepskyblue;color:white;}";
-//   page += ".topnav a.active {background-color:lightblue;color:blue;}";
-//   page += ".notfound {padding:0.8em;text-align:center;font-size:1.5em;}";
-//   page += ".left {text-align:left;}";
-//   page += ".medium {font-size:1.4em;padding:0;margin:0}";
-//   page += ".ps {font-size:0.7em;padding:0;margin:0}";
-//   page += ".sp {background-color:silver;white-space:nowrap;width:2%;}";
-//   page += "</style>";
-//   page += "</head>";
-//   page += "<body>";
-
-//   page += "<div class = 'topnav'>";
-//   page += "<a href='/dir'>Files</a>";
-//   page += "<a href='/upload'>Upload</a> ";
-//   page += "<a href='/download'>Download</a>";
-//   page += "<a href='/stream'>Stream</a>";
-//   page += "<a href='/delete'>Delete</a>";
-//   page += "<a href='/rename'>Rename</a>";
-//   page += "</div>";
-
-//   page += "<br><br>";
-//   page += "<div class = 'topnav'>";
-//   page += "<a href='/SD_dir'>Files</a>";
-//   page += "<a href='/SD_upload'>Upload</a> ";
-//   page += "<a href='/SD_download'>Download</a>";
-//   page += "<a href='/SD_stream'>Stream</a>";
-//   page += "<a href='/SD_delete'>Delete</a>";
-//   page += "<a href='/SD_rename'>Rename</a>";
-//   page += "</div>";
-
-//   page += "<br><br>";
-//   page += "<div class = 'topnav'>";
-//   page += "<a href='/'>Home</a>";
-//   page += "<a href='/system'>StatusA</a>";
-//   page += "<a href='/SD_system'>StatusB</a>";
-//   page += "<a href='/newpage'>New Page</a>";
-//   page += "<a href='/logout'>[Log-out]</a>";
-//   page += "</div>";
-
+//   page += "<br><br><footer>";
+//   page += "<p class='medium'>m5stack file server</p>";
+//   page += "<p class='ps'><i>Version " + Version + "</i></p>";
+//   page += "</footer>";
+//   page += "</body>";
+//   page += "</html>";
 //   return page;
 // }
 
@@ -279,10 +199,13 @@ String HTML_Header()
 String HTML_Footer()
 {
   String page;
-  page += "<br><br><footer>";
+  page += "<br>";
+  page += "<footer>";
   page += "<p class='medium'>m5stack file server</p>";
-  page += "<p class='ps'><i>Version " + Version + "</i></p>";
+  // page += "<p class='medium'> Server Name : " + SERVER_NAME + "</p>";
+  page += "<p class='ps'><i> " + VERSION + "</i></p>";
   page += "</footer>";
+  page += "<br>";
   page += "</body>";
   page += "</html>";
   return page;

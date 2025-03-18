@@ -25,7 +25,9 @@ AsyncWebServer server(80);
 bool wifiStart();
 bool serverStart();
 void error_stop();
-
+String IP_ADDR="";
+String SERVER_NAME="";
+String VERSION = "1.02a"; 
 
 void setup()
 {
@@ -33,23 +35,25 @@ void setup()
   auto cfg = M5.config();
   M5.begin(cfg);
 #if defined(ENABLE_SD_UPDATER)
-  SDU_lobby("ESPAsynch_Server");
+  SDU_lobby("m5_flServer");
 #endif
   M5.Display.setBrightness(120);
   M5.Lcd.setTextSize(2);
-  M5.Display.print("\nHello, EPS-File-Server!\n\n");
+  String msg ="Hello,m5_flServer!";
+  M5.Display.println(msg);
   
   Serial.begin(115200);
   while (!Serial);
   Serial.println(__FILE__);
-  Serial.println("Hello, EPS-File-Server!");
+  Serial.println(msg);
   // *************************************
 
   if (!wifiStart())    error_stop();
   if (!serverStart())   error_stop();
 
   M5.Display.println("\nSUCCESS: System started\n");
-  M5.Display.println("IP Addr: " + WiFi.localIP().toString());
+  IP_ADDR = WiFi.localIP().toString();
+  M5.Display.println("IP Addr: " + IP_ADDR );
 
 }
 
@@ -96,7 +100,9 @@ bool wifiStart()
 
 bool serverStart()
 {
-  if (!StartMDNSservice(ServerName))
+  SERVER_NAME = String(ServerName);
+
+  if (!StartMDNSservice(SERVER_NAME.c_str()))
   {
     Serial.println("Error starting mDNS Service...");
     ;
