@@ -18,20 +18,10 @@ String HTML_Footer();
 extern String ConvBinUnits(int bytes, int resolution);
 extern String EncryptionType(wifi_auth_mode_t encryptionType);
 // -------------------------------------------------------
+
 extern AsyncWebServer server;
 extern String Version;
-
-// ################ VARIABLES ###########################################
-// typedef struct
-// {
-//   String filename;
-//   String ftype;
-//   String fsize;
-// } fileinfo;
 extern String webpage;
-// extern String MessageLine;
-// extern fileinfo Filenames[200]; // Enough for most purposes!
-// extern bool StartupErrors;
 extern int start, downloadtime, uploadtime, downloadsize, uploadsize, downloadrate, uploadrate, numfiles;
 extern float Temperature; // for example new page, amend in a sensor function if required
 extern String Name;
@@ -92,68 +82,6 @@ void Display_System_Info()
   webpage += "</table> ";
   webpage += HTML_Footer();
 }
-
-// #############################################################################################
-// String HTML_Header()
-// {
-//   String page;
-//   page = "<!DOCTYPE html>";
-//   page += "<html lang = 'en'>";
-//   page += "<head>";
-//   page += "<title>Web Server</title>";
-//   page += "<meta charset='UTF-8'>"; // Needed if you want to display special characters like the ° symbol
-//   page += "<style>";
-//   page += "body {width:75em;margin-left:auto;margin-right:auto;font-family:Arial,Helvetica,sans-serif;font-size:16px;color:blue;background-color:#e1e1ff;text-align:center;}";
-//   page += "footer {padding:0.08em;background-color:cyan;font-size:1.1em;}";
-//   page += "table {font-family:arial,sans-serif;border-collapse:collapse;width:70%;}"; // 70% of 75em!
-//   page += "table.center {margin-left:auto;margin-right:auto;}";
-//   page += "td, th {border:1px solid #dddddd;text-align:left;padding:8px;}";
-//   page += "tr:nth-child(even) {background-color:#dddddd;}";
-//   page += "h4 {color:slateblue;font:0.8em;text-align:left;font-style:oblique;text-align:center;}";
-//   page += ".center {margin-left:auto;margin-right:auto;}";
-//   page += ".topnav {overflow: hidden;background-color:lightcyan;}";
-//   page += ".topnav a {float:left;color:blue;text-align:center;padding:0.6em 0.6em;text-decoration:none;font-size:1.3em;}";
-//   page += ".topnav a:hover {background-color:deepskyblue;color:white;}";
-//   page += ".topnav a.active {background-color:lightblue;color:blue;}";
-//   page += ".notfound {padding:0.8em;text-align:center;font-size:1.5em;}";
-//   page += ".left {text-align:left;}";
-//   page += ".medium {font-size:1.4em;padding:0;margin:0}";
-//   page += ".ps {font-size:0.7em;padding:0;margin:0}";
-//   page += ".sp {background-color:silver;white-space:nowrap;width:2%;}";
-//   page += "</style>";
-//   page += "</head>";
-//   page += "<body>";
-
-//   page += "<div class = 'topnav'>";
-//   page += "<a href='/'>Home</a>";
-//   page += "<a href='/dir'>Directory</a>";
-//   page += "<a href='/upload'>Upload</a> ";
-//   page += "<a href='/download'>Download</a>";
-//   page += "<a href='/stream'>Stream</a>";
-//   page += "<a href='/delete'>Delete</a>";
-//   page += "<a href='/rename'>Rename</a>";
-//   page += "<a href='/system'>Status</a>";
-//   // page += "<a href='/format'>Format FS</a>";
-//   page += "<a href='/newpage'>New Page</a>";
-//   page += "<a href='/logout'>[Log-out]</a>";
-//   page += "</div>";
-//   page += "<br><br>";
-//   page += "<div class = 'topnav'>";
-//   page += "<a href='/'>Home</a>";
-//   page += "<a href='/SD_dir'>Directory</a>";
-//   page += "<a href='/SD_upload'>Upload</a> ";
-//   page += "<a href='/SD_download'>Download</a>";
-//   page += "<a href='/SD_stream'>Stream</a>";
-//   page += "<a href='/SD_delete'>Delete</a>";
-//   page += "<a href='/SD_rename'>Rename</a>";
-//   page += "<a href='/SD_system'>Status</a>";
-//   // page += "<a href='/format'>Format FS</a>";
-//   page += "<a href='/newpage'>New Page</a>";
-//   page += "<a href='/logout'>[Log-out]</a>";
-//   page += "</div>";
-
-//   return page;
-// }
 
 // #############################################################################################
 String HTML_Header()
