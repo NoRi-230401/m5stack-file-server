@@ -1,15 +1,8 @@
 // *** Modified by NoRi 2025-03-18 ***
-#include <SPIFFS.h>            // Built-in
-// #include <WiFi.h>              // Built-in
-// #include <ESPmDNS.h>           // Built-in
-#include <AsyncTCP.h>          // https://github.com/me-no-dev/AsyncTCP
-#include <ESPAsyncWebServer.h> // https://github.com/me-no-dev/ESPAsyncWebServer
-// #include "esp_system.h"        // Built-in
-// #include "esp_spi_flash.h"     // Built-in
-// #include "esp_wifi_types.h"    // Built-in
-// #include "esp_bt.h"            // Built-in
-#define FS SPIFFS              // In preparation for the introduction of LITTLFS
-                               // see https://github.com/lorol/LITTLEFS replace SPIFFS with LITTLEFS
+#include <SPIFFS.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#define FS SPIFFS
 
 // -------------------------------------------------------
 void SPIFFS_flServerSetup();
@@ -27,12 +20,9 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request);
 void Handle_File_Download();
 void Select_File_For_Function(String title, String function);
 int GetFileSize(String filename);
-
 extern void SelectInput(String Heading, String Command, String Arg_name);
 extern void Display_System_Info();
 extern void Home();
-extern void LogOut();
-extern void Display_New_Page();
 extern String getContentType(String filenametype);
 extern String ConvBinUnits(int bytes, int resolution);
 extern String EncryptionType(wifi_auth_mode_t encryptionType);
@@ -52,8 +42,8 @@ String webpage, MessageLine;
 fileinfo Filenames[200]; // Enough for most purposes!
 bool StartupErrors = false;
 int start, downloadtime = 1, uploadtime = 1, downloadsize, uploadsize, downloadrate, uploadrate, numfiles;
-float Temperature = 21.34; // for example new page, amend in a sensor function if required
-String Name = "Dave";
+// float Temperature = 21.34; // for example new page, amend in a sensor function if required
+// String Name = "Dave";
 
 void SPIFFS_flServerSetup()
 {
@@ -69,12 +59,6 @@ void SPIFFS_flServerSetup()
             {
     Serial.println("Home Page...");
     Home(); // Build webpage ready for display
-    request->send(200, "text/html", webpage); });
-
-  // ##################### LOGOUT HANDLER ############################
-  server.on("/logout", HTTP_GET, [](AsyncWebServerRequest *request)
-            {
-    LogOut();
     request->send(200, "text/html", webpage); });
 
   // ##################### DOWNLOAD HANDLER ##########################
@@ -95,23 +79,6 @@ void SPIFFS_flServerSetup()
   server.on("/handleupload", HTTP_POST, [](AsyncWebServerRequest *request) {},
    [](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
             { handleFileUpload(request, filename, index, data, len, final); });
-
-  // Set handler for '/handleformat'
-  // server.on("/handleformat", HTTP_GET, [](AsyncWebServerRequest *request)
-  //           {
-  //   Serial.println("Processing Format Request of File System...");
-  //   if (request->getParam("format")->value() == "YES") {
-  //     Serial.print("Starting to Format Filing System...");
-  //     FS.end();
-  //     bool formatted = FS.format();
-  //     if (formatted) {
-  //       Serial.println(" Successful Filing System Format...");
-  //     }
-  //     else         {
-  //       Serial.println(" Formatting Failed...");
-  //     }
-  //   }
-  //   request->redirect("/dir"); });
 
   // ##################### STREAM HANDLER ############################
   server.on("/stream", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -140,13 +107,6 @@ void SPIFFS_flServerSetup()
     Serial.println("Deleting file...");
     Select_File_For_Function("[DELETE]", "deletehandler"); // Build webpage ready for display
     request->send(200, "text/html", webpage); });
-
-  // ##################### FORMAT HANDLER ############################
-  // server.on("/format", HTTP_GET, [](AsyncWebServerRequest *request)
-  //           {
-  //   Serial.println("Request to Format File System...");
-  //   Format(); // Build webpage ready for display
-  //   request->send(200, "text/html", webpage); });
 
   // ##################### SYSTEM HANDLER ############################
   server.on("/system", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -196,6 +156,7 @@ void Dir(AsyncWebServerRequest *request)
   webpage += HTML_Footer();
   request->send(200, "text/html", webpage);
 }
+
 // #############################################################################################
 void Directory()
 {
@@ -216,6 +177,7 @@ void Directory()
     root.close();
   }
 }
+
 // #############################################################################################
 void UploadFileSelect()
 {
@@ -227,19 +189,6 @@ void UploadFileSelect()
   webpage += "</form>";
   webpage += HTML_Footer();
 }
-
-// #############################################################################################
-// void Format()
-// {
-//   webpage = HTML_Header();
-//   webpage += "<h3>*** SPIFFS:　 Format Filing System on this device ***</h3>";
-//   webpage += "<form action='/handleformat'>";
-//   webpage += "<input type='radio' id='YES' name='format' value = 'YES'><label for='YES'>YES</label><br><br>";
-//   webpage += "<input type='radio' id='NO'  name='format' value = 'NO' checked><label for='NO'>NO</label><br><br>";
-//   webpage += "<input type='submit' value='Format?'>";
-//   webpage += "</form>";
-//   webpage += HTML_Footer();
-// }
 
 // #############################################################################################
 void handleFileUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
@@ -270,16 +219,19 @@ void handleFileUpload(AsyncWebServerRequest *request, const String &filename, si
     }
   }
 }
+
 // #############################################################################################
 void File_Stream()
 {
   SelectInput("Select a File to Stream", "handlestream", "filename");
 }
+
 // #############################################################################################
 void File_Delete()
 {
   SelectInput("Select a File to Delete", "handledelete", "filename");
 }
+
 // #############################################################################################
 void Handle_File_Delete(String filename)
 { // Delete the file
@@ -300,6 +252,7 @@ void Handle_File_Delete(String filename)
   }
   webpage += HTML_Footer();
 }
+
 // #############################################################################################
 void File_Rename()
 { // Rename the file
@@ -321,6 +274,7 @@ void File_Rename()
   webpage += "</form>";
   webpage += HTML_Footer();
 }
+
 // #############################################################################################
 void Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args)
 { // Rename the file
@@ -469,18 +423,6 @@ void Select_File_For_Function(String title, String function)
   webpage += "</table>";
   webpage += HTML_Footer();
 }
-
-// #############################################################################################
-// void SelectInput(String Heading, String Command, String Arg_name)
-// {
-//   webpage = HTML_Header();
-//   webpage += "<h3>" + Heading + "</h3>";
-//   webpage += "<form  action='/" + Command + "'>";
-//   webpage += "Filename: <input type='text' name='" + Arg_name + "'><br><br>";
-//   webpage += "<input type='submit' value='Enter'>";
-//   webpage += "</form>";
-//   webpage += HTML_Footer();
-// }
 
 // #############################################################################################
 int GetFileSize(String filename)

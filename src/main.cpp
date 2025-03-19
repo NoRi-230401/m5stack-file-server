@@ -17,7 +17,7 @@ extern bool fileServerStart();
 
 String IP_ADDR="";
 String SERVER_NAME="";
-String VERSION = "1.02a"; 
+String VERSION = "1.02b"; 
 
 void setup()
 {
@@ -25,11 +25,11 @@ void setup()
   auto cfg = M5.config();
   M5.begin(cfg);
 #if defined(ENABLE_SD_UPDATER)
-  SDU_lobby("m5_flServer");
+  SDU_lobby("m5stack-fileServer");
 #endif
   M5.Display.setBrightness(120);
   M5.Lcd.setTextSize(2);
-  String msg ="m5stack-file-Server";
+  String msg ="m5stack-fileServer";
   M5.Display.println(msg);
   
   Serial.begin(115200);

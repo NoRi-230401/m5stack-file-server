@@ -1,13 +1,7 @@
 // *** Modified by NoRi 2025-03-18 ***
-#include <SPIFFS.h>            // Built-in
-// #include <WiFi.h>              // Built-in
-// #include <ESPmDNS.h>           // Built-in
-#include <AsyncTCP.h>          // https://github.com/me-no-dev/AsyncTCP
-#include <ESPAsyncWebServer.h> // https://github.com/me-no-dev/ESPAsyncWebServer
-// #include "esp_system.h"        // Built-in
-// #include "esp_spi_flash.h"     // Built-in
-// #include "esp_wifi_types.h"    // Built-in
-// #include "esp_bt.h"            // Built-in
+#include <SPIFFS.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
@@ -34,7 +28,7 @@ String SD_numFiles(int res);
 extern void SelectInput(String Heading, String Command, String Arg_name);
 extern String getContentType(String filenametype);
 extern void Home();
-extern void LogOut();
+// extern void LogOut();
 extern String ConvBinUnits(int bytes, int resolution);
 extern String EncryptionType(wifi_auth_mode_t encryptionType);
 extern String HTML_Header();
@@ -114,7 +108,7 @@ void SD_flServerSetup()
   server.on("/SD_delete", HTTP_GET, [](AsyncWebServerRequest *request)
             {
     Serial.println("SD_Deleting file...");
-    SD_Select_File_For_Function("[DELETE]", "SD_deletehandler"); // Build webpage ready for display
+    SD_Select_File_For_Function("[DELETE]", "SD_deletehandler");
     request->send(200, "text/html", webpage); });
 
   // ##################### IMAGE HANDLER ############################
@@ -127,7 +121,7 @@ void SD_Dir(AsyncWebServerRequest *request)
 {
   String Fname1, Fname2;
   int index = 0;
-  SD_Directory(); // Get a list of the current files on the FS
+  SD_Directory();
   webpage = HTML_Header();
   webpage += "<h3>SD:　Filing System Content</h3><br>";
   if (SD_numfiles > 0)
@@ -319,7 +313,6 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
 
 // #############################################################################################
 //  Not found handler is also the handler for 'delete', 'download' and 'stream' functions
-//  void notFound(AsyncWebServerRequest *request)
 bool SD_notFound(AsyncWebServerRequest *request)
 { // Process selected file types
   Serial.println("SD_notFund func ...");
@@ -346,7 +339,7 @@ bool SD_notFound(AsyncWebServerRequest *request)
       request->send(response);
       SD_downloadtime = millis() - SD_start;
       SD_downloadsize = SD_GetFileSize(filename);
-      // request->redirect("/dir");
+      // request->redirect("/SD_dir");
     }
     if (request->url().startsWith("/SD_streamhandler"))
     {
@@ -356,23 +349,22 @@ bool SD_notFound(AsyncWebServerRequest *request)
       request->send(response);
       SD_downloadsize = SD_GetFileSize(filename);
       SD_downloadtime = millis() - SD_start;
-      // request->redirect("/dir");
+      // request->redirect("/SD_dir");
     }
     if (request->url().startsWith("/SD_deletehandler"))
     {
       Serial.println("SD_Delete handler started...");
-      SD_Handle_File_Delete(filename); // Build webpage ready for display
+      SD_Handle_File_Delete(filename);
       request->send(200, "text/html", webpage);
     }
     if (request->url().startsWith("/SD_renamehandler"))
     {
-      SD_Handle_File_Rename(request, filename, request->args()); // Build webpage ready for display
+      SD_Handle_File_Rename(request, filename, request->args());
       request->send(200, "text/html", webpage);
     }
 
     return true;
   }
-
   return false;
 }
 
@@ -381,7 +373,7 @@ void SD_Handle_File_Download()
 {
   String filename = "";
   int index = 0;
-  SD_Directory(); // Get a list of files on the FS
+  SD_Directory();
   webpage = HTML_Header();
   webpage += "<h3>SD:　Select a File to Download</h3>";
   webpage += "<table>";
@@ -401,7 +393,7 @@ void SD_Select_File_For_Function(String title, String function)
 {
   String Fname1, Fname2;
   int index = 0;
-  SD_Directory(); // Get a list of files on the FS
+  SD_Directory();
   webpage = HTML_Header();
   webpage += "<h3>SD:　Select a File to " + title + " from this device</h3>";
   webpage += "<table class='center'>";
@@ -429,18 +421,6 @@ void SD_Select_File_For_Function(String title, String function)
 }
 
 // #############################################################################################
-// void SD_SelectInput(String Heading, String Command, String Arg_name)
-// {
-//   webpage = HTML_Header();
-//   webpage += "<h3>" + Heading + "</h3>";
-//   webpage += "<form  action='/" + Command + "'>";
-//   webpage += "Filename: <input type='text' name='" + Arg_name + "'><br><br>";
-//   webpage += "<input type='submit' value='Enter'>";
-//   webpage += "</form>";
-//   webpage += HTML_Footer();
-// }
-
-// #############################################################################################
 int SD_GetFileSize(String filename)
 {
   int filesize;
@@ -451,6 +431,7 @@ int SD_GetFileSize(String filename)
 }
 
 String SD_totalBytes(int res)
+// res : 小数点以下の桁数: decimal places
 {
   return ConvBinUnits(SD.totalBytes(), res);
 }
