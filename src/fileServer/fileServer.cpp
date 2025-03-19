@@ -29,6 +29,8 @@ String EncryptionType(wifi_auth_mode_t encryptionType);
 bool StartMDNSservice(const char *Name);
 String processor(const String &var);
 String getContentType(String filenametype);
+void SelectInput(String Heading, String Command, String Arg_name);
+
 // -------------------------------------------------------
 extern bool SD_notFound(AsyncWebServerRequest *request);
 extern bool SPIFFS_notFound(AsyncWebServerRequest *request);
@@ -41,12 +43,14 @@ extern void SD_Directory();
 extern String SD_totalBytes(int res);
 extern String SD_usedBytes(int res);
 extern String SD_numFiles(int res);
-extern String VERSION;
+
 extern String webpage;
 extern int start, downloadtime, uploadtime, downloadsize, uploadsize, downloadrate, uploadrate, numfiles;
 extern int SD_start, SD_downloadtime, SD_uploadtime, SD_downloadsize, SD_uploadsize, SD_downloadrate, SD_uploadrate, SD_numfiles;
+
 extern float Temperature; 
 extern String Name;
+extern String VERSION;
 extern String IP_ADDR;
 extern String SERVER_NAME;
 
@@ -245,7 +249,8 @@ void Home()
 {
   webpage = HTML_Header();
   webpage += "<br>";
-  webpage += "<img src='icon.gif' alt='icon'>";
+  // webpage += "<img src='icon.gif' alt='icon'>";
+  webpage += "<img src = 'icon' alt='icon'>";
   webpage += "<h3>[&nbsp;Home&nbsp;]　" + SERVER_NAME + "　IP=" + IP_ADDR + "</h3>";
   webpage += HTML_Footer();
 }
@@ -261,14 +266,15 @@ void Display_System_Info()
   webpage = HTML_Header();
   webpage += "<h3>System Information</h3>";
   
-  webpage += "<h4>SPIFFS Transfer Statistics</h4>";
+  webpage += "<h4>SPIFFS:　Transfer Statistics</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
   webpage += "<tr><td>" + ConvBinUnits(uploadsize, 1) + "</td><td>" + ConvBinUnits(downloadsize, 1) + "</td><td>File Size</td></tr> ";
   webpage += "<tr><td>" + ConvBinUnits((float)uploadsize / uploadtime * 1024.0, 1) + "/Sec</td>";
   webpage += "<td>" + ConvBinUnits((float)downloadsize / downloadtime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
   webpage += "</table>";
-  webpage += "<h4>SPIFFS Filing System</h4>";
+
+  webpage += "<h4>SPIFFS:　Filing System</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
   webpage += "<tr><td>" + ConvBinUnits(FS.totalBytes(), 1) + "</td>";
@@ -277,7 +283,7 @@ void Display_System_Info()
   webpage += "<td>" + (numfiles == 0 ? "Pending Dir or Empty" : String(numfiles)) + "</td></tr>";
   webpage += "</table>";
   
-  webpage += "<h4>SD Transfer Statistics</h4>";
+  webpage += "<h4>SD:　Transfer Statistics</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
   webpage += "<tr><td>" + ConvBinUnits(SD_uploadsize, 1) + "</td><td>" + ConvBinUnits(SD_downloadsize, 1) + "</td><td>File Size</td></tr> ";
@@ -285,20 +291,17 @@ void Display_System_Info()
   webpage += "<td>" + ConvBinUnits((float)SD_downloadsize / SD_downloadtime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
   webpage += "</table>";
 
-  webpage += "<h4>SD Filing System</h4>";
+  webpage += "<h4>SD:　Filing System</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
-
   // webpage += "<tr><td>" + ConvBinUnits(SD.totalBytes(), 1) + "</td>";
   // webpage += "<td>" + ConvBinUnits(SD.usedBytes(), 1) + "</td>";
   // webpage += "<td>" + ConvBinUnits(SD.totalBytes() - SD.usedBytes(), 1) + "</td>";
   webpage += "<tr><td>" + SD_totalBytes(1) + "</td>";
   webpage += "<td>" + SD_usedBytes(1) + "</td>";
   webpage += "<td>" + SD_numFiles(1) + "</td>";
-
   webpage += "<td>" + (SD_numfiles == 0 ? "Pending Dir or Empty" : String(SD_numfiles)) + "</td></tr>";
   webpage += "</table>";
-
   
   webpage += "<h4>CPU Information</h4>";
   webpage += "<table class='center'>";
@@ -309,6 +312,7 @@ void Display_System_Info()
   webpage += "<tr><td>Flash Memory Size</td><td>" + String((spi_flash_get_chip_size() / (1024 * 1024))) + " MB</td></tr>";
   webpage += "<tr><td>Current Free RAM</td><td>" + ConvBinUnits(ESP.getFreeHeap(), 1) + "</td></tr>";
   webpage += "</table>";
+
   webpage += "<h4>Network Information</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>Parameter</th><th>Value</th></tr>";
@@ -319,6 +323,7 @@ void Display_System_Info()
   webpage += "<tr><td>WiFi Channel</td><td>" + String(WiFi.channel()) + "</td></tr>";
   webpage += "<tr><td>WiFi Encryption Type</td><td>" + String(EncryptionType(WiFi.encryptionType(0))) + "</td></tr>";
   webpage += "</table> ";
+
   webpage += HTML_Footer();
 }
 
@@ -435,7 +440,7 @@ String HTML_Footer()
 
 // #############################################################################################
 String ConvBinUnits(int bytes, int resolution)
-{
+{// int resolution : 小数点以下の桁数、decimal places
   if (bytes < 1024)
   {
     return String(bytes) + " B";
@@ -486,4 +491,16 @@ bool StartMDNSservice(const char *Name)
   }
   mdns_hostname_set(Name); // Set hostname
   return true;
+}
+
+// #############################################################################################
+void SelectInput(String Heading, String Command, String Arg_name)
+{
+  webpage = HTML_Header();
+  webpage += "<h3>" + Heading + "</h3>";
+  webpage += "<form  action='/" + Command + "'>";
+  webpage += "Filename: <input type='text' name='" + Arg_name + "'><br><br>";
+  webpage += "<input type='submit' value='Enter'>";
+  webpage += "</form>";
+  webpage += HTML_Footer();
 }

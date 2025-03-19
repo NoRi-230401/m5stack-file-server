@@ -1,13 +1,13 @@
 // *** Modified by NoRi 2025-03-18 ***
 #include <SPIFFS.h>            // Built-in
-#include <WiFi.h>              // Built-in
-#include <ESPmDNS.h>           // Built-in
+// #include <WiFi.h>              // Built-in
+// #include <ESPmDNS.h>           // Built-in
 #include <AsyncTCP.h>          // https://github.com/me-no-dev/AsyncTCP
 #include <ESPAsyncWebServer.h> // https://github.com/me-no-dev/ESPAsyncWebServer
-#include "esp_system.h"        // Built-in
-#include "esp_spi_flash.h"     // Built-in
-#include "esp_wifi_types.h"    // Built-in
-#include "esp_bt.h"            // Built-in
+// #include "esp_system.h"        // Built-in
+// #include "esp_spi_flash.h"     // Built-in
+// #include "esp_wifi_types.h"    // Built-in
+// #include "esp_bt.h"            // Built-in
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
@@ -26,12 +26,12 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
 bool SD_notFound(AsyncWebServerRequest *request);
 void SD_Handle_File_Download();
 void SD_Select_File_For_Function(String title, String function);
-void SD_SelectInput(String Heading, String Command, String Arg_name);
 int SD_GetFileSize(String filename);
 String SD_totalBytes(int res);
 String SD_usedBytes(int res);
 String SD_numFiles(int res);
 
+extern void SelectInput(String Heading, String Command, String Arg_name);
 extern String getContentType(String filenametype);
 extern void Home();
 extern void LogOut();
@@ -226,13 +226,13 @@ void SD_handleFileUpload(AsyncWebServerRequest *request, const String &filename,
 // #############################################################################################
 void SD_File_Stream()
 {
-  SD_SelectInput("[SD] Select a File to Stream", "SD_handlestream", "filename");
+  SelectInput("[SD] Select a File to Stream", "SD_handlestream", "filename");
 }
 
 // #############################################################################################
 void SD_File_Delete()
 {
-  SD_SelectInput("[SD] Select a File to Delete", "SD_handledelete", "filename");
+  SelectInput("[SD] Select a File to Delete", "SD_handledelete", "filename");
 }
 
 // #############################################################################################
@@ -429,16 +429,16 @@ void SD_Select_File_For_Function(String title, String function)
 }
 
 // #############################################################################################
-void SD_SelectInput(String Heading, String Command, String Arg_name)
-{
-  webpage = HTML_Header();
-  webpage += "<h3>" + Heading + "</h3>";
-  webpage += "<form  action='/" + Command + "'>";
-  webpage += "Filename: <input type='text' name='" + Arg_name + "'><br><br>";
-  webpage += "<input type='submit' value='Enter'>";
-  webpage += "</form>";
-  webpage += HTML_Footer();
-}
+// void SD_SelectInput(String Heading, String Command, String Arg_name)
+// {
+//   webpage = HTML_Header();
+//   webpage += "<h3>" + Heading + "</h3>";
+//   webpage += "<form  action='/" + Command + "'>";
+//   webpage += "Filename: <input type='text' name='" + Arg_name + "'><br><br>";
+//   webpage += "<input type='submit' value='Enter'>";
+//   webpage += "</form>";
+//   webpage += HTML_Footer();
+// }
 
 // #############################################################################################
 int SD_GetFileSize(String filename)
