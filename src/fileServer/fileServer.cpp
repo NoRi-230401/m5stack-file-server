@@ -28,10 +28,12 @@ bool StartMDNSservice(const char *Name);
 String getContentType(String filenametype);
 void SelectInput(String Heading, String Command, String Arg_name);
 // -------------------------------------------------------
+extern bool SDdir_notFound(AsyncWebServerRequest *request);
 extern bool SD_notFound(AsyncWebServerRequest *request);
 extern bool SPIFFS_notFound(AsyncWebServerRequest *request);
 extern void SPIFFS_flServerSetup();
 extern void SD_flServerSetup();
+extern void SDdir_flserverSetup();
 extern bool StartMDNSservice(const char *Name);
 extern bool StartupErrors;
 extern void Directory();
@@ -45,6 +47,8 @@ extern int SD_start, SD_downloadtime, SD_uploadtime, SD_downloadsize, SD_uploads
 extern String VERSION;
 extern String IP_ADDR;
 extern String SERVER_NAME;
+extern String SdPath;
+
 // -------------------------------------------------------
 
 AsyncWebServer server(80);
@@ -91,6 +95,8 @@ bool fileServerStart()
 
   SPIFFS_flServerSetup();
   SD_flServerSetup();
+  SDdir_flserverSetup();
+
   server.onNotFound(notFound);
 
   server.begin(); // Start the server
@@ -172,10 +178,13 @@ void notFound(AsyncWebServerRequest *request)
 {
   Serial.println("notFound func : " + request->url() );
 
+  if (SPIFFS_notFound(request))
+    return;
+
   if (SD_notFound(request))
     return;
 
-  if (SPIFFS_notFound(request))
+  if (SDdir_notFound(request))
     return;
 
   Page_Not_Found();
@@ -346,7 +355,7 @@ String HTML_Header()
   // page += "<br><br>";
   page += "<br>";
   page += "<div class = 'topnav2'>";
-  page += "SPIFFS:　<a href='/dir'>Files</a>";
+  page += "SPIFFS:<a href='/dir'>Files</a>";
   page += "<a href='/upload'>Upload</a> ";
   page += "<a href='/download'>Download</a>";
   page += "<a href='/stream'>Stream</a>";
@@ -357,7 +366,7 @@ String HTML_Header()
   // -- 3 -- 
   page += "<br>";
   page += "<div class = 'topnav2'>";
-  page += "SD:　<a href='/SD_dir'>Files</a>";
+  page += "SD:<a href='/SD_dir'>Files</a>";
   page += "<a href='/SD_upload'>Upload</a> ";
   page += "<a href='/SD_download'>Download</a>";
   page += "<a href='/SD_stream'>Stream</a>";
@@ -366,15 +375,20 @@ String HTML_Header()
   page += "</div>";
 
   // -- 4 -- 
-  // page += "<br>";
-  String SdPath = "/";
+  // String SdPath = "/";
   page += "<div class = 'topnav2'>";
-  page += "<a href='/root_sd'>Root</a>CurrentDir = " + SdPath;
-  page += "<a href='/chdir'>Chdir</a> ";
-  page += "<a href='/mkdir'>Mkdir</a> ";
+  page += "CurrentDir　=　" + SdPath;
+  page += "</div>";
+
+// -- 5 -- 
+  page += "<div class = 'topnav2'>";
+  page += "<a href='/root_sd'>GoRoot</a>";
+  page += "<a href='/chdir'>Chdir</a>";
+  page += "<a href='/mkdir'>Mkdir</a>";
   page += "<a href='/rmdir'>Rmdir</a>";
   page += "</div>";
-  page += "<br><br>";
+  // page += "<br><br>";
+  page += "<br>";
 
   return page;
 }
