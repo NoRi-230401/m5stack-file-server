@@ -10,7 +10,7 @@
 #include "esp_spi_flash.h"
 #include "esp_wifi_types.h"
 #include "esp_bt.h"
-#define FS SPIFFS
+// #define FS SPIFFS
 #include "credentials.h"
 
 // -------------------------------------------------------
@@ -27,31 +27,35 @@ String EncryptionType(wifi_auth_mode_t encryptionType);
 bool StartMDNSservice(const char *Name);
 String getContentType(String filenametype);
 void SelectInput(String Heading, String Command, String Arg_name);
+
 // -------------------------------------------------------
-extern bool SDdir_notFound(AsyncWebServerRequest *request);
+extern bool FS_notFound(AsyncWebServerRequest *request);
+extern void FS_flServerSetup();
+extern void FS_Directory();
+extern String FS_totalBytes(int res);
+extern String FS_usedBytes(int res);
+extern String FS_freeSpace(int res);
+extern int FS_start, FS_downloadtime, FS_uploadtime, FS_downloadsize, FS_uploadsize, FS_downloadrate, FS_uploadrate, FS_numfiles;
+
 extern bool SD_notFound(AsyncWebServerRequest *request);
-extern bool SPIFFS_notFound(AsyncWebServerRequest *request);
-extern void SPIFFS_flServerSetup();
 extern void SD_flServerSetup();
-extern void SDdir_flserverSetup();
-extern bool StartMDNSservice(const char *Name);
-extern bool StartupErrors;
-extern void Directory();
 extern void SD_Directory();
 extern String SD_totalBytes(int res);
 extern String SD_usedBytes(int res);
-extern String SD_numFiles(int res);
-extern String webpage;
-extern int start, downloadtime, uploadtime, downloadsize, uploadsize, downloadrate, uploadrate, numfiles;
+extern String SD_freeSpace(int res);
 extern int SD_start, SD_downloadtime, SD_uploadtime, SD_downloadsize, SD_uploadsize, SD_downloadrate, SD_uploadrate, SD_numfiles;
+extern void SDdir_flserverSetup();
+extern bool SDdir_notFound(AsyncWebServerRequest *request);
+
+extern String webpage;
 extern String VERSION;
 extern String IP_ADDR;
 extern String SERVER_NAME;
 extern String SdPath;
-
 // -------------------------------------------------------
 
 AsyncWebServer server(80);
+bool StartupErrors = false;
 
 bool wifiStart()
 {
@@ -93,10 +97,26 @@ bool fileServerStart()
     return false;
   }
 
-  SPIFFS_flServerSetup();
+  // ##################### HOMEPAGE HANDLER ###########################
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
+  Serial.println("Home Page...");
+  Home();
+  request->send(200, "text/html", webpage); });
+
+  // ##################### SYSTEM HANDLER ############################
+  server.on("/system", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
+  Display_System_Info();
+  request->send(200, "text/html", webpage); });
+
+  // --------------------------------------------
+  FS_flServerSetup();
   SD_flServerSetup();
   SDdir_flserverSetup();
+  // --------------------------------------------
 
+  // ##################### NotFound ############################
   server.onNotFound(notFound);
 
   server.begin(); // Start the server
@@ -105,8 +125,9 @@ bool fileServerStart()
     Serial.println("There were problems starting all services...");
     return false;
   }
-  Directory();    // Update the SPIFFS file list
-  SD_Directory(); // Update the SD file list
+  
+  FS_Directory();     // Update the SPIFFS file list
+  SD_Directory();     // Update the SD file list
   Serial.println("System started successfully...");
   return true;
 }
@@ -176,9 +197,9 @@ String getContentType(String filenametype)
 // #############################################################################################
 void notFound(AsyncWebServerRequest *request)
 {
-  Serial.println("notFound func : " + request->url() );
+  Serial.println("notFound func : " + request->url());
 
-  if (SPIFFS_notFound(request))
+  if (FS_notFound(request))
     return;
 
   if (SD_notFound(request))
@@ -210,7 +231,7 @@ void Home()
 {
   webpage = HTML_Header();
   webpage += "<br>";
-  webpage += "<img src = 'icon' alt='icon'>";
+  webpage += "<img src = 'FS_icon' alt='icon'>";
   webpage += "<h3>[&nbsp;Home&nbsp;]　" + SERVER_NAME + "　IP=" + IP_ADDR + "</h3>";
   webpage += HTML_Footer();
 }
@@ -224,14 +245,14 @@ void Display_System_Info()
     WiFi.scanNetworks(true, false); // Scan parameters are (async, show_hidden) if async = true, don't wait for the result
   webpage = HTML_Header();
   webpage += "<h3>System Information</h3>";
-  
+
   webpage += "<br>";
   webpage += "<h4>SPIFFS:　Transfer Statistics</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
-  webpage += "<tr><td>" + ConvBinUnits(uploadsize, 1) + "</td><td>" + ConvBinUnits(downloadsize, 1) + "</td><td>File Size</td></tr> ";
-  webpage += "<tr><td>" + ConvBinUnits((float)uploadsize / uploadtime * 1024.0, 1) + "/Sec</td>";
-  webpage += "<td>" + ConvBinUnits((float)downloadsize / downloadtime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
+  webpage += "<tr><td>" + ConvBinUnits(FS_uploadsize, 1) + "</td><td>" + ConvBinUnits(FS_downloadsize, 1) + "</td><td>File Size</td></tr> ";
+  webpage += "<tr><td>" + ConvBinUnits((float)FS_uploadsize / FS_uploadtime * 1024.0, 1) + "/Sec</td>";
+  webpage += "<td>" + ConvBinUnits((float)FS_downloadsize / FS_downloadtime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
   webpage += "</table>";
 
   webpage += "<br><br>";
@@ -247,22 +268,22 @@ void Display_System_Info()
   webpage += "<h4>SPIFFS:　Filing System</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
-  webpage += "<tr><td>" + ConvBinUnits(FS.totalBytes(), 1) + "</td>";
-  webpage += "<td>" + ConvBinUnits(FS.usedBytes(), 1) + "</td>";
-  webpage += "<td>" + ConvBinUnits(FS.totalBytes() - FS.usedBytes(), 1) + "</td>";
-  webpage += "<td>" + (numfiles == 0 ? "Pending Dir or Empty" : String(numfiles)) + "</td></tr>";
+  webpage += "<tr><td>" + FS_totalBytes(1) + "</td>";
+  webpage += "<td>" + FS_usedBytes(1) + "</td>";
+  webpage += "<td>" + FS_freeSpace(1) + "</td>";
+  webpage += "<td>" + (FS_numfiles == 0 ? "Pending Dir or Empty" : String(FS_numfiles)) + "</td></tr>";
   webpage += "</table>";
-  
+
   webpage += "<br><br>";
   webpage += "<h4>SD:　Filing System</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
   webpage += "<tr><td>" + SD_totalBytes(1) + "</td>";
   webpage += "<td>" + SD_usedBytes(1) + "</td>";
-  webpage += "<td>" + SD_numFiles(1) + "</td>";
+  webpage += "<td>" + SD_freeSpace(1) + "</td>";
   webpage += "<td>" + (SD_numfiles == 0 ? "Pending Dir or Empty" : String(SD_numfiles)) + "</td></tr>";
   webpage += "</table>";
-  
+
   webpage += "<br><br>";
   webpage += "<h4>CPU Information</h4>";
   webpage += "<table class='center'>";
@@ -345,25 +366,25 @@ String HTML_Header()
   // --- end of style ---
   page += "</style></head><body>";
 
-  // -- 1 -- 
+  // -- 1 --
   page += "<div class = 'topnav'>";
   page += "<a href='/'>Home</a>";
   page += "<a href='/system'>Status</a>";
   page += "</div>";
 
-  // -- 2 -- 
+  // -- 2 --
   // page += "<br><br>";
   page += "<br>";
   page += "<div class = 'topnav2'>";
-  page += "SPIFFS:<a href='/dir'>Files</a>";
-  page += "<a href='/upload'>Upload</a> ";
-  page += "<a href='/download'>Download</a>";
-  page += "<a href='/stream'>Stream</a>";
-  page += "<a href='/delete'>Delete</a>";
-  page += "<a href='/rename'>Rename</a>";
+  page += "SPIFFS:<a href='/FS_dir'>Files</a>";
+  page += "<a href='/FS_upload'>Upload</a> ";
+  page += "<a href='/FS_download'>Download</a>";
+  page += "<a href='/FS_stream'>Stream</a>";
+  page += "<a href='/FS_delete'>Delete</a>";
+  page += "<a href='/FS_rename'>Rename</a>";
   page += "</div>";
 
-  // -- 3 -- 
+  // -- 3 --
   page += "<br>";
   page += "<div class = 'topnav2'>";
   page += "SD:<a href='/SD_dir'>Files</a>";
@@ -374,13 +395,13 @@ String HTML_Header()
   page += "<a href='/SD_rename'>Rename</a>";
   page += "</div>";
 
-  // -- 4 -- 
+  // -- 4 --
   // String SdPath = "/";
   page += "<div class = 'topnav2'>";
   page += "CurrentDir　=　" + SdPath;
   page += "</div>";
 
-// -- 5 -- 
+  // -- 5 --
   page += "<div class = 'topnav2'>";
   page += "<a href='/root_sd'>GoRoot</a>";
   page += "<a href='/chdir'>Chdir</a>";
@@ -411,7 +432,7 @@ String HTML_Footer()
 
 // #############################################################################################
 String ConvBinUnits(int bytes, int resolution)
-{// int resolution : 小数点以下の桁数、decimal places
+{ // int resolution : 小数点以下の桁数、decimal places
   if (bytes < 1024)
   {
     return String(bytes) + " B";

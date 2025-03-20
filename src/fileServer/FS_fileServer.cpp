@@ -3,31 +3,37 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #define FS SPIFFS
+// In preparation for the introduction of LITTLFS
+//  see https://github.com/lorol/LITTLEFS
+//  replace SPIFFS with LITTLEFS
 
 // -------------------------------------------------------
-void SPIFFS_flServerSetup();
-void Dir(AsyncWebServerRequest *request);
-void Directory();
-void UploadFileSelect();
-// void Format();
-void handleFileUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final);
-void File_Stream();
-void File_Delete();
-void Handle_File_Delete(String filename);
-void File_Rename();
-void Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args);
-bool SPIFFS_notFound(AsyncWebServerRequest *request);
-void Handle_File_Download();
-void Select_File_For_Function(String title, String function);
-int GetFileSize(String filename);
+void FS_flServerSetup();
+void FS_Dir(AsyncWebServerRequest *request);
+void FS_Directory();
+void FS_UploadFileSelect();
+void FS_handleFileUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final);
+void FS_File_Stream();
+void FS_File_Delete();
+void FS_Handle_File_Delete(String filename);
+void FS_File_Rename();
+void FS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args);
+bool FS_notFound(AsyncWebServerRequest *request);
+void FS_Handle_File_Download();
+void FS_Select_File_For_Function(String title, String function);
+int FS_GetFileSize(String filename);
+String FS_totalBytes(int res);
+String FS_usedBytes(int res);
+String FS_freeSpace(int res);
+
 extern void SelectInput(String Heading, String Command, String Arg_name);
-extern void Display_System_Info();
-extern void Home();
 extern String getContentType(String filenametype);
 extern String ConvBinUnits(int bytes, int resolution);
 extern String EncryptionType(wifi_auth_mode_t encryptionType);
 extern String HTML_Header();
 extern String HTML_Footer();
+extern bool StartupErrors;
+
 // -------------------------------------------------------
 extern AsyncWebServer server;
 
@@ -37,15 +43,12 @@ typedef struct
   String ftype;
   String fsize;
 } fileinfo;
+String webpage;
+String FS_MessageLine;
+fileinfo FS_Filenames[200]; // Enough for most purposes!
+int FS_start, FS_downloadtime = 1, FS_uploadtime = 1, FS_downloadsize, FS_uploadsize, FS_downloadrate, FS_uploadrate, FS_numfiles;
 
-String webpage, MessageLine;
-fileinfo Filenames[200]; // Enough for most purposes!
-bool StartupErrors = false;
-int start, downloadtime = 1, uploadtime = 1, downloadsize, uploadsize, downloadrate, uploadrate, numfiles;
-// float Temperature = 21.34; // for example new page, amend in a sensor function if required
-// String Name = "Dave";
-
-void SPIFFS_flServerSetup()
+void FS_flServerSetup()
 {
   Serial.println(__FILE__);
   if (!FS.begin(true))
@@ -54,100 +57,86 @@ void SPIFFS_flServerSetup()
     StartupErrors = true;
   }
 
-  // ##################### HOMEPAGE HANDLER ###########################
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-            {
-    Serial.println("Home Page...");
-    Home(); // Build webpage ready for display
-    request->send(200, "text/html", webpage); });
-
   // ##################### DOWNLOAD HANDLER ##########################
-  server.on("/download", HTTP_GET, [](AsyncWebServerRequest *request)
+  server.on("/FS_download", HTTP_GET, [](AsyncWebServerRequest *request)
             {
-    Serial.println("Downloading file...");
-    Select_File_For_Function("[DOWNLOAD]", "downloadhandler");
+    Serial.println("FS Downloading file...");
+    FS_Select_File_For_Function("[DOWNLOAD]", "FS_downloadhandler");
     request->send(200, "text/html", webpage); });
 
   // ##################### UPLOAD HANDLERS ###########################
-  server.on("/upload", HTTP_GET, [](AsyncWebServerRequest *request)
+  server.on("/FS_upload", HTTP_GET, [](AsyncWebServerRequest *request)
             {
-    Serial.println("Uploading file...");
-    UploadFileSelect(); // Build webpage ready for display
+    Serial.println("FS Uploading file...");
+    FS_UploadFileSelect(); // Build webpage ready for display
     request->send(200, "text/html", webpage); });
 
   // Set handler for '/handleupload'
-  server.on("/handleupload", HTTP_POST, [](AsyncWebServerRequest *request) {},
-   [](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
-            { handleFileUpload(request, filename, index, data, len, final); });
+  server.on("/FS_handleupload", HTTP_POST, [](AsyncWebServerRequest *request) {}, [](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
+            { FS_handleFileUpload(request, filename, index, data, len, final); });
 
   // ##################### STREAM HANDLER ############################
-  server.on("/stream", HTTP_GET, [](AsyncWebServerRequest *request)
+  server.on("/FS_stream", HTTP_GET, [](AsyncWebServerRequest *request)
             {
-    Serial.println("Streaming file...");
-    Select_File_For_Function("[STREAM]", "streamhandler"); // Build webpage ready for display
+    Serial.println("FS Streaming file...");
+    FS_Select_File_For_Function("[STREAM]", "FS_streamhandler"); // Build webpage ready for display
     request->send(200, "text/html", webpage); });
 
   // ##################### RENAME HANDLER ############################
-  server.on("/rename", HTTP_GET, [](AsyncWebServerRequest *request)
+  server.on("/FS_rename", HTTP_GET, [](AsyncWebServerRequest *request)
             {
-    Serial.println("Renaming file...");
-    File_Rename(); // Build webpage ready for display
+    Serial.println("FS Renaming file...");
+    FS_File_Rename(); // Build webpage ready for display
     request->send(200, "text/html", webpage); });
 
   // ##################### DIR HANDLER ###############################
-  server.on("/dir", HTTP_GET, [](AsyncWebServerRequest *request)
+  server.on("/FS_dir", HTTP_GET, [](AsyncWebServerRequest *request)
             {
-    Serial.println("File Directory...");
-    Dir(request); // Build webpage ready for display
+    Serial.println("FS File Directory...");
+    FS_Dir(request); // Build webpage ready for display
     request->send(200, "text/html", webpage); });
 
   // ##################### DELETE HANDLER ############################
-  server.on("/delete", HTTP_GET, [](AsyncWebServerRequest *request)
+  server.on("/FS_delete", HTTP_GET, [](AsyncWebServerRequest *request)
             {
-    Serial.println("Deleting file...");
-    Select_File_For_Function("[DELETE]", "deletehandler"); // Build webpage ready for display
-    request->send(200, "text/html", webpage); });
-
-  // ##################### SYSTEM HANDLER ############################
-  server.on("/system", HTTP_GET, [](AsyncWebServerRequest *request)
-            {
-    Display_System_Info(); // Build webpage ready for display
+    Serial.println("FS Deleting file...");
+    FS_Select_File_For_Function("[DELETE]", "FS_deletehandler"); // Build webpage ready for display
     request->send(200, "text/html", webpage); });
 
   // ##################### IMAGE HANDLER ############################
-  server.on("/icon", HTTP_GET, [](AsyncWebServerRequest *request)
+  server.on("/FS_icon", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(FS, "/icon.gif", "image/gif"); });
 }
 
 // #############################################################################################
-void Dir(AsyncWebServerRequest *request)
+void FS_Dir(AsyncWebServerRequest *request)
 {
   String Fname1, Fname2;
   int index = 0;
-  Directory(); // Get a list of the current files on the FS
+  FS_Directory(); // Get a list of the current files on the FS
   webpage = HTML_Header();
   webpage += "<h3>SPIFFS:　Filing System Content</h3><br>";
-  if (numfiles > 0)
+  if (FS_numfiles > 0)
   {
     webpage += "<table class='center'>";
     webpage += "<tr><th>Type</th><th>File Name</th><th>File Size</th><th class='sp'></th><th>Type</th><th>File Name</th><th>File Size</th></tr>";
-    while (index < numfiles)
+    while (index < FS_numfiles)
     {
-      Fname1 = Filenames[index].filename;
-      Fname2 = Filenames[index + 1].filename;
+      Fname1 = FS_Filenames[index].filename;
+      Fname2 = FS_Filenames[index + 1].filename;
       webpage += "<tr>";
-      webpage += "<td style = 'width:5%'>" + Filenames[index].ftype + "</td><td style = 'width:25%'>" + Fname1 + "</td><td style = 'width:10%'>" + Filenames[index].fsize + "</td>";
+      webpage += "<td style = 'width:5%'>" + FS_Filenames[index].ftype + "</td><td style = 'width:25%'>" + Fname1 + "</td><td style = 'width:10%'>" + FS_Filenames[index].fsize + "</td>";
       webpage += "<td class='sp'></td>";
-      if (index < numfiles - 1)
+      if (index < FS_numfiles - 1)
       {
-        webpage += "<td style = 'width:5%'>" + Filenames[index + 1].ftype + "</td><td style = 'width:25%'>" + Fname2 + "</td><td style = 'width:10%'>" + Filenames[index + 1].fsize + "</td>";
+        webpage += "<td style = 'width:5%'>" + FS_Filenames[index + 1].ftype + "</td><td style = 'width:25%'>" + Fname2 + "</td><td style = 'width:10%'>" + FS_Filenames[index + 1].fsize + "</td>";
       }
       webpage += "</tr>";
       index = index + 2;
     }
     webpage += "</table>";
-    webpage += "<p style='background-color:yellow;'><b>" + MessageLine + "</b></p>";
-    MessageLine = "";
+    webpage += "<p style='background-color:yellow;'><b>" + FS_MessageLine + "</b></p>";
+    FS_MessageLine = "";
   }
   else
   {
@@ -158,9 +147,9 @@ void Dir(AsyncWebServerRequest *request)
 }
 
 // #############################################################################################
-void Directory()
+void FS_Directory()
 {
-  numfiles = 0; // Reset number of FS files counter
+  FS_numfiles = 0; // Reset number of FS files counter
   File root = FS.open("/");
   if (root)
   {
@@ -168,22 +157,22 @@ void Directory()
     File file = root.openNextFile();
     while (file)
     { // Now get all the filenames, file types and sizes
-      Filenames[numfiles].filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
-      Filenames[numfiles].ftype = (file.isDirectory() ? "Dir" : "File");
-      Filenames[numfiles].fsize = ConvBinUnits(file.size(), 1);
+      FS_Filenames[FS_numfiles].filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
+      FS_Filenames[FS_numfiles].ftype = (file.isDirectory() ? "Dir" : "File");
+      FS_Filenames[FS_numfiles].fsize = ConvBinUnits(file.size(), 1);
       file = root.openNextFile();
-      numfiles++;
+      FS_numfiles++;
     }
     root.close();
   }
 }
 
 // #############################################################################################
-void UploadFileSelect()
+void FS_UploadFileSelect()
 {
   webpage = HTML_Header();
   webpage += "<h3>SPIFFS:　Select a File to [UPLOAD] to this device</h3>";
-  webpage += "<form method = 'POST' action = '/handleupload' enctype='multipart/form-data'>";
+  webpage += "<form method = 'POST' action = '/FS_handleupload' enctype='multipart/form-data'>";
   webpage += "<input type='file' name='filename'><br><br>";
   webpage += "<input type='submit' value='Upload'>";
   webpage += "</form>";
@@ -191,49 +180,59 @@ void UploadFileSelect()
 }
 
 // #############################################################################################
-void handleFileUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
+void FS_handleFileUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
 {
+  String file = filename;
   if (!index)
   {
-    String file = filename;
     if (!filename.startsWith("/"))
       file = "/" + filename;
+  
     request->_tempFile = FS.open(file, "w");
+  
     if (!request->_tempFile)
-      Serial.println("Error creating file for upload...");
-    start = millis();
+      Serial.println("Error creating file for FS upload...");
+    
+    FS_uploadsize=0;
+    FS_start = millis();
   }
+
   if (request->_tempFile)
   {
     if (len)
     {
       request->_tempFile.write(data, len); // Chunked data
       Serial.println("Transferred : " + String(len) + " Bytes");
+      FS_uploadsize = FS_uploadsize + len;
     }
+    
     if (final)
     {
-      uploadsize = request->_tempFile.size();
+      // FS_uploadsize = request->_tempFile.size();
       request->_tempFile.close();
-      uploadtime = millis() - start;
-      request->redirect("/dir");
+      FS_uploadtime = millis() - FS_start;
+      Serial.println("FileName = " + file);
+      Serial.println("FS_uploadsize = " + String(FS_uploadsize) + " Bytes");
+      Serial.println("FS_uploadtime = " + String(FS_uploadtime) + " mSEC");
+      request->redirect("/FS_dir");
     }
   }
 }
 
 // #############################################################################################
-void File_Stream()
+void FS_File_Stream()
 {
-  SelectInput("Select a File to Stream", "handlestream", "filename");
+  SelectInput("Select a File to Stream", "FS_handlestream", "filename");
 }
 
 // #############################################################################################
-void File_Delete()
+void FS_File_Delete()
 {
-  SelectInput("Select a File to Delete", "handledelete", "filename");
+  SelectInput("Select a File to Delete", "FS_handledelete", "filename");
 }
 
 // #############################################################################################
-void Handle_File_Delete(String filename)
+void FS_Handle_File_Delete(String filename)
 { // Delete the file
   webpage = HTML_Header();
   if (!filename.startsWith("/"))
@@ -243,29 +242,29 @@ void Handle_File_Delete(String filename)
   { // It does so delete it
     FS.remove(filename);
     webpage += "<h3>SPIFFS:　File '" + filename.substring(1) + "' has been deleted</h3>";
-    webpage += "<a href='/dir'>[Enter]</a><br><br>";
+    webpage += "<a href='/FS_dir'>[Enter]</a><br><br>";
   }
   else
   {
     webpage += "<h3>SPIFFS:　File [ " + filename + " ] does not exist</h3>";
-    webpage += "<a href='/dir'>[Enter]</a><br><br>";
+    webpage += "<a href='/FS_dir'>[Enter]</a><br><br>";
   }
   webpage += HTML_Footer();
 }
 
 // #############################################################################################
-void File_Rename()
+void FS_File_Rename()
 { // Rename the file
-  Directory();
+  FS_Directory();
   webpage = HTML_Header();
   webpage += "<h3>SPIFFS:　Select a File to [RENAME] on this device</h3>";
-  webpage += "<FORM action='/renamehandler'>";
+  webpage += "<FORM action='/FS_renamehandler'>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>File name</th><th>New Filename</th><th>Select</th></tr>";
   int index = 0;
-  while (index < numfiles)
+  while (index < FS_numfiles)
   {
-    webpage += "<tr><td><input type='text' name='oldfile' style='color:blue;' value = '" + Filenames[index].filename + "' readonly></td>";
+    webpage += "<tr><td><input type='text' name='oldfile' style='color:blue;' value = '" + FS_Filenames[index].filename + "' readonly></td>";
     webpage += "<td><input type='text' name='newfile'></td><td><input type='radio' name='choice'></tr>";
     index++;
   }
@@ -276,24 +275,47 @@ void File_Rename()
 }
 
 // #############################################################################################
-void Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args)
+void FS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args)
 { // Rename the file
   String newfilename;
-  // int Args = request->args();
   webpage = HTML_Header();
-  for (int i = 0; i < Args; i++)
+
+  // --- 2025-03-20 bugfix by NoRi --------
+  // for (int i = 0; i < Args; i++)
+  // {
+  //   if (request->arg(i) != "" && request->arg(i + 1) == "on")
+  //   {
+  //     filename = request->arg(i - 1);
+  //     newfilename = request->arg(i);
+  //   }
+  // }
+  // ---------------------------------------
+  newfilename = "";
+  filename = "";
+  if (Args >= 3)
   {
-    if (request->arg(i) != "" && request->arg(i + 1) == "on")
+    for (int i = 2; i < Args; i++)
     {
-      filename = request->arg(i - 1);
-      newfilename = request->arg(i);
+      if (request->arg(i - 1) != "" && request->arg(i) == "on")
+      {
+        filename = request->arg(i - 2);
+        newfilename = request->arg(i - 1);
+        break;
+      }
     }
   }
+  Serial.println("old filename = " + filename);
+  Serial.println("new filename = " + newfilename);
+  //------------------------------------------------------
+
   if (!filename.startsWith("/"))
     filename = "/" + filename;
+
   if (!newfilename.startsWith("/"))
     newfilename = "/" + newfilename;
-  File CurrentFile = FS.open(filename, "r"); // Now read FS to see if file exists
+
+  File CurrentFile = FS.open(filename, "r");
+
   if (CurrentFile && filename != "/" && newfilename != "/" && (filename != newfilename))
   { // It does so rename it, ignore if no entry made, or Newfile name exists already
     if (FS.rename(filename, newfilename))
@@ -301,7 +323,7 @@ void Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Arg
       filename = filename.substring(1);
       newfilename = newfilename.substring(1);
       webpage += "<h3>SPIFFS:　File '" + filename + "' has been renamed to '" + newfilename + "'</h3>";
-      webpage += "<a href='/dir'>[Enter]</a><br><br>";
+      webpage += "<a href='/FS_dir'>[Enter]</a><br><br>";
     }
   }
   else
@@ -310,7 +332,7 @@ void Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Arg
       webpage += "<h3>SPIFFS:　File was not renamed</h3>";
     else
       webpage += "<h3>SPIFFS:　New filename exists, cannot rename</h3>";
-    webpage += "<a href='/rename'>[Enter]</a><br><br>";
+    webpage += "<a href='/FS_rename'>[Enter]</a><br><br>";
   }
   CurrentFile.close();
   webpage += HTML_Footer();
@@ -318,104 +340,109 @@ void Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Arg
 
 // #############################################################################################
 //  Not found handler is also the handler for 'delete', 'download' and 'stream' functions
-bool SPIFFS_notFound(AsyncWebServerRequest *request)
+bool FS_notFound(AsyncWebServerRequest *request)
 { // Process selected file types
-  Serial.println("SPIFFS_notFund func ...");
+  Serial.println("FS_notFund func ... : " + request->url());
 
   String filename;
-  if (request->url().startsWith("/downloadhandler") ||
-      request->url().startsWith("/streamhandler") ||
-      request->url().startsWith("/deletehandler") ||
-      request->url().startsWith("/renamehandler"))
+  if (request->url().startsWith("/FS_downloadhandler") ||
+      request->url().startsWith("/FS_streamhandler") ||
+      request->url().startsWith("/FS_deletehandler") ||
+      request->url().startsWith("/FS_renamehandler"))
   {
     // Now get the filename and handle the request for 'delete' or 'download' or 'stream' functions
-    if (!request->url().startsWith("/renamehandler"))
+    if (!request->url().startsWith("/FS_renamehandler"))
       filename = request->url().substring(request->url().indexOf("~/") + 1);
-    start = millis();
-    if (request->url().startsWith("/downloadhandler"))
+
+    FS_start = millis();
+
+    if (request->url().startsWith("/FS_downloadhandler"))
     {
-      Serial.println("Download handler started...");
-      MessageLine = "";
+      Serial.println("FS Download handler started...");
+      FS_MessageLine = "";
       File file = FS.open(filename, "r");
       String contentType = getContentType("download");
       AsyncWebServerResponse *response = request->beginResponse(contentType, file.size(), [file](uint8_t *buffer, size_t maxLen, size_t total) mutable -> size_t
                                                                 { return file.read(buffer, maxLen); });
       response->addHeader("Server", "ESP Async Web Server");
       request->send(response);
-      downloadtime = millis() - start;
-      downloadsize = GetFileSize(filename);
-      // request->redirect("/dir");
+      FS_downloadtime = millis() - FS_start;
+      FS_downloadsize = FS_GetFileSize(filename);
+      // request->redirect("/FS_dir");
     }
-    if (request->url().startsWith("/streamhandler"))
+    if (request->url().startsWith("/FS_streamhandler"))
     {
-      Serial.println("Stream handler started...");
+      Serial.println("FS Stream handler started...");
       String ContentType = getContentType(filename);
       AsyncWebServerResponse *response = request->beginResponse(FS, filename, ContentType);
       request->send(response);
-      downloadsize = GetFileSize(filename);
-      downloadtime = millis() - start;
-      // request->redirect("/dir");
+      FS_downloadsize = FS_GetFileSize(filename);
+      FS_downloadtime = millis() - FS_start;
+      // request->redirect("/FS_dir");
     }
-    if (request->url().startsWith("/deletehandler"))
+    if (request->url().startsWith("/FS_deletehandler"))
     {
-      Serial.println("Delete handler started...");
-      Handle_File_Delete(filename); // Build webpage ready for display
+      Serial.println("FS Delete handler started...");
+      FS_Handle_File_Delete(filename);
       request->send(200, "text/html", webpage);
     }
-    if (request->url().startsWith("/renamehandler"))
+
+    if (request->url().startsWith("/FS_renamehandler"))
     {
-      Handle_File_Rename(request, filename, request->args()); // Build webpage ready for display
+      Serial.println("FS Rename handler started...");
+      FS_Handle_File_Rename(request, filename, request->args());
       request->send(200, "text/html", webpage);
     }
+
     return true;
   }
   return false;
 }
 
 // #############################################################################################
-void Handle_File_Download()
+void FS_Handle_File_Download()
 {
   String filename = "";
   int index = 0;
-  Directory(); // Get a list of files on the FS
+  FS_Directory();
   webpage = HTML_Header();
   webpage += "<h3>SPIFFS:　Select a File to Download</h3>";
   webpage += "<table>";
   webpage += "<tr><th>File Name</th><th>File Size</th></tr>";
-  while (index < numfiles)
+  while (index < FS_numfiles)
   {
-    webpage += "<tr><td><a href='" + Filenames[index].filename + "'></a><td>" + Filenames[index].fsize + "</td></tr>";
+    webpage += "<tr><td><a href='" + FS_Filenames[index].filename + "'></a><td>" + FS_Filenames[index].fsize + "</td></tr>";
     index++;
   }
   webpage += "</table>";
-  webpage += "<p>" + MessageLine + "</p>";
+  webpage += "<p>" + FS_MessageLine + "</p>";
   webpage += HTML_Footer();
 }
 
 // #############################################################################################
-void Select_File_For_Function(String title, String function)
+void FS_Select_File_For_Function(String title, String function)
 {
   String Fname1, Fname2;
   int index = 0;
-  Directory(); // Get a list of files on the FS
+  FS_Directory();
   webpage = HTML_Header();
   webpage += "<h3>SPIFFS:　Select a File to " + title + " from this device</h3>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>File Name</th><th>File Size</th><th class='sp'></th><th>File Name</th><th>File Size</th></tr>";
-  while (index < numfiles)
+  while (index < FS_numfiles)
   {
-    Fname1 = Filenames[index].filename;
-    Fname2 = Filenames[index + 1].filename;
+    Fname1 = FS_Filenames[index].filename;
+    Fname2 = FS_Filenames[index + 1].filename;
     if (Fname1.startsWith("/"))
       Fname1 = Fname1.substring(1);
     if (Fname2.startsWith("/"))
       Fname2 = Fname2.substring(1);
     webpage += "<tr>";
-    webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td><td style = 'width:10%'>" + Filenames[index].fsize + "</td>";
+    webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td><td style = 'width:10%'>" + FS_Filenames[index].fsize + "</td>";
     webpage += "<td class='sp'></td>";
-    if (index < numfiles - 1)
+    if (index < FS_numfiles - 1)
     {
-      webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td><td style = 'width:10%'>" + Filenames[index + 1].fsize + "</td>";
+      webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td><td style = 'width:10%'>" + FS_Filenames[index + 1].fsize + "</td>";
     }
     webpage += "</tr>";
     index = index + 2;
@@ -425,11 +452,28 @@ void Select_File_For_Function(String title, String function)
 }
 
 // #############################################################################################
-int GetFileSize(String filename)
+int FS_GetFileSize(String filename)
 {
   int filesize;
   File CheckFile = FS.open(filename, "r");
   filesize = CheckFile.size();
   CheckFile.close();
   return filesize;
+}
+
+// --------------------------------------------------------------------
+String FS_totalBytes(int res)
+// res : 小数点以下の桁数: decimal places
+{
+  return ConvBinUnits(FS.totalBytes(), res);
+}
+
+String FS_usedBytes(int res)
+{
+  return ConvBinUnits(FS.usedBytes(), res);
+}
+
+String FS_freeSpace(int res)
+{
+  return ConvBinUnits(FS.totalBytes() - FS.usedBytes(), res);
 }

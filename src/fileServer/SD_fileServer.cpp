@@ -23,7 +23,7 @@ void SD_Select_File_For_Function(String title, String function);
 int SD_GetFileSize(String filename);
 String SD_totalBytes(int res);
 String SD_usedBytes(int res);
-String SD_numFiles(int res);
+String SD_freeSpace(int res);
 
 extern void SelectInput(String Heading, String Command, String Arg_name);
 extern String getContentType(String filenametype);
@@ -53,7 +53,6 @@ int isSPIFFS = 1;
 int numDirs;
 String SdPath = "/";
 // -------------------------------------------------------
-
 
 extern AsyncWebServer server;
 
@@ -208,31 +207,43 @@ void SD_UploadFileSelect()
   webpage += HTML_Footer();
 }
 
+
+// u64_t SD_tSize=0;
 // #############################################################################################
 void SD_handleFileUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
 {
+  String file = filename;
   if (!index)
   {
-    String file = filename;
     if (!filename.startsWith("/"))
       file = "/" + filename;
+    
     request->_tempFile = SD.open(file, "w");
+    
     if (!request->_tempFile)
       Serial.println("Error creating file for upload...");
+
+    SD_uploadsize = 0;
     SD_start = millis();
   }
+
   if (request->_tempFile)
   {
     if (len)
     {
       request->_tempFile.write(data, len); // Chunked data
       Serial.println("Transferred : " + String(len) + " Bytes");
+      SD_uploadsize = SD_uploadsize + len;
     }
+    
     if (final)
     {
-      SD_uploadsize = request->_tempFile.size();
+      // SD_uploadsize = request->_tempFile.size();
       request->_tempFile.close();
       SD_uploadtime = millis() - SD_start;
+      Serial.println("FileName = " + file);
+      Serial.println("SD_uploadsize = " + String(SD_uploadsize) + " Bytes");
+      Serial.println("SD_uploadtime = " + String(SD_uploadtime) + " mSEC");
       request->redirect("/SD_dir");
     }
   }
@@ -295,21 +306,44 @@ void SD_File_Rename()
 void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args)
 { // Rename the file
   String newfilename;
-  // int Args = request->args();
   webpage = HTML_Header();
-  for (int i = 0; i < Args; i++)
+
+  // ---  2025-03-20 bugfix by NoRi -----
+  // for (int i = 0; i < Args; i++)
+  // {
+  //   if (request->arg(i) != "" && request->arg(i + 1) == "on")
+  //   {
+  //     filename = request->arg(i - 1);
+  //     newfilename = request->arg(i);
+  //   }
+  // }
+  // ---------------------------------------
+  filename = "";
+  newfilename = "";
+  if (Args >= 3)
   {
-    if (request->arg(i) != "" && request->arg(i + 1) == "on")
+    for (int i = 2; i < Args; i++)
     {
-      filename = request->arg(i - 1);
-      newfilename = request->arg(i);
+      if (request->arg(i - 1) != "" && request->arg(i) == "on")
+      {
+        filename = request->arg(i - 2);
+        newfilename = request->arg(i - 1);
+        break;
+      }
     }
   }
+  Serial.println("old filename = " + filename);
+  Serial.println("new filename = " + newfilename);
+  //------------------------------------------------------
+
   if (!filename.startsWith("/"))
     filename = "/" + filename;
-  if (!newfilename.startsWith("/"))
+
+    if (!newfilename.startsWith("/"))
     newfilename = "/" + newfilename;
-  File CurrentFile = SD.open(filename, "r"); // Now read FS to see if file exists
+
+    File CurrentFile = SD.open(filename, "r");
+
   if (CurrentFile && filename != "/" && newfilename != "/" && (filename != newfilename))
   { // It does so rename it, ignore if no entry made, or Newfile name exists already
     if (SD.rename(filename, newfilename))
@@ -336,7 +370,7 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
 //  Not found handler is also the handler for 'delete', 'download' and 'stream' functions
 bool SD_notFound(AsyncWebServerRequest *request)
 { // Process selected file types
-  Serial.println("SD_notFund func ...");
+  Serial.println("SD_notFund func ... : " + request->url());
 
   String filename;
   if (request->url().startsWith("/SD_downloadhandler") ||
@@ -347,7 +381,9 @@ bool SD_notFound(AsyncWebServerRequest *request)
     // Now get the filename and handle the request for 'delete' or 'download' or 'stream' functions
     if (!request->url().startsWith("/SD_renamehandler"))
       filename = request->url().substring(request->url().indexOf("~/") + 1);
+    
     SD_start = millis();
+
     if (request->url().startsWith("/SD_downloadhandler"))
     {
       Serial.println("SD_Download handler started...");
@@ -362,6 +398,7 @@ bool SD_notFound(AsyncWebServerRequest *request)
       SD_downloadsize = SD_GetFileSize(filename);
       // request->redirect("/SD_dir");
     }
+
     if (request->url().startsWith("/SD_streamhandler"))
     {
       Serial.println("SD_Stream handler started...");
@@ -451,6 +488,7 @@ int SD_GetFileSize(String filename)
   return filesize;
 }
 
+// --------------------------------------------------------------------
 String SD_totalBytes(int res)
 // res : 小数点以下の桁数: decimal places
 {
@@ -462,11 +500,10 @@ String SD_usedBytes(int res)
   return ConvBinUnits(SD.usedBytes(), res);
 }
 
-String SD_numFiles(int res)
+String SD_freeSpace(int res)
 {
   return ConvBinUnits(SD.totalBytes() - SD.usedBytes(), res);
 }
-
 
 // -------------------------------------------------------------------
 void SDdir_flserverSetup()
@@ -539,7 +576,7 @@ void SDdir_flserverSetup()
 
 // #############################################################################################
 void handle_root_sd()
-{ // change SD Path to Root 
+{ // change SD Path to Root
 
   SdPath = String("/");
   Serial.println("change SdPath to Root");
@@ -614,7 +651,7 @@ void Handle_mkdir(AsyncWebServerRequest *request)
     filename = SdPath + filename;
   Serial.println("filename = " + filename);
 
-  if ( SD.mkdir(filename))
+  if (SD.mkdir(filename))
   { // success
     webpage += "<h3>Directory '" + filename + "' has been created</h3>";
     webpage += "<a href='/dir'>[Enter]</a><br><br>";
@@ -746,7 +783,6 @@ void FilesList()
   }
 }
 
-
 bool SDdir_notFound(AsyncWebServerRequest *request);
 // #############################################################################################
 bool SDdir_notFound(AsyncWebServerRequest *request)
@@ -754,7 +790,7 @@ bool SDdir_notFound(AsyncWebServerRequest *request)
   String filename;
   if (request->url().startsWith("/chdirhandler") ||
       request->url().startsWith("/mkdirhandler") ||
-      request->url().startsWith("/rmdirhandler") )
+      request->url().startsWith("/rmdirhandler"))
   {
     SD_start = millis();
     // -------- Directory  HANDLER by NoRi --------------
@@ -772,7 +808,6 @@ bool SDdir_notFound(AsyncWebServerRequest *request)
       Handle_mkdir(request);
       request->send(200, "text/html", webpage);
       return true;
-
     }
 
     if (request->url().startsWith("/rmdirhandler"))
@@ -786,5 +821,3 @@ bool SDdir_notFound(AsyncWebServerRequest *request)
   }
   return false;
 }
-
-

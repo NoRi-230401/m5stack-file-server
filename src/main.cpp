@@ -3,8 +3,9 @@
 // *******************************************************
 #include <Arduino.h>
 #include <M5Unified.h>
-#include <AsyncTCP.h>          // https://github.com/me-no-dev/AsyncTCP
-#include <ESPAsyncWebServer.h> // https://github.com/me-no-dev/ESPAsyncWebServer
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+
 #if defined(ENABLE_SD_UPDATER)
 #include "SDUpdater.h"
 #endif
