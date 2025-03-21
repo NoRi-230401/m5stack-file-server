@@ -47,8 +47,10 @@ extern int SD_start, SD_downloadtime, SD_uploadtime, SD_downloadsize, SD_uploads
 extern void SDdir_flserverSetup();
 extern bool SDdir_notFound(AsyncWebServerRequest *request);
 
+extern const String VERSION;
+extern const String PROG_NAME;
+
 extern String webpage;
-extern String VERSION;
 extern String IP_ADDR;
 extern String SERVER_NAME;
 extern String SdPath;
@@ -255,7 +257,7 @@ void Display_System_Info()
   webpage += "<td>" + ConvBinUnits((float)FS_downloadsize / FS_downloadtime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
   webpage += "</table>";
 
-  webpage += "<br><br>";
+  webpage += "<br>";
   webpage += "<h4>SD:　Transfer Statistics</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
@@ -274,7 +276,7 @@ void Display_System_Info()
   webpage += "<td>" + (FS_numfiles == 0 ? "Pending Dir or Empty" : String(FS_numfiles)) + "</td></tr>";
   webpage += "</table>";
 
-  webpage += "<br><br>";
+  webpage += "<br>";
   webpage += "<h4>SD:　Filing System</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
@@ -376,7 +378,7 @@ String HTML_Header()
   // page += "<br><br>";
   page += "<br>";
   page += "<div class = 'topnav2'>";
-  page += "SPIFFS:<a href='/FS_dir'>Files</a>";
+  page += "SPIFFS:<a href='/FS_dir'>Dir</a>";
   page += "<a href='/FS_upload'>Upload</a> ";
   page += "<a href='/FS_download'>Download</a>";
   page += "<a href='/FS_stream'>Stream</a>";
@@ -387,7 +389,7 @@ String HTML_Header()
   // -- 3 --
   page += "<br>";
   page += "<div class = 'topnav2'>";
-  page += "SD:<a href='/SD_dir'>Files</a>";
+  page += "SD:<a href='/SD_dir'>Dir</a>";
   page += "<a href='/SD_upload'>Upload</a> ";
   page += "<a href='/SD_download'>Download</a>";
   page += "<a href='/SD_stream'>Stream</a>";
@@ -398,15 +400,15 @@ String HTML_Header()
   // -- 4 --
   // String SdPath = "/";
   page += "<div class = 'topnav2'>";
-  page += "CurrentDir　=　" + SdPath;
+  page += "Current:SD_Path　=　" + SdPath;
+  page += "<a href='/SDdir_goRoot'>　　GoRoot</a>";
   page += "</div>";
 
   // -- 5 --
   page += "<div class = 'topnav2'>";
-  page += "<a href='/root_sd'>GoRoot</a>";
-  page += "<a href='/chdir'>Chdir</a>";
-  page += "<a href='/mkdir'>Mkdir</a>";
-  page += "<a href='/rmdir'>Rmdir</a>";
+    page += "<a href='/SDdir_chdir'>Chdir</a>";
+  page += "<a href='/SDdir_mkdir'>Mkdir</a>";
+  page += "<a href='/SDdir_rmdir'>Rmdir</a>";
   page += "</div>";
   // page += "<br><br>";
   page += "<br>";

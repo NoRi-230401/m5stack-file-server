@@ -28,7 +28,6 @@ String SD_freeSpace(int res);
 extern void SelectInput(String Heading, String Command, String Arg_name);
 extern String getContentType(String filenametype);
 extern void Home();
-// extern void LogOut();
 extern String ConvBinUnits(int bytes, int resolution);
 extern String EncryptionType(wifi_auth_mode_t encryptionType);
 extern String HTML_Header();
@@ -36,25 +35,20 @@ extern String HTML_Footer();
 // -------------------------------------------------------
 
 void SDdir_flserverSetup();
-// void FilesDirList();
-void handle_fileSystem(AsyncWebServerRequest *request);
-void handle_root_sd();
-void Select_Dir_For_Function(String title, String function);
-void Handle_chdir(String filename);
-void Handle_rmdir(String filename);
-void Handle_mkdir(AsyncWebServerRequest *request);
-void Dir_Make();
-void SelectInputDirName(String Heading, String Command, String Arg_name);
-void DirsList();
-void FilesList();
-
-const String FLS_NAME[] = {"SD", "SPIFFS"};
-int isSPIFFS = 1;
-int numDirs;
-String SdPath = "/";
+void SDdir_handle_goRoot();
+void SDdir_Select_Dir_For_Function(String title, String function);
+void SDdir_Handle_chdir(String filename);
+void SDdir_Handle_rmdir(String filename);
+void SDdir_Handle_mkdir(AsyncWebServerRequest *request);
+void SDdir_DirMake();
+void SDdir_SelectInputDirName(String Heading, String Command, String Arg_name);
+void SDdir_DirList();
+void SDdir_FilesList();
+bool SDdir_notFound(AsyncWebServerRequest *request);
 // -------------------------------------------------------
-
 extern AsyncWebServer server;
+extern String webpage;
+extern bool StartupErrors;
 
 typedef struct
 {
@@ -62,18 +56,15 @@ typedef struct
   String ftype;
   String fsize;
 } fileinfo;
-
-extern String webpage;
+fileinfo SD_Filenames[200];
 String SD_MessageLine;
-fileinfo SD_Filenames[200]; // Enough for most purposes!
-extern bool StartupErrors;
 int SD_start, SD_downloadtime = 1, SD_uploadtime = 1, SD_downloadsize, SD_uploadsize, SD_downloadrate, SD_uploadrate, SD_numfiles;
+String SdPath = "/";
 
 void SD_flServerSetup()
 {
   Serial.println(__FILE__);
 
-  // if (!SD.begin(SD_CARD_SELECT_PIN))
   if (!SD.begin())
   {
     Serial.println("Error preparing Filing System...");
@@ -142,6 +133,7 @@ void SD_Dir(AsyncWebServerRequest *request)
   String Fname1, Fname2;
   int index = 0;
   SD_Directory();
+
   webpage = HTML_Header();
   webpage += "<h3>SD:　Filing System Content</h3><br>";
   if (SD_numfiles > 0)
@@ -178,7 +170,13 @@ void SD_Dir(AsyncWebServerRequest *request)
 void SD_Directory()
 {
   SD_numfiles = 0; // Reset number of FS files counter
-  File root = SD.open("/");
+
+  if (SdPath == "")
+    SdPath = "/";
+
+  Serial.println("SdPath = " + SdPath);
+  // File root = SD.open("/");
+  File root = SD.open(SdPath);
   if (root)
   {
     root.rewindDirectory();
@@ -207,7 +205,6 @@ void SD_UploadFileSelect()
   webpage += HTML_Footer();
 }
 
-
 // u64_t SD_tSize=0;
 // #############################################################################################
 void SD_handleFileUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
@@ -217,9 +214,13 @@ void SD_handleFileUpload(AsyncWebServerRequest *request, const String &filename,
   {
     if (!filename.startsWith("/"))
       file = "/" + filename;
-    
+
+    if (SdPath != "/")
+      file = SdPath + file;
+
+    Serial.println("filename = " + file);
     request->_tempFile = SD.open(file, "w");
-    
+
     if (!request->_tempFile)
       Serial.println("Error creating file for upload...");
 
@@ -235,7 +236,7 @@ void SD_handleFileUpload(AsyncWebServerRequest *request, const String &filename,
       Serial.println("Transferred : " + String(len) + " Bytes");
       SD_uploadsize = SD_uploadsize + len;
     }
-    
+
     if (final)
     {
       // SD_uploadsize = request->_tempFile.size();
@@ -267,7 +268,13 @@ void SD_Handle_File_Delete(String filename)
   webpage = HTML_Header();
   if (!filename.startsWith("/"))
     filename = "/" + filename;
+
+  if (SdPath != "/")
+    filename = SdPath + filename;
+
+  Serial.println("filename = " + filename);
   File dataFile = SD.open(filename, "r"); // Now read FS to see if file exists
+
   if (dataFile)
   { // It does so delete it
     SD.remove(filename);
@@ -284,7 +291,8 @@ void SD_Handle_File_Delete(String filename)
 // #############################################################################################
 void SD_File_Rename()
 { // Rename the file
-  SD_Directory();
+  // SD_Directory();
+  SDdir_FilesList();
   webpage = HTML_Header();
   webpage += "<h3>SD:　Select a File to [RENAME] on this device</h3>";
   webpage += "<FORM action='/SD_renamehandler'>";
@@ -339,10 +347,17 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
   if (!filename.startsWith("/"))
     filename = "/" + filename;
 
-    if (!newfilename.startsWith("/"))
+  if (!newfilename.startsWith("/"))
     newfilename = "/" + newfilename;
 
-    File CurrentFile = SD.open(filename, "r");
+  if (SdPath != "/")
+  {
+    filename = SdPath + filename;
+    newfilename = SdPath + newfilename;
+  }
+  Serial.println("filename = " + filename);
+  Serial.println("newfilename = " + newfilename);
+  File CurrentFile = SD.open(filename, "r");
 
   if (CurrentFile && filename != "/" && newfilename != "/" && (filename != newfilename))
   { // It does so rename it, ignore if no entry made, or Newfile name exists already
@@ -381,14 +396,20 @@ bool SD_notFound(AsyncWebServerRequest *request)
     // Now get the filename and handle the request for 'delete' or 'download' or 'stream' functions
     if (!request->url().startsWith("/SD_renamehandler"))
       filename = request->url().substring(request->url().indexOf("~/") + 1);
-    
+
     SD_start = millis();
 
     if (request->url().startsWith("/SD_downloadhandler"))
     {
       Serial.println("SD_Download handler started...");
       SD_MessageLine = "";
-      File file = SD.open(filename, "r");
+
+      String filename_tmp = filename;
+      if (SdPath != "/")
+        filename_tmp = SdPath + filename_tmp;
+
+      Serial.println("filename_tmp = " + filename_tmp);
+      File file = SD.open(filename_tmp, "r");
       String contentType = getContentType("download");
       AsyncWebServerResponse *response = request->beginResponse(contentType, file.size(), [file](uint8_t *buffer, size_t maxLen, size_t total) mutable -> size_t
                                                                 { return file.read(buffer, maxLen); });
@@ -402,8 +423,13 @@ bool SD_notFound(AsyncWebServerRequest *request)
     if (request->url().startsWith("/SD_streamhandler"))
     {
       Serial.println("SD_Stream handler started...");
+      String filename_tmp = filename;
+      if (SdPath != "/")
+        filename_tmp = SdPath + filename_tmp;
+
+      Serial.println("filename_tmp = " + filename_tmp);
       String ContentType = getContentType(filename);
-      AsyncWebServerResponse *response = request->beginResponse(SD, filename, ContentType);
+      AsyncWebServerResponse *response = request->beginResponse(SD, filename_tmp, ContentType);
       request->send(response);
       SD_downloadsize = SD_GetFileSize(filename);
       SD_downloadtime = millis() - SD_start;
@@ -412,6 +438,7 @@ bool SD_notFound(AsyncWebServerRequest *request)
     if (request->url().startsWith("/SD_deletehandler"))
     {
       Serial.println("SD_Delete handler started...");
+      Serial.println("filename = " + filename);
       SD_Handle_File_Delete(filename);
       request->send(200, "text/html", webpage);
     }
@@ -431,7 +458,9 @@ void SD_Handle_File_Download()
 {
   String filename = "";
   int index = 0;
-  SD_Directory();
+  // SD_Directory();
+  SDdir_FilesList();
+
   webpage = HTML_Header();
   webpage += "<h3>SD:　Select a File to Download</h3>";
   webpage += "<table>";
@@ -451,7 +480,9 @@ void SD_Select_File_For_Function(String title, String function)
 {
   String Fname1, Fname2;
   int index = 0;
-  SD_Directory();
+  // SD_Directory();
+  SDdir_FilesList();
+
   webpage = HTML_Header();
   webpage += "<h3>SD:　Select a File to " + title + " from this device</h3>";
   webpage += "<table class='center'>";
@@ -460,13 +491,17 @@ void SD_Select_File_For_Function(String title, String function)
   {
     Fname1 = SD_Filenames[index].filename;
     Fname2 = SD_Filenames[index + 1].filename;
+
     if (Fname1.startsWith("/"))
       Fname1 = Fname1.substring(1);
+
     if (Fname2.startsWith("/"))
       Fname2 = Fname2.substring(1);
+
     webpage += "<tr>";
     webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td><td style = 'width:10%'>" + SD_Filenames[index].fsize + "</td>";
     webpage += "<td class='sp'></td>";
+
     if (index < SD_numfiles - 1)
     {
       webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td><td style = 'width:10%'>" + SD_Filenames[index + 1].fsize + "</td>";
@@ -482,6 +517,10 @@ void SD_Select_File_For_Function(String title, String function)
 int SD_GetFileSize(String filename)
 {
   int filesize;
+  if (SdPath != "/")
+    filename = SdPath + filename;
+
+  Serial.println("filename = " + filename);
   File CheckFile = SD.open(filename, "r");
   filesize = CheckFile.size();
   CheckFile.close();
@@ -506,76 +545,43 @@ String SD_freeSpace(int res)
 }
 
 // -------------------------------------------------------------------
+// *** SD directory function support by Nori
+//   chdir,mkdir,rmdir, goRoot,
+
 void SDdir_flserverSetup()
 {
-  // ############### Spiffs/Sd change  #############################
-  // server.on("/fileSystem", HTTP_GET, [](AsyncWebServerRequest *request)
-  //           {
-  //   Serial.println("change file system SPIFFS <---> SD ...");
-  //   handle_fileSystem(request); // file System change  SPIFFS - SD
-  //   request->send(200, "text/html", webpage); });
-
-  // ######################  ROOT_SD ################################
-  server.on("/root_sd", HTTP_GET, [](AsyncWebServerRequest *request)
-            {
-    Serial.println("change SdPath to Root ...");
-    handle_root_sd(); 
-    request->send(200, "text/html", webpage); });
 
   // ##################### CHDIR HANDLER ############################
-  server.on("/chdir", HTTP_GET, [](AsyncWebServerRequest *request)
+  server.on("/SDdir_chdir", HTTP_GET, [](AsyncWebServerRequest *request)
             {
-    Serial.println("chdir...");
-    Select_Dir_For_Function("[CHDIR]", "chdirhandler");
+    Serial.println("SDdir_chdir...");
+    SDdir_Select_Dir_For_Function("[CHDIR]", "SDdir_chdirhandler");
     request->send(200, "text/html", webpage); });
 
   // ##################### MKDIR HANDLER ############################
-  server.on("/mkdir", HTTP_GET, [](AsyncWebServerRequest *request)
+  server.on("/SDdir_mkdir", HTTP_GET, [](AsyncWebServerRequest *request)
             {
-    Serial.println("mkdir ...");
-    Dir_Make();
+    Serial.println("SDdir_mkdir ...");
+    SDdir_DirMake();
     request->send(200, "text/html", webpage); });
 
   // ##################### RMDIR HANDLER #############################
-  server.on("/rmdir", HTTP_GET, [](AsyncWebServerRequest *request)
+  server.on("/SDdir_rmdir", HTTP_GET, [](AsyncWebServerRequest *request)
             {
-    Serial.println("rmdir...");
-    Select_Dir_For_Function("[RMDIR]", "rmdirhandler");
+    Serial.println("SDdir_rmdir...");
+    SDdir_Select_Dir_For_Function("[RMDIR]", "SDdir_rmdirhandler");
+    request->send(200, "text/html", webpage); });
+
+  // ######################  ROOT_SD ################################
+  server.on("/SDdir_goRoot", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
+    Serial.println("change SdPath to Root ...");
+    SDdir_handle_goRoot(); 
     request->send(200, "text/html", webpage); });
 }
 
 // #############################################################################################
-// void handle_fileSystem(AsyncWebServerRequest *request)
-// {
-//   String modeS;
-//   modeS = request->arg("mode");
-
-//   if (modeS != "")
-//   {
-//     if (modeS == "toggle")
-//       isSPIFFS ^= 1; // 反転
-
-//     else if (modeS == "SPIFFS")
-//       isSPIFFS = 1;
-
-//     else if (modeS == "SD")
-//     {
-//       isSPIFFS = 0;
-//     }
-
-//     if (!isSPIFFS)
-//     {
-//       SdPath = String("/");
-//     }
-//   }
-
-//   Serial.println("file System is " + FLS_NAME[isSPIFFS]);
-
-//   Home();
-// }
-
-// #############################################################################################
-void handle_root_sd()
+void SDdir_handle_goRoot()
 { // change SD Path to Root
 
   SdPath = String("/");
@@ -583,13 +589,15 @@ void handle_root_sd()
 
   webpage = HTML_Header();
   webpage += "<h3>Change SD Path to Root</h3>";
-  webpage += "<a href='/dir'>[Enter]</a><br><br>";
+  webpage += "<a href='/SD_dir'>[Enter]</a><br><br>";
   webpage += HTML_Footer();
 }
 
 // #############################################################################################
-void Handle_chdir(String filename)
+void SDdir_Handle_chdir(String filename)
 { // chdri
+  Serial.println("filename = " + filename);
+
   webpage = HTML_Header();
   if (!filename.startsWith("/"))
     filename = "/" + filename;
@@ -603,18 +611,18 @@ void Handle_chdir(String filename)
     SdPath = filename;
     Serial.println("SdPath = " + SdPath);
     webpage += "<h3>Directory '" + SdPath + "' has been changed</h3>";
-    webpage += "<a href='/dir'>[Enter]</a><br><br>";
+    webpage += "<a href='/SD_dir'>[Enter]</a><br><br>";
   }
   else
   {
     webpage += "<h3>Directory [ " + filename + " ] is NOT changed successfully</h3>";
-    webpage += "<a href='/dir'>[Enter]</a><br><br>";
+    webpage += "<a href='/SD_dir'>[Enter]</a><br><br>";
   }
   webpage += HTML_Footer();
 }
 
 // #############################################################################################
-void Handle_rmdir(String filename)
+void SDdir_Handle_rmdir(String filename)
 { // rmdir
   webpage = HTML_Header();
   if (!filename.startsWith("/"))
@@ -627,18 +635,18 @@ void Handle_rmdir(String filename)
   if (SD.rmdir(filename))
   { // success
     webpage += "<h3>Directory '" + filename.substring(1) + "' has been removed</h3>";
-    webpage += "<a href='/dir'>[Enter]</a><br><br>";
+    webpage += "<a href='/SD_dir'>[Enter]</a><br><br>";
   }
   else
   {
     webpage += "<h3>Directory [ " + filename + " ] is NOT removed successfully</h3>";
-    webpage += "<a href='/dir'>[Enter]</a><br><br>";
+    webpage += "<a href='/SD_dir'>[Enter]</a><br><br>";
   }
   webpage += HTML_Footer();
 }
 
 // #############################################################################################
-void Handle_mkdir(AsyncWebServerRequest *request)
+void SDdir_Handle_mkdir(AsyncWebServerRequest *request)
 { // Dir Make
 
   webpage = HTML_Header();
@@ -654,24 +662,24 @@ void Handle_mkdir(AsyncWebServerRequest *request)
   if (SD.mkdir(filename))
   { // success
     webpage += "<h3>Directory '" + filename + "' has been created</h3>";
-    webpage += "<a href='/dir'>[Enter]</a><br><br>";
+    webpage += "<a href='/SD_dir'>[Enter]</a><br><br>";
   }
   else
   {
     webpage += "<h3>Directory [ " + filename + " ] is NOT created successfully</h3>";
-    webpage += "<a href='/dir'>[Enter]</a><br><br>";
+    webpage += "<a href='/SD_dir'>[Enter]</a><br><br>";
   }
   webpage += HTML_Footer();
 }
 
 // #############################################################################################
-void Dir_Make()
+void SDdir_DirMake()
 {
-  SelectInputDirName("Make New Directory", "mkdirhandler", "filename");
+  SDdir_SelectInputDirName("Make New Directory", "SDdir_mkdirhandler", "filename");
 }
 
 // #############################################################################################
-void SelectInputDirName(String Heading, String Command, String Arg_name)
+void SDdir_SelectInputDirName(String Heading, String Command, String Arg_name)
 {
   webpage = HTML_Header();
   webpage += "<h3>" + Heading + "</h3>";
@@ -683,17 +691,17 @@ void SelectInputDirName(String Heading, String Command, String Arg_name)
 }
 
 // #############################################################################################
-void Select_Dir_For_Function(String title, String function)
+void SDdir_Select_Dir_For_Function(String title, String function)
 {
   String Fname1, Fname2;
   int index = 0;
-  DirsList(); // Get a Dir list
+  SDdir_DirList(); // Get a Dir list
   webpage = HTML_Header();
   webpage += "<h3>Select a Directory to " + title + " from this device</h3>";
   webpage += "<table class='center'>";
   webpage += "<tr> <th>Directory Name</th> <th>Directory Name</th> </tr>";
 
-  while (index < numDirs)
+  while (index < SD_numfiles)
   {
     Fname1 = SD_Filenames[index].filename;
     Fname2 = SD_Filenames[index + 1].filename;
@@ -705,7 +713,7 @@ void Select_Dir_For_Function(String title, String function)
     webpage += "<tr>";
     webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td>";
 
-    if (index < numDirs - 1)
+    if (index < SD_numfiles - 1)
     {
       webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td>";
     }
@@ -718,16 +726,16 @@ void Select_Dir_For_Function(String title, String function)
 
 // #############################################################################################
 //  File含まない。Dirのみの表示 for SD Only  .. by NoRi
-void DirsList()
+// void DirsList()
+void SDdir_DirList()
 {
-  numDirs = 0; // Reset number of dirs counter
+  SD_numfiles = 0;
   File root = SD.open(SdPath, "r");
 
   if (root)
   {
     root.rewindDirectory();
     File file = root.openNextFile();
-
     while (file)
     {
       String tmp_filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
@@ -738,11 +746,11 @@ void DirsList()
       }
       else
       {
-        SD_Filenames[numDirs].filename = tmp_filename;
-        SD_Filenames[numDirs].ftype = (file.isDirectory() ? "Dir" : "File");
-        SD_Filenames[numDirs].fsize = ConvBinUnits(file.size(), 1);
+        SD_Filenames[SD_numfiles].filename = tmp_filename;
+        SD_Filenames[SD_numfiles].ftype = (file.isDirectory() ? "Dir" : "File");
+        SD_Filenames[SD_numfiles].fsize = ConvBinUnits(file.size(), 1);
         file = root.openNextFile();
-        numDirs++;
+        SD_numfiles++;
       }
     }
     root.close();
@@ -751,7 +759,7 @@ void DirsList()
 
 // #############################################################################################
 //  Dirを含まない。fileのみを表示  .. by NoRi
-void FilesList()
+void SDdir_FilesList()
 {
   SD_numfiles = 0; // Reset number of files in SD files
   File root;
@@ -783,37 +791,38 @@ void FilesList()
   }
 }
 
-bool SDdir_notFound(AsyncWebServerRequest *request);
 // #############################################################################################
 bool SDdir_notFound(AsyncWebServerRequest *request)
 { // Process selected file types
   String filename;
-  if (request->url().startsWith("/chdirhandler") ||
-      request->url().startsWith("/mkdirhandler") ||
-      request->url().startsWith("/rmdirhandler"))
+  if (request->url().startsWith("/SDdir_chdirhandler") ||
+      request->url().startsWith("/SDdir_mkdirhandler") ||
+      request->url().startsWith("/SDdir_rmdirhandler"))
   {
-    SD_start = millis();
+    // Now get the filename and handle the request for 'chdir' or 'mkdir' or 'rmdir' functions
+    filename = request->url().substring(request->url().indexOf("~/") + 1);
+
     // -------- Directory  HANDLER by NoRi --------------
-    if (request->url().startsWith("/chdirhandler"))
+    if (request->url().startsWith("/SDdir_chdirhandler"))
     {
-      Serial.println("chdir handler started...");
-      Handle_chdir(filename);
+      Serial.println("SDdir_chdir handler started...");
+      SDdir_Handle_chdir(filename);
       request->send(200, "text/html", webpage);
       return true;
     }
 
-    if (request->url().startsWith("/mkdirhandler"))
+    if (request->url().startsWith("/SDdir_mkdirhandler"))
     {
-      Serial.println("mkdir handler started...");
-      Handle_mkdir(request);
+      Serial.println("SDdir_mkdir handler started...");
+      SDdir_Handle_mkdir(request);
       request->send(200, "text/html", webpage);
       return true;
     }
 
-    if (request->url().startsWith("/rmdirhandler"))
+    if (request->url().startsWith("/SDdir_rmdirhandler"))
     {
-      Serial.println("rmdir handler started...");
-      Handle_rmdir(filename);
+      Serial.println("SDdir_rmdir handler started...");
+      SDdir_Handle_rmdir(filename);
       request->send(200, "text/html", webpage);
       return true;
     }

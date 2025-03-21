@@ -10,6 +10,11 @@
 #include "SDUpdater.h"
 #endif
 
+extern const String VERSION;
+extern const String PROG_NAME;
+const String VERSION = "v1.02b-250321"; 
+const String PROG_NAME = "m5stack-fileServer"; 
+
 void error_stop();
 void setup();
 void loop();
@@ -18,7 +23,6 @@ extern bool fileServerStart();
 
 String IP_ADDR="";
 String SERVER_NAME="";
-String VERSION = "1.02b"; 
 
 void setup()
 {
@@ -26,17 +30,16 @@ void setup()
   auto cfg = M5.config();
   M5.begin(cfg);
 #if defined(ENABLE_SD_UPDATER)
-  SDU_lobby("m5stack-fileServer");
+  SDU_lobby(PROG_NAME);
 #endif
   M5.Display.setBrightness(120);
   M5.Lcd.setTextSize(2);
-  String msg ="m5stack-fileServer";
-  M5.Display.println(msg);
+  M5.Display.println(PROG_NAME);
   
   Serial.begin(115200);
   while (!Serial);
   Serial.println(__FILE__);
-  Serial.println(msg);
+  Serial.println(PROG_NAME);
   // *************************************
 
   if (!wifiStart())    error_stop();
