@@ -401,7 +401,8 @@ String HTML_Header()
   // String SdPath = "/";
   page += "<div class = 'topnav2'>";
   page += "Current:SD_Path　=　" + SdPath;
-  page += "<a href='/SDdir_goRoot'>　　GoRoot</a>";
+  page += "<a href='/SDdir_chTop'>　　ChTop</a>";
+  page += "<a href='/SDdir_chUp'>ChUp</a>";
   page += "</div>";
 
   // -- 5 --

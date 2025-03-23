@@ -35,7 +35,8 @@ extern String HTML_Footer();
 // -------------------------------------------------------
 
 void SDdir_flserverSetup();
-void SDdir_handle_goRoot();
+void SDdir_handle_chTop();
+void SDdir_handle_chUp();
 void SDdir_Select_Dir_For_Function(String title, String function);
 void SDdir_Handle_chdir(String filename);
 void SDdir_Handle_rmdir(String filename);
@@ -166,32 +167,63 @@ void SD_Dir(AsyncWebServerRequest *request)
   request->send(200, "text/html", webpage);
 }
 
+const String SD_SYSTEM_FILE = "System Volume Information";
 // #############################################################################################
 void SD_Directory()
 {
-  SD_numfiles = 0; // Reset number of FS files counter
+  SD_numfiles = 0;
 
   if (SdPath == "")
     SdPath = "/";
-
   Serial.println("SdPath = " + SdPath);
-  // File root = SD.open("/");
-  File root = SD.open(SdPath);
+  File root = SD.open(SdPath, "r");
+
   if (root)
   {
     root.rewindDirectory();
     File file = root.openNextFile();
     while (file)
-    { // Now get all the filenames, file types and sizes
-      SD_Filenames[SD_numfiles].filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
-      SD_Filenames[SD_numfiles].ftype = (file.isDirectory() ? "Dir" : "File");
-      SD_Filenames[SD_numfiles].fsize = ConvBinUnits(file.size(), 1);
+    {
+      String tmp_filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
+
+      if (tmp_filename != SD_SYSTEM_FILE)
+      {
+        SD_Filenames[SD_numfiles].filename = tmp_filename;
+        SD_Filenames[SD_numfiles].ftype = (file.isDirectory() ? "Dir" : "File");
+        SD_Filenames[SD_numfiles].fsize = ConvBinUnits(file.size(), 1);
+        SD_numfiles++;
+      }
       file = root.openNextFile();
-      SD_numfiles++;
     }
     root.close();
   }
 }
+
+// void SD_Directory()
+// {
+//   SD_numfiles = 0; // Reset number of FS files counter
+
+//   if (SdPath == "")
+//     SdPath = "/";
+
+//   Serial.println("SdPath = " + SdPath);
+//   // File root = SD.open("/");
+//   File root = SD.open(SdPath);
+//   if (root)
+//   {
+//     root.rewindDirectory();
+//     File file = root.openNextFile();
+//     while (file)
+//     { // Now get all the filenames, file types and sizes
+//       SD_Filenames[SD_numfiles].filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
+//       SD_Filenames[SD_numfiles].ftype = (file.isDirectory() ? "Dir" : "File");
+//       SD_Filenames[SD_numfiles].fsize = ConvBinUnits(file.size(), 1);
+//       file = root.openNextFile();
+//       SD_numfiles++;
+//     }
+//     root.close();
+//   }
+// }
 
 // #############################################################################################
 void SD_UploadFileSelect()
@@ -291,10 +323,10 @@ void SD_Handle_File_Delete(String filename)
 // #############################################################################################
 void SD_File_Rename()
 { // Rename the file
-  // SD_Directory();
-  SDdir_FilesList();
+  SD_Directory();
+  // SDdir_FilesList();
   webpage = HTML_Header();
-  webpage += "<h3>SD:　Select a File to [RENAME] on this device</h3>";
+  webpage += "<h3>SD:　Select a Dir/File to [RENAME] on this device</h3>";
   webpage += "<FORM action='/SD_renamehandler'>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>File name</th><th>New Filename</th><th>Select</th></tr>";
@@ -572,23 +604,54 @@ void SDdir_flserverSetup()
     SDdir_Select_Dir_For_Function("[RMDIR]", "SDdir_rmdirhandler");
     request->send(200, "text/html", webpage); });
 
-  // ######################  ROOT_SD ################################
-  server.on("/SDdir_goRoot", HTTP_GET, [](AsyncWebServerRequest *request)
+  // ######################  chTop ################################
+  server.on("/SDdir_chTop", HTTP_GET, [](AsyncWebServerRequest *request)
             {
-    Serial.println("change SdPath to Root ...");
-    SDdir_handle_goRoot(); 
+    Serial.println("change SdPath to Root directory...");
+    SDdir_handle_chTop(); 
+    request->send(200, "text/html", webpage); });
+
+  // ######################  chUp ################################
+  server.on("/SDdir_chUp", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
+    Serial.println("change SdPath to Up directory...");
+    SDdir_handle_chUp(); 
     request->send(200, "text/html", webpage); });
 }
 
 // #############################################################################################
-void SDdir_handle_goRoot()
-{ // change SD Path to Root
+void SDdir_handle_chTop()
+{ // change SD Path to Root directory
 
   SdPath = String("/");
-  Serial.println("change SdPath to Root");
+  // Serial.println("change SdPath to Root Directory");
 
   webpage = HTML_Header();
-  webpage += "<h3>Change SD Path to Root</h3>";
+  webpage += "<h3>Change SD Path to Root Directory</h3>";
+  webpage += "<a href='/SD_dir'>[Enter]</a><br><br>";
+  webpage += HTML_Footer();
+}
+
+// #############################################################################################
+void SDdir_handle_chUp()
+{ // change SD Path to Up directory
+
+  String upPath = String("/");
+  
+  if (SdPath != "/")
+  {
+    int i = String(SdPath).lastIndexOf("/");
+    upPath = SdPath.substring(0, i);
+  }
+  SdPath = upPath;
+  if (SdPath == "")
+    SdPath = String("/");
+
+  Serial.println("SdPath = " + SdPath);
+  // Serial.println("change SdPath to Up Directory");
+
+  webpage = HTML_Header();
+  webpage += "<h3>Change SD Path to Up Directory</h3>";
   webpage += "<a href='/SD_dir'>[Enter]</a><br><br>";
   webpage += HTML_Footer();
 }
@@ -725,11 +788,14 @@ void SDdir_Select_Dir_For_Function(String title, String function)
 }
 
 // #############################################################################################
-//  File含まない。Dirのみの表示 for SD Only  .. by NoRi
-// void DirsList()
+//  File含まない。Dirのみの表示   .. by NoRi
 void SDdir_DirList()
 {
   SD_numfiles = 0;
+
+  if (SdPath == "")
+    SdPath = "/";
+  Serial.println("SdPath = " + SdPath);
   File root = SD.open(SdPath, "r");
 
   if (root)
@@ -740,31 +806,29 @@ void SDdir_DirList()
     {
       String tmp_filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
 
-      if (!file.isDirectory() || tmp_filename == "System Volume Information")
-      {
-        file = root.openNextFile();
-      }
-      else
+      if (file.isDirectory() && (tmp_filename != SD_SYSTEM_FILE))
       {
         SD_Filenames[SD_numfiles].filename = tmp_filename;
         SD_Filenames[SD_numfiles].ftype = (file.isDirectory() ? "Dir" : "File");
         SD_Filenames[SD_numfiles].fsize = ConvBinUnits(file.size(), 1);
-        file = root.openNextFile();
         SD_numfiles++;
       }
+      file = root.openNextFile();
     }
     root.close();
   }
 }
 
 // #############################################################################################
-//  Dirを含まない。fileのみを表示  .. by NoRi
+//  Dirを含まない。fileのみ  .. by NoRi
 void SDdir_FilesList()
 {
-  SD_numfiles = 0; // Reset number of files in SD files
-  File root;
+  SD_numfiles = 0;
 
-  root = SD.open(SdPath, "r");
+  if (SdPath == "")
+    SdPath = "/";
+  Serial.println("SdPath = " + SdPath);
+  File root = SD.open(SdPath, "r");
 
   if (root)
   {
@@ -772,20 +836,15 @@ void SDdir_FilesList()
     File file = root.openNextFile();
 
     while (file)
-    { // Now get all the filenames, file types and sizes
+    {
       if (!file.isDirectory())
       {
         SD_Filenames[SD_numfiles].filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
         SD_Filenames[SD_numfiles].ftype = (file.isDirectory() ? "Dir" : "File");
         SD_Filenames[SD_numfiles].fsize = ConvBinUnits(file.size(), 1);
-
-        file = root.openNextFile();
         SD_numfiles++;
       }
-      else
-      {
-        file = root.openNextFile();
-      }
+      file = root.openNextFile();
     }
     root.close();
   }
