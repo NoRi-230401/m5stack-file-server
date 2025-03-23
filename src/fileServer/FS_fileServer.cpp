@@ -2,6 +2,9 @@
 #include <SPIFFS.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <algorithm> // std::sort を使うために必要
+#include <vector>    // std::vector を使うために必要
+
 #define FS SPIFFS
 // In preparation for the introduction of LITTLFS
 //  see https://github.com/lorol/LITTLEFS
@@ -32,10 +35,13 @@ extern String ConvBinUnits(int bytes, int resolution);
 extern String EncryptionType(wifi_auth_mode_t encryptionType);
 extern String HTML_Header();
 extern String HTML_Footer();
-extern bool StartupErrors;
-
 // -------------------------------------------------------
 extern AsyncWebServer server;
+String webpage;
+extern bool StartupErrors;
+
+String FS_MessageLine;
+int FS_start, FS_downloadtime = 1, FS_uploadtime = 1, FS_downloadsize, FS_uploadsize, FS_downloadrate, FS_uploadrate, FS_numfiles;
 
 typedef struct
 {
@@ -43,10 +49,28 @@ typedef struct
   String ftype;
   String fsize;
 } fileinfo;
-String webpage;
-String FS_MessageLine;
-fileinfo FS_Filenames[200]; // Enough for most purposes!
-int FS_start, FS_downloadtime = 1, FS_uploadtime = 1, FS_downloadsize, FS_uploadsize, FS_downloadrate, FS_uploadrate, FS_numfiles;
+
+extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
+// fileinfo の vector を定義
+std::vector<fileinfo> FS_Filenames;
+
+// bool compareFileinfo(const fileinfo &a, const fileinfo &b);
+// ファイル情報を比較するための関数
+// bool compareFileinfo(const fileinfo &a, const fileinfo &b)
+// {
+//   // ディレクトリをファイルより前に配置
+//   if (a.ftype == "Dir" && b.ftype != "Dir")
+//   {
+//     return true;
+//   }
+//   if (a.ftype != "Dir" && b.ftype == "Dir")
+//   {
+//     return false;
+//   }
+//   // 同じタイプの場合はファイル名でソート
+//   return a.filename < b.filename;
+// }
+
 
 void FS_flServerSetup()
 {
@@ -109,6 +133,33 @@ void FS_flServerSetup()
 }
 
 // #############################################################################################
+void FS_Directory()
+{
+  FS_numfiles = 0; // Reset number of FS files counter
+  FS_Filenames.clear(); // vectorをクリア
+
+  File root = FS.open("/");
+  if (root)
+  {
+    root.rewindDirectory();
+    File file = root.openNextFile();
+    while (file)
+    { // Now get all the filenames, file types and sizes
+      fileinfo tmp;
+      tmp.filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
+      tmp.ftype = (file.isDirectory() ? "Dir" : "File");
+      tmp.fsize = ConvBinUnits(file.size(), 1);
+      FS_Filenames.push_back(tmp);
+      file = root.openNextFile();
+      FS_numfiles++;
+    }
+    root.close();
+  }
+  // ファイル名をソート
+  std::sort(FS_Filenames.begin(), FS_Filenames.end(), compareFileinfo);
+}
+
+// #############################################################################################
 void FS_Dir(AsyncWebServerRequest *request)
 {
   String Fname1, Fname2;
@@ -123,7 +174,7 @@ void FS_Dir(AsyncWebServerRequest *request)
     while (index < FS_numfiles)
     {
       Fname1 = FS_Filenames[index].filename;
-      Fname2 = FS_Filenames[index + 1].filename;
+      Fname2 = (index + 1 < FS_numfiles) ? FS_Filenames[index + 1].filename : "";
       webpage += "<tr>";
       webpage += "<td style = 'width:5%'>" + FS_Filenames[index].ftype + "</td><td style = 'width:25%'>" + Fname1 + "</td><td style = 'width:10%'>" + FS_Filenames[index].fsize + "</td>";
       webpage += "<td class='sp'></td>";
@@ -146,26 +197,6 @@ void FS_Dir(AsyncWebServerRequest *request)
   request->send(200, "text/html", webpage);
 }
 
-// #############################################################################################
-void FS_Directory()
-{
-  FS_numfiles = 0; // Reset number of FS files counter
-  File root = FS.open("/");
-  if (root)
-  {
-    root.rewindDirectory();
-    File file = root.openNextFile();
-    while (file)
-    { // Now get all the filenames, file types and sizes
-      FS_Filenames[FS_numfiles].filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
-      FS_Filenames[FS_numfiles].ftype = (file.isDirectory() ? "Dir" : "File");
-      FS_Filenames[FS_numfiles].fsize = ConvBinUnits(file.size(), 1);
-      file = root.openNextFile();
-      FS_numfiles++;
-    }
-    root.close();
-  }
-}
 
 // #############################################################################################
 void FS_UploadFileSelect()
@@ -252,7 +283,6 @@ void FS_Handle_File_Delete(String filename)
   webpage += HTML_Footer();
 }
 
-// #############################################################################################
 void FS_File_Rename()
 { // Rename the file
   FS_Directory();
@@ -273,6 +303,8 @@ void FS_File_Rename()
   webpage += "</form>";
   webpage += HTML_Footer();
 }
+
+
 
 // #############################################################################################
 void FS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args)
@@ -432,10 +464,10 @@ void FS_Select_File_For_Function(String title, String function)
   while (index < FS_numfiles)
   {
     Fname1 = FS_Filenames[index].filename;
-    Fname2 = FS_Filenames[index + 1].filename;
+    Fname2 = (index + 1 < FS_numfiles) ? FS_Filenames[index + 1].filename : "";
     if (Fname1.startsWith("/"))
       Fname1 = Fname1.substring(1);
-    if (Fname2.startsWith("/"))
+    if (!Fname2.isEmpty() && Fname2.startsWith("/"))
       Fname2 = Fname2.substring(1);
     webpage += "<tr>";
     webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td><td style = 'width:10%'>" + FS_Filenames[index].fsize + "</td>";
@@ -450,6 +482,7 @@ void FS_Select_File_For_Function(String title, String function)
   webpage += "</table>";
   webpage += HTML_Footer();
 }
+
 
 // #############################################################################################
 int FS_GetFileSize(String filename)
@@ -477,3 +510,4 @@ String FS_freeSpace(int res)
 {
   return ConvBinUnits(FS.totalBytes() - FS.usedBytes(), res);
 }
+

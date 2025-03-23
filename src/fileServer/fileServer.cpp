@@ -12,6 +12,8 @@
 #include "esp_bt.h"
 // #define FS SPIFFS
 #include "credentials.h"
+#include <algorithm> // std::sort を使うために必要
+#include <vector>    // std::vector を使うために必要
 
 // -------------------------------------------------------
 bool wifiStart();
@@ -58,6 +60,35 @@ extern String SdPath;
 
 AsyncWebServer server(80);
 bool StartupErrors = false;
+
+typedef struct
+{
+  String filename;
+  String ftype;
+  String fsize;
+} fileinfo;
+
+extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
+// fileinfo の vector を定義
+extern std::vector<fileinfo> FS_Filenames;
+
+// ファイル情報を比較するための関数
+bool compareFileinfo(const fileinfo &a, const fileinfo &b)
+{
+  // ディレクトリをファイルより前に配置
+  if (a.ftype == "Dir" && b.ftype != "Dir")
+  {
+    return true;
+  }
+  if (a.ftype != "Dir" && b.ftype == "Dir")
+  {
+    return false;
+  }
+  // 同じタイプの場合はファイル名でソート
+  return a.filename < b.filename;
+}
+
+
 
 bool wifiStart()
 {
@@ -338,13 +369,16 @@ String HTML_Header()
 
   // TOPNAV
   page += ".topnav {overflow: visible;background-color:cyan;}";
-  page += ".topnav a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.5rem;}";
+  // page += ".topnav a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.5rem;}";
+  page += ".topnav a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.6rem;}";
   page += ".topnav a:hover {background-color:deepskyblue;color:white;}";
   page += ".topnav a.active {background-color:lightblue;color:blue;}";
 
   // TOPNAV2
   page += ".topnav2 {overflow: visible;background-color:lightcyan;}";
-  page += ".topnav2 a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.5rem;}";
+  // page += ".topnav2 a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.5rem;}";
+  page += ".topnav2 a {float:center;color:blue;text-align:center;padding:1.2rem 1.2rem;text-decoration:none;font-size:1.5rem;}";
+  
   page += ".topnav2 a:hover {background-color:deepskyblue;color:white;}";
   page += ".topnav2 a.active {background-color:lightblue;color:blue;}";
   page += ".notfound {padding:0.8rem;text-align:center;font-size:1.3rem;}";
@@ -371,6 +405,7 @@ String HTML_Header()
   // -- 1 --
   page += "<div class = 'topnav'>";
   page += "<a href='/'>Home</a>";
+  page += "　　";
   page += "<a href='/system'>Status</a>";
   page += "</div>";
 
@@ -400,9 +435,9 @@ String HTML_Header()
   // -- 4 --
   // String SdPath = "/";
   page += "<div class = 'topnav2'>";
-  page += "Current:SD_Path　=　" + SdPath;
-  page += "<a href='/SDdir_chTop'>　　ChTop</a>";
-  page += "<a href='/SDdir_chUp'>ChUp</a>";
+  page += "path:　" + SdPath;
+  page += "<a href='/SDdir_chTop'>　Top　</a>";
+  page += "<a href='/SDdir_chUp'>　Up　</a>";
   page += "</div>";
 
   // -- 5 --
