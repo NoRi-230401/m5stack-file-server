@@ -12,7 +12,7 @@
 
 extern const String VERSION;
 extern const String PROG_NAME;
-const String VERSION = "v1.02b-250321"; 
+const String VERSION = "v1.02c-250323"; 
 const String PROG_NAME = "m5stack-fileServer"; 
 
 void error_stop();
