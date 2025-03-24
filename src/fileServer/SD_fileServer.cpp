@@ -2,8 +2,8 @@
 #include <SPIFFS.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
-#include <algorithm> // std::sort を使うために必要
-#include <vector>    // std::vector を使うために必要
+#include <algorithm>
+#include <vector>
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
@@ -23,19 +23,7 @@ bool SD_notFound(AsyncWebServerRequest *request);
 void SD_Handle_File_Download();
 void SD_Select_File_For_Function(String title, String function);
 int SD_GetFileSize(String filename);
-String SD_totalBytes(int res);
-String SD_usedBytes(int res);
-String SD_freeSpace(int res);
-
-extern void SelectInput(String Heading, String Command, String Arg_name);
-extern String getContentType(String filenametype);
-extern void Home();
-extern String ConvBinUnits(int bytes, int resolution);
-extern String EncryptionType(wifi_auth_mode_t encryptionType);
-extern String HTML_Header();
-extern String HTML_Footer();
 // -------------------------------------------------------
-
 void SDdir_flserverSetup();
 void SDdir_handle_chTop();
 void SDdir_handle_chUp();
@@ -48,6 +36,15 @@ void SDdir_SelectInputDirName(String Heading, String Command, String Arg_name);
 void SDdir_DirList();
 void SDdir_FilesList();
 bool SDdir_notFound(AsyncWebServerRequest *request);
+String SD_StatusReport(int reportNo, int decimalPlaces);
+// -------------------------------------------------------
+extern void SelectInput(String Heading, String Command, String Arg_name);
+extern String getContentType(String filenametype);
+extern void Home();
+extern String ConvBinUnits(int bytes, int resolution);
+extern String EncryptionType(wifi_auth_mode_t encryptionType);
+extern String HTML_Header();
+extern String HTML_Footer();
 // -------------------------------------------------------
 extern AsyncWebServer server;
 extern String webpage;
@@ -59,9 +56,7 @@ typedef struct
   String ftype;
   String fsize;
 } fileinfo;
-// fileinfo SD_Filenames[200];
 extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
-// fileinfo の vector を定義
 std::vector<fileinfo> SD_Filenames;
 
 String SD_MessageLine;
@@ -176,41 +171,10 @@ void SD_Dir(AsyncWebServerRequest *request)
 
 const String SD_SYSTEM_FILE = "System Volume Information";
 // #############################################################################################
-// void SD_Directory()
-// {
-//   SD_numfiles = 0;
-
-//   if (SdPath == "")
-//     SdPath = "/";
-//   Serial.println("SdPath = " + SdPath);
-//   File root = SD.open(SdPath, "r");
-
-//   if (root)
-//   {
-//     root.rewindDirectory();
-//     File file = root.openNextFile();
-//     while (file)
-//     {
-//       String tmp_filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
-
-//       if (tmp_filename != SD_SYSTEM_FILE)
-//       {
-//         SD_Filenames[SD_numfiles].filename = tmp_filename;
-//         SD_Filenames[SD_numfiles].ftype = (file.isDirectory() ? "Dir" : "File");
-//         SD_Filenames[SD_numfiles].fsize = ConvBinUnits(file.size(), 1);
-//         SD_numfiles++;
-//       }
-//       file = root.openNextFile();
-//     }
-//     root.close();
-//   }
-// }
-
 void SD_Directory()
 {
   SD_numfiles = 0;
   SD_Filenames.clear(); // vectorをクリア
-
   if (SdPath == "")
     SdPath = "/";
   Serial.println("SdPath = " + SdPath);
@@ -220,6 +184,7 @@ void SD_Directory()
   {
     root.rewindDirectory();
     File file = root.openNextFile();
+
     while (file)
     {
       String tmp_filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
@@ -237,12 +202,9 @@ void SD_Directory()
     }
     root.close();
   }
-  // ファイル情報をソート
-  // std::sort(SD_Filenames.begin(), SD_Filenames.end(), compareSDFileinfo);
+  // ファイル名でソート
   std::sort(SD_Filenames.begin(), SD_Filenames.end(), compareFileinfo);
 }
-
-
 
 // #############################################################################################
 void SD_UploadFileSelect()
@@ -433,10 +395,8 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
 }
 
 // #############################################################################################
-//  Not found handler is also the handler for 'delete', 'download' and 'stream' functions
 bool SD_notFound(AsyncWebServerRequest *request)
-{ // Process selected file types
-  Serial.println("SD_notFund func ... : " + request->url());
+{// Serial.println("SD_notFund func ... : " + request->url());
 
   String filename;
   if (request->url().startsWith("/SD_downloadhandler") ||
@@ -489,7 +449,7 @@ bool SD_notFound(AsyncWebServerRequest *request)
     if (request->url().startsWith("/SD_deletehandler"))
     {
       Serial.println("SD_Delete handler started...");
-      Serial.println("filename = " + filename);
+      // Serial.println("filename = " + filename);
       SD_Handle_File_Delete(filename);
       request->send(200, "text/html", webpage);
     }
@@ -527,72 +487,34 @@ void SD_Handle_File_Download()
 }
 
 // #############################################################################################
-// void SD_Select_File_For_Function(String title, String function)
-// {
-//   String Fname1, Fname2;
-//   int index = 0;
-//   // SD_Directory();
-//   SDdir_FilesList();
-
-//   webpage = HTML_Header();
-//   webpage += "<h3>SD:　Select a File to " + title + " from this device</h3>";
-//   webpage += "<table class='center'>";
-//   webpage += "<tr><th>File Name</th><th>File Size</th><th class='sp'></th><th>File Name</th><th>File Size</th></tr>";
-//   while (index < SD_numfiles)
-//   {
-//     Fname1 = SD_Filenames[index].filename;
-//     Fname2 = SD_Filenames[index + 1].filename;
-
-//     if (Fname1.startsWith("/"))
-//       Fname1 = Fname1.substring(1);
-
-//     if (Fname2.startsWith("/"))
-//       Fname2 = Fname2.substring(1);
-
-//     webpage += "<tr>";
-//     webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td><td style = 'width:10%'>" + SD_Filenames[index].fsize + "</td>";
-//     webpage += "<td class='sp'></td>";
-
-//     if (index < SD_numfiles - 1)
-//     {
-//       webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td><td style = 'width:10%'>" + SD_Filenames[index + 1].fsize + "</td>";
-//     }
-//     webpage += "</tr>";
-//     index = index + 2;
-//   }
-//   webpage += "</table>";
-//   webpage += HTML_Footer();
-// }
 void SD_Select_File_For_Function(String title, String function)
 {
   String Fname1, Fname2;
   int index = 0;
-  // SD_Directory();
   SDdir_FilesList();
-
   webpage = HTML_Header();
   webpage += "<h3>SD:　Select a File to " + title + " from this device</h3>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>File Name</th><th>File Size</th><th class='sp'></th><th>File Name</th><th>File Size</th></tr>";
   while (index < SD_numfiles)
   {
-    Fname1 = SD_Filenames[index].filename; // 10. 変更点
-    //Fname2 = SD_Filenames[index + 1].filename;
-    Fname2 = (index + 1 < SD_numfiles) ? SD_Filenames[index + 1].filename : ""; // 10. 変更点
+    Fname1 = SD_Filenames[index].filename;
+    Fname2 = (index + 1 < SD_numfiles) ? SD_Filenames[index + 1].filename : "";
 
     if (Fname1.startsWith("/"))
       Fname1 = Fname1.substring(1);
 
-    //if (Fname2.startsWith("/"))
-    //  Fname2 = Fname2.substring(1);
+    // if (Fname2.startsWith("/"))
+    if (!Fname2.isEmpty() && Fname2.startsWith("/"))
+      Fname2 = Fname2.substring(1);
 
     webpage += "<tr>";
-    webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td><td style = 'width:10%'>" + SD_Filenames[index].fsize + "</td>"; // 10. 変更点
+    webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td><td style = 'width:10%'>" + SD_Filenames[index].fsize + "</td>";
     webpage += "<td class='sp'></td>";
 
     if (index < SD_numfiles - 1)
     {
-      webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td><td style = 'width:10%'>" + SD_Filenames[index + 1].fsize + "</td>"; // 10. 変更点
+      webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td><td style = 'width:10%'>" + SD_Filenames[index + 1].fsize + "</td>";
     }
     webpage += "</tr>";
     index = index + 2;
@@ -601,8 +523,6 @@ void SD_Select_File_For_Function(String title, String function)
   webpage += HTML_Footer();
 }
 
-
-
 // #############################################################################################
 int SD_GetFileSize(String filename)
 {
@@ -610,33 +530,12 @@ int SD_GetFileSize(String filename)
   if (SdPath != "/")
     filename = SdPath + filename;
 
-  Serial.println("filename = " + filename);
+  // Serial.println("filename = " + filename);
   File CheckFile = SD.open(filename, "r");
   filesize = CheckFile.size();
   CheckFile.close();
   return filesize;
 }
-
-// --------------------------------------------------------------------
-String SD_totalBytes(int res)
-// res : 小数点以下の桁数: decimal places
-{
-  return ConvBinUnits(SD.totalBytes(), res);
-}
-
-String SD_usedBytes(int res)
-{
-  return ConvBinUnits(SD.usedBytes(), res);
-}
-
-String SD_freeSpace(int res)
-{
-  return ConvBinUnits(SD.totalBytes() - SD.usedBytes(), res);
-}
-
-// -------------------------------------------------------------------
-// *** SD directory function support by Nori
-//   chdir,mkdir,rmdir, goRoot,
 
 void SDdir_flserverSetup()
 {
@@ -695,7 +594,7 @@ void SDdir_handle_chUp()
 { // change SD Path to Up directory
 
   String upPath = String("/");
-  
+
   if (SdPath != "/")
   {
     int i = String(SdPath).lastIndexOf("/");
@@ -812,38 +711,6 @@ void SDdir_SelectInputDirName(String Heading, String Command, String Arg_name)
 }
 
 // #############################################################################################
-// void SDdir_Select_Dir_For_Function(String title, String function)
-// {
-//   String Fname1, Fname2;
-//   int index = 0;
-//   SDdir_DirList(); // Get a Dir list
-//   webpage = HTML_Header();
-//   webpage += "<h3>Select a Directory to " + title + " from this device</h3>";
-//   webpage += "<table class='center'>";
-//   webpage += "<tr> <th>Directory Name</th> <th>Directory Name</th> </tr>";
-
-//   while (index < SD_numfiles)
-//   {
-//     Fname1 = SD_Filenames[index].filename;
-//     Fname2 = SD_Filenames[index + 1].filename;
-//     if (Fname1.startsWith("/"))
-//       Fname1 = Fname1.substring(1);
-//     if (Fname2.startsWith("/"))
-//       Fname2 = Fname2.substring(1);
-
-//     webpage += "<tr>";
-//     webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td>";
-
-//     if (index < SD_numfiles - 1)
-//     {
-//       webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td>";
-//     }
-//     webpage += "</tr>";
-//     index = index + 2;
-//   }
-//   webpage += "</table>";
-//   webpage += HTML_Footer();
-// }
 void SDdir_Select_Dir_For_Function(String title, String function)
 {
   String Fname1, Fname2;
@@ -857,12 +724,12 @@ void SDdir_Select_Dir_For_Function(String title, String function)
   while (index < SD_numfiles)
   {
     Fname1 = SD_Filenames[index].filename;
-    //Fname2 = SD_Filenames[index + 1].filename;
+    // Fname2 = SD_Filenames[index + 1].filename;
     Fname2 = (index + 1 < SD_numfiles) ? SD_Filenames[index + 1].filename : ""; // 10. 変更点
     if (Fname1.startsWith("/"))
       Fname1 = Fname1.substring(1);
-    //if (Fname2.startsWith("/"))
-    //  Fname2 = Fname2.substring(1);
+    // if (Fname2.startsWith("/"))
+    //   Fname2 = Fname2.substring(1);
 
     webpage += "<tr>";
     webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td>";
@@ -878,38 +745,7 @@ void SDdir_Select_Dir_For_Function(String title, String function)
   webpage += HTML_Footer();
 }
 
-
 // #############################################################################################
-// //  File含まない。Dirのみの表示   .. by NoRi
-// void SDdir_DirList()
-// {
-//   SD_numfiles = 0;
-
-//   if (SdPath == "")
-//     SdPath = "/";
-//   Serial.println("SdPath = " + SdPath);
-//   File root = SD.open(SdPath, "r");
-
-//   if (root)
-//   {
-//     root.rewindDirectory();
-//     File file = root.openNextFile();
-//     while (file)
-//     {
-//       String tmp_filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
-
-//       if (file.isDirectory() && (tmp_filename != SD_SYSTEM_FILE))
-//       {
-//         SD_Filenames[SD_numfiles].filename = tmp_filename;
-//         SD_Filenames[SD_numfiles].ftype = (file.isDirectory() ? "Dir" : "File");
-//         SD_Filenames[SD_numfiles].fsize = ConvBinUnits(file.size(), 1);
-//         SD_numfiles++;
-//       }
-//       file = root.openNextFile();
-//     }
-//     root.close();
-//   }
-// }
 //  File含まない。Dirのみの表示   .. by NoRi
 void SDdir_DirList()
 {
@@ -942,50 +778,19 @@ void SDdir_DirList()
     }
     root.close();
   }
-  // ファイル情報をソート
-  // std::sort(SD_Filenames.begin(), SD_Filenames.end(), compareSDFileinfo);
+  // ファイル名でソート
   std::sort(SD_Filenames.begin(), SD_Filenames.end(), compareFileinfo);
 }
 
 // #############################################################################################
 // //  Dirを含まない。fileのみ  .. by NoRi
-// void SDdir_FilesList()
-// {
-//   SD_numfiles = 0;
-
-//   if (SdPath == "")
-//     SdPath = "/";
-//   Serial.println("SdPath = " + SdPath);
-//   File root = SD.open(SdPath, "r");
-
-//   if (root)
-//   {
-//     root.rewindDirectory();
-//     File file = root.openNextFile();
-
-//     while (file)
-//     {
-//       if (!file.isDirectory())
-//       {
-//         SD_Filenames[SD_numfiles].filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
-//         SD_Filenames[SD_numfiles].ftype = (file.isDirectory() ? "Dir" : "File");
-//         SD_Filenames[SD_numfiles].fsize = ConvBinUnits(file.size(), 1);
-//         SD_numfiles++;
-//       }
-//       file = root.openNextFile();
-//     }
-//     root.close();
-//   }
-// }
-//  Dirを含まない。fileのみ  .. by NoRi
 void SDdir_FilesList()
 {
   SD_numfiles = 0;
   SD_Filenames.clear(); // vectorをクリア
-
   if (SdPath == "")
     SdPath = "/";
-  Serial.println("SdPath = " + SdPath);
+  // Serial.println("SdPath = " + SdPath);
   File root = SD.open(SdPath, "r");
 
   if (root)
@@ -1008,24 +813,20 @@ void SDdir_FilesList()
     }
     root.close();
   }
-  // ファイル情報をソート
-  // std::sort(SD_Filenames.begin(), SD_Filenames.end(), compareSDFileinfo);
+  // ファイル名でソート
   std::sort(SD_Filenames.begin(), SD_Filenames.end(), compareFileinfo);
 }
 
-
 // #############################################################################################
 bool SDdir_notFound(AsyncWebServerRequest *request)
-{ // Process selected file types
+{
   String filename;
   if (request->url().startsWith("/SDdir_chdirhandler") ||
       request->url().startsWith("/SDdir_mkdirhandler") ||
       request->url().startsWith("/SDdir_rmdirhandler"))
   {
-    // Now get the filename and handle the request for 'chdir' or 'mkdir' or 'rmdir' functions
     filename = request->url().substring(request->url().indexOf("~/") + 1);
 
-    // -------- Directory  HANDLER by NoRi --------------
     if (request->url().startsWith("/SDdir_chdirhandler"))
     {
       Serial.println("SDdir_chdir handler started...");
@@ -1049,7 +850,25 @@ bool SDdir_notFound(AsyncWebServerRequest *request)
       request->send(200, "text/html", webpage);
       return true;
     }
-    // -----------------------------------------------------
   }
   return false;
+}
+
+// --------------------------------------------------------------------
+#define STREP_SD_TOTALBYTES 21
+#define STREP_SD_USEDBYTES 22
+#define STREP_SD_FREESPACE 23
+
+String SD_StatusReport(int reportNo, int decimalPlaces)
+{
+  switch (reportNo)
+  {
+  case STREP_SD_TOTALBYTES:
+    return ConvBinUnits(SD.totalBytes(), decimalPlaces);
+  case STREP_SD_USEDBYTES:
+    return ConvBinUnits(SD.usedBytes(), decimalPlaces);
+  case STREP_SD_FREESPACE:
+    return ConvBinUnits(SD.totalBytes() - SD.usedBytes(), decimalPlaces);
+  }
+  return String("");
 }

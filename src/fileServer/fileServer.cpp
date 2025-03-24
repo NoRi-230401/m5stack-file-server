@@ -6,16 +6,23 @@
 #include <ESPmDNS.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <algorithm>
+#include <vector>
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "esp_wifi_types.h"
 #include "esp_bt.h"
-// #define FS SPIFFS
 #include "credentials.h"
-#include <algorithm> // std::sort を使うために必要
-#include <vector>    // std::vector を使うために必要
 
 // -------------------------------------------------------
+typedef struct
+{
+  String filename;
+  String ftype;
+  String fsize;
+} fileinfo;
+
+bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 bool wifiStart();
 bool fileServerStart();
 void notFound(AsyncWebServerRequest *request);
@@ -29,48 +36,53 @@ String EncryptionType(wifi_auth_mode_t encryptionType);
 bool StartMDNSservice(const char *Name);
 String getContentType(String filenametype);
 void SelectInput(String Heading, String Command, String Arg_name);
-
+String statusReport(int reportNo, int decimalPlaces);
 // -------------------------------------------------------
 extern bool FS_notFound(AsyncWebServerRequest *request);
 extern void FS_flServerSetup();
 extern void FS_Directory();
-extern String FS_totalBytes(int res);
-extern String FS_usedBytes(int res);
-extern String FS_freeSpace(int res);
 extern int FS_start, FS_downloadtime, FS_uploadtime, FS_downloadsize, FS_uploadsize, FS_downloadrate, FS_uploadrate, FS_numfiles;
-
 extern bool SD_notFound(AsyncWebServerRequest *request);
 extern void SD_flServerSetup();
 extern void SD_Directory();
-extern String SD_totalBytes(int res);
-extern String SD_usedBytes(int res);
-extern String SD_freeSpace(int res);
 extern int SD_start, SD_downloadtime, SD_uploadtime, SD_downloadsize, SD_uploadsize, SD_downloadrate, SD_uploadrate, SD_numfiles;
 extern void SDdir_flserverSetup();
 extern bool SDdir_notFound(AsyncWebServerRequest *request);
-
+// -------------------------------------------------------
 extern const String VERSION;
 extern const String PROG_NAME;
-
-extern String webpage;
 extern String IP_ADDR;
 extern String SERVER_NAME;
 extern String SdPath;
 // -------------------------------------------------------
-
 AsyncWebServer server(80);
+String webpage;
 bool StartupErrors = false;
 
-typedef struct
+// ####### REPORT FILE SYSTEM  ############
+#define STREP_FS_TOTALBYTES 11
+#define STREP_FS_USEDBYTES 12
+#define STREP_FS_FREESPACE 13
+#define STREP_SD_TOTALBYTES 21
+#define STREP_SD_USEDBYTES 22
+#define STREP_SD_FREESPACE 23
+extern String FS_StatusReport(int reportNo, int decimalPlaces);
+extern String SD_StatusReport(int reportNo, int decimalPlaces);
+String statusReport(int reportNo, int decimalPlaces)
 {
-  String filename;
-  String ftype;
-  String fsize;
-} fileinfo;
-
-extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
-// fileinfo の vector を定義
-extern std::vector<fileinfo> FS_Filenames;
+  if (reportNo >= STREP_FS_TOTALBYTES && reportNo <= STREP_FS_FREESPACE)
+  {
+    return FS_StatusReport(reportNo, decimalPlaces);
+  }
+  else if (reportNo >= STREP_SD_TOTALBYTES && reportNo <= STREP_SD_FREESPACE)
+  {
+    return SD_StatusReport(reportNo, decimalPlaces);
+  }
+  else
+  {
+    return String("");
+  }
+}
 
 // ファイル情報を比較するための関数
 bool compareFileinfo(const fileinfo &a, const fileinfo &b)
@@ -87,8 +99,6 @@ bool compareFileinfo(const fileinfo &a, const fileinfo &b)
   // 同じタイプの場合はファイル名でソート
   return a.filename < b.filename;
 }
-
-
 
 bool wifiStart()
 {
@@ -158,9 +168,9 @@ bool fileServerStart()
     Serial.println("There were problems starting all services...");
     return false;
   }
-  
-  FS_Directory();     // Update the SPIFFS file list
-  SD_Directory();     // Update the SD file list
+
+  FS_Directory(); // Update the SPIFFS file list
+  SD_Directory(); // Update the SD file list
   Serial.println("System started successfully...");
   return true;
 }
@@ -281,6 +291,7 @@ void Display_System_Info()
 
   webpage += "<br>";
   webpage += "<h4>SPIFFS:　Transfer Statistics</h4>";
+  
   webpage += "<table class='center'>";
   webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
   webpage += "<tr><td>" + ConvBinUnits(FS_uploadsize, 1) + "</td><td>" + ConvBinUnits(FS_downloadsize, 1) + "</td><td>File Size</td></tr> ";
@@ -288,7 +299,7 @@ void Display_System_Info()
   webpage += "<td>" + ConvBinUnits((float)FS_downloadsize / FS_downloadtime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
   webpage += "</table>";
 
-  webpage += "<br>";
+  // webpage += "<br>";
   webpage += "<h4>SD:　Transfer Statistics</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
@@ -301,19 +312,19 @@ void Display_System_Info()
   webpage += "<h4>SPIFFS:　Filing System</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
-  webpage += "<tr><td>" + FS_totalBytes(1) + "</td>";
-  webpage += "<td>" + FS_usedBytes(1) + "</td>";
-  webpage += "<td>" + FS_freeSpace(1) + "</td>";
+  webpage += "<tr><td>" + statusReport(STREP_FS_TOTALBYTES, 1) + "</td>";
+  webpage += "<td>" + statusReport(STREP_FS_USEDBYTES, 1) + "</td>";
+  webpage += "<td>" + statusReport(STREP_FS_FREESPACE, 1) + "</td>";
   webpage += "<td>" + (FS_numfiles == 0 ? "Pending Dir or Empty" : String(FS_numfiles)) + "</td></tr>";
   webpage += "</table>";
 
-  webpage += "<br>";
+  // webpage += "<br>";
   webpage += "<h4>SD:　Filing System</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
-  webpage += "<tr><td>" + SD_totalBytes(1) + "</td>";
-  webpage += "<td>" + SD_usedBytes(1) + "</td>";
-  webpage += "<td>" + SD_freeSpace(1) + "</td>";
+  webpage += "<tr><td>" + statusReport(STREP_SD_TOTALBYTES, 1) + "</td>";
+  webpage += "<td>" + statusReport(STREP_SD_USEDBYTES, 1) + "</td>";
+  webpage += "<td>" + statusReport(STREP_SD_FREESPACE, 1) + "</td>";
   webpage += "<td>" + (SD_numfiles == 0 ? "Pending Dir or Empty" : String(SD_numfiles)) + "</td></tr>";
   webpage += "</table>";
 
@@ -378,7 +389,7 @@ String HTML_Header()
   page += ".topnav2 {overflow: visible;background-color:lightcyan;}";
   // page += ".topnav2 a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.5rem;}";
   page += ".topnav2 a {float:center;color:blue;text-align:center;padding:1.2rem 1.2rem;text-decoration:none;font-size:1.5rem;}";
-  
+
   page += ".topnav2 a:hover {background-color:deepskyblue;color:white;}";
   page += ".topnav2 a.active {background-color:lightblue;color:blue;}";
   page += ".notfound {padding:0.8rem;text-align:center;font-size:1.3rem;}";
@@ -442,7 +453,7 @@ String HTML_Header()
 
   // -- 5 --
   page += "<div class = 'topnav2'>";
-    page += "<a href='/SDdir_chdir'>Chdir</a>";
+  page += "<a href='/SDdir_chdir'>Chdir</a>";
   page += "<a href='/SDdir_mkdir'>Mkdir</a>";
   page += "<a href='/SDdir_rmdir'>Rmdir</a>";
   page += "</div>";
@@ -537,3 +548,4 @@ void SelectInput(String Heading, String Command, String Arg_name)
   webpage += "</form>";
   webpage += HTML_Footer();
 }
+

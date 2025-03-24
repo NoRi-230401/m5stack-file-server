@@ -2,15 +2,21 @@
 #include <SPIFFS.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
-#include <algorithm> // std::sort を使うために必要
-#include <vector>    // std::vector を使うために必要
-
+#include <algorithm>
+#include <vector>
 #define FS SPIFFS
 // In preparation for the introduction of LITTLFS
 //  see https://github.com/lorol/LITTLEFS
 //  replace SPIFFS with LITTLEFS
 
 // -------------------------------------------------------
+typedef struct
+{
+  String filename;
+  String ftype;
+  String fsize;
+} fileinfo;
+
 void FS_flServerSetup();
 void FS_Dir(AsyncWebServerRequest *request);
 void FS_Directory();
@@ -25,52 +31,21 @@ bool FS_notFound(AsyncWebServerRequest *request);
 void FS_Handle_File_Download();
 void FS_Select_File_For_Function(String title, String function);
 int FS_GetFileSize(String filename);
-String FS_totalBytes(int res);
-String FS_usedBytes(int res);
-String FS_freeSpace(int res);
-
+// -------------------------------------------------------
+extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 extern void SelectInput(String Heading, String Command, String Arg_name);
 extern String getContentType(String filenametype);
 extern String ConvBinUnits(int bytes, int resolution);
 extern String EncryptionType(wifi_auth_mode_t encryptionType);
 extern String HTML_Header();
 extern String HTML_Footer();
-// -------------------------------------------------------
 extern AsyncWebServer server;
-String webpage;
+extern String webpage;
 extern bool StartupErrors;
-
+// -------------------------------------------------------
+std::vector<fileinfo> FS_Filenames;
 String FS_MessageLine;
 int FS_start, FS_downloadtime = 1, FS_uploadtime = 1, FS_downloadsize, FS_uploadsize, FS_downloadrate, FS_uploadrate, FS_numfiles;
-
-typedef struct
-{
-  String filename;
-  String ftype;
-  String fsize;
-} fileinfo;
-
-extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
-// fileinfo の vector を定義
-std::vector<fileinfo> FS_Filenames;
-
-// bool compareFileinfo(const fileinfo &a, const fileinfo &b);
-// ファイル情報を比較するための関数
-// bool compareFileinfo(const fileinfo &a, const fileinfo &b)
-// {
-//   // ディレクトリをファイルより前に配置
-//   if (a.ftype == "Dir" && b.ftype != "Dir")
-//   {
-//     return true;
-//   }
-//   if (a.ftype != "Dir" && b.ftype == "Dir")
-//   {
-//     return false;
-//   }
-//   // 同じタイプの場合はファイル名でソート
-//   return a.filename < b.filename;
-// }
-
 
 void FS_flServerSetup()
 {
@@ -135,16 +110,17 @@ void FS_flServerSetup()
 // #############################################################################################
 void FS_Directory()
 {
-  FS_numfiles = 0; // Reset number of FS files counter
+  FS_numfiles = 0;      // Reset number of FS files counter
   FS_Filenames.clear(); // vectorをクリア
-
   File root = FS.open("/");
+
   if (root)
   {
     root.rewindDirectory();
     File file = root.openNextFile();
+
     while (file)
-    { // Now get all the filenames, file types and sizes
+    {
       fileinfo tmp;
       tmp.filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
       tmp.ftype = (file.isDirectory() ? "Dir" : "File");
@@ -155,7 +131,7 @@ void FS_Directory()
     }
     root.close();
   }
-  // ファイル名をソート
+  // ファイル名でソート
   std::sort(FS_Filenames.begin(), FS_Filenames.end(), compareFileinfo);
 }
 
@@ -197,7 +173,6 @@ void FS_Dir(AsyncWebServerRequest *request)
   request->send(200, "text/html", webpage);
 }
 
-
 // #############################################################################################
 void FS_UploadFileSelect()
 {
@@ -218,13 +193,13 @@ void FS_handleFileUpload(AsyncWebServerRequest *request, const String &filename,
   {
     if (!filename.startsWith("/"))
       file = "/" + filename;
-  
+
     request->_tempFile = FS.open(file, "w");
-  
+
     if (!request->_tempFile)
       Serial.println("Error creating file for FS upload...");
-    
-    FS_uploadsize=0;
+
+    FS_uploadsize = 0;
     FS_start = millis();
   }
 
@@ -236,7 +211,7 @@ void FS_handleFileUpload(AsyncWebServerRequest *request, const String &filename,
       Serial.println("Transferred : " + String(len) + " Bytes");
       FS_uploadsize = FS_uploadsize + len;
     }
-    
+
     if (final)
     {
       // FS_uploadsize = request->_tempFile.size();
@@ -303,8 +278,6 @@ void FS_File_Rename()
   webpage += "</form>";
   webpage += HTML_Footer();
 }
-
-
 
 // #############################################################################################
 void FS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args)
@@ -373,8 +346,7 @@ void FS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
 // #############################################################################################
 //  Not found handler is also the handler for 'delete', 'download' and 'stream' functions
 bool FS_notFound(AsyncWebServerRequest *request)
-{ // Process selected file types
-  Serial.println("FS_notFund func ... : " + request->url());
+{ // Serial.println("FS_notFund func ... : " + request->url());
 
   String filename;
   if (request->url().startsWith("/FS_downloadhandler") ||
@@ -402,6 +374,7 @@ bool FS_notFound(AsyncWebServerRequest *request)
       FS_downloadsize = FS_GetFileSize(filename);
       // request->redirect("/FS_dir");
     }
+
     if (request->url().startsWith("/FS_streamhandler"))
     {
       Serial.println("FS Stream handler started...");
@@ -412,6 +385,7 @@ bool FS_notFound(AsyncWebServerRequest *request)
       FS_downloadtime = millis() - FS_start;
       // request->redirect("/FS_dir");
     }
+
     if (request->url().startsWith("/FS_deletehandler"))
     {
       Serial.println("FS Delete handler started...");
@@ -425,7 +399,6 @@ bool FS_notFound(AsyncWebServerRequest *request)
       FS_Handle_File_Rename(request, filename, request->args());
       request->send(200, "text/html", webpage);
     }
-
     return true;
   }
   return false;
@@ -465,13 +438,18 @@ void FS_Select_File_For_Function(String title, String function)
   {
     Fname1 = FS_Filenames[index].filename;
     Fname2 = (index + 1 < FS_numfiles) ? FS_Filenames[index + 1].filename : "";
+
     if (Fname1.startsWith("/"))
       Fname1 = Fname1.substring(1);
+
+    // if (Fname2.startsWith("/"))
     if (!Fname2.isEmpty() && Fname2.startsWith("/"))
       Fname2 = Fname2.substring(1);
+
     webpage += "<tr>";
     webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td><td style = 'width:10%'>" + FS_Filenames[index].fsize + "</td>";
     webpage += "<td class='sp'></td>";
+
     if (index < FS_numfiles - 1)
     {
       webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td><td style = 'width:10%'>" + FS_Filenames[index + 1].fsize + "</td>";
@@ -482,7 +460,6 @@ void FS_Select_File_For_Function(String title, String function)
   webpage += "</table>";
   webpage += HTML_Footer();
 }
-
 
 // #############################################################################################
 int FS_GetFileSize(String filename)
@@ -495,19 +472,21 @@ int FS_GetFileSize(String filename)
 }
 
 // --------------------------------------------------------------------
-String FS_totalBytes(int res)
-// res : 小数点以下の桁数: decimal places
-{
-  return ConvBinUnits(FS.totalBytes(), res);
-}
+#define STREP_FS_TOTALBYTES 11
+#define STREP_FS_USEDBYTES 12
+#define STREP_FS_FREESPACE 13
+String FS_StatusReport(int reportNo, int decimalPlaces);
 
-String FS_usedBytes(int res)
+String FS_StatusReport(int reportNo, int decimalPlaces)
 {
-  return ConvBinUnits(FS.usedBytes(), res);
+  switch (reportNo)
+  {
+  case STREP_FS_TOTALBYTES:
+    return ConvBinUnits(FS.totalBytes(), decimalPlaces);
+  case STREP_FS_USEDBYTES:
+    return ConvBinUnits(FS.usedBytes(), decimalPlaces);
+  case STREP_FS_FREESPACE:
+    return ConvBinUnits(FS.totalBytes() - FS.usedBytes(), decimalPlaces);
+  }
+  return String("");
 }
-
-String FS_freeSpace(int res)
-{
-  return ConvBinUnits(FS.totalBytes() - FS.usedBytes(), res);
-}
-
