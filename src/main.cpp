@@ -41,19 +41,19 @@ void setup()
   while (!Serial)  ;
   Serial.println(__FILE__);
   prt("--  " + PROG_NAME + "  --\n\n");
+  
   // *************************************
+  if (!SD_Start())    error_stop();
+  prt("SD      .....  OK");
+
+  if (!SPIFFS_Start())    error_stop();
+  prt("SPIFFS  .....  OK");
 
   if (!wifiStart())    error_stop();
   prt("WiFi    .....  OK");
 
   if (!mdnsStart())    error_stop();
   prt("mDNS    .....  OK");
-
-  if (!SPIFFS_Start())    error_stop();
-  prt("SPIFFS  .....  OK");
-
-  if (!SD_Start())    error_stop();
-  prt("SD      .....  OK");
 
   if (!fileServerStart())    error_stop();
   prt("fileServer ..  OK");
