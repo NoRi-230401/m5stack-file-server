@@ -17,6 +17,7 @@ typedef struct
   String fsize;
 } fileinfo;
 
+bool SPIFFS_Start();
 void FS_flServerSetup();
 void FS_Dir(AsyncWebServerRequest *request);
 void FS_Directory();
@@ -35,7 +36,7 @@ int FS_GetFileSize(String filename);
 extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 extern void SelectInput(String Heading, String Command, String Arg_name);
 extern String getContentType(String filenametype);
-extern String ConvBinUnits(int bytes, int resolution);
+extern String ConvBinUnits(uint64_t bytes, int resolution);
 extern String EncryptionType(wifi_auth_mode_t encryptionType);
 extern String HTML_Header();
 extern String HTML_Footer();
@@ -46,15 +47,31 @@ extern bool StartupErrors;
 std::vector<fileinfo> FS_Filenames;
 String FS_MessageLine;
 int FS_start, FS_downloadtime = 1, FS_uploadtime = 1, FS_downloadsize, FS_uploadsize, FS_downloadrate, FS_uploadrate, FS_numfiles;
+bool SPIFFS_ENABLE = false;
+
+
+bool SPIFFS_Start()
+{
+  if (!FS.begin(true))
+  {
+    Serial.println("ERR: SPIFFS begin erro...");
+    StartupErrors = true;
+    SPIFFS_ENABLE = false;
+    return false;
+  }
+  SPIFFS_ENABLE = true;
+  return true;
+}
+
 
 void FS_flServerSetup()
 {
   Serial.println(__FILE__);
-  if (!FS.begin(true))
-  {
-    Serial.println("Error preparing Filing System...");
-    StartupErrors = true;
-  }
+  // if (!FS.begin(true))
+  // {
+  //   Serial.println("Error preparing Filing System...");
+  //   StartupErrors = true;
+  // }
 
   // ##################### DOWNLOAD HANDLER ##########################
   server.on("/FS_download", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -124,7 +141,11 @@ void FS_Directory()
       fileinfo tmp;
       tmp.filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
       tmp.ftype = (file.isDirectory() ? "Dir" : "File");
-      tmp.fsize = ConvBinUnits(file.size(), 1);
+      if(tmp.ftype == "File")
+        tmp.fsize = ConvBinUnits(file.size(), 1);
+      else
+        tmp.fsize = "";
+
       FS_Filenames.push_back(tmp);
       file = root.openNextFile();
       FS_numfiles++;

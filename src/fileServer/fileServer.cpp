@@ -24,6 +24,7 @@ typedef struct
 
 bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 bool wifiStart();
+bool mdnsStart(void);
 bool fileServerStart();
 void notFound(AsyncWebServerRequest *request);
 void Page_Not_Found();
@@ -31,9 +32,9 @@ void Home();
 void Display_System_Info();
 String HTML_Header();
 String HTML_Footer();
-String ConvBinUnits(int bytes, int resolution);
+String ConvBinUnits(uint64_t bytes, int dp);
 String EncryptionType(wifi_auth_mode_t encryptionType);
-bool StartMDNSservice(const char *Name);
+// bool StartMDNSservice(const char *Name);
 String getContentType(String filenametype);
 void SelectInput(String Heading, String Command, String Arg_name);
 String statusReport(int reportNo, int decimalPlaces);
@@ -66,6 +67,8 @@ bool StartupErrors = false;
 #define STREP_SD_TOTALBYTES 21
 #define STREP_SD_USEDBYTES 22
 #define STREP_SD_FREESPACE 23
+#define STREP_SD_CARDTYPE 24
+
 extern String FS_StatusReport(int reportNo, int decimalPlaces);
 extern String SD_StatusReport(int reportNo, int decimalPlaces);
 String statusReport(int reportNo, int decimalPlaces)
@@ -74,7 +77,7 @@ String statusReport(int reportNo, int decimalPlaces)
   {
     return FS_StatusReport(reportNo, decimalPlaces);
   }
-  else if (reportNo >= STREP_SD_TOTALBYTES && reportNo <= STREP_SD_FREESPACE)
+  else if (reportNo >= STREP_SD_TOTALBYTES && reportNo <= STREP_SD_CARDTYPE)
   {
     return SD_StatusReport(reportNo, decimalPlaces);
   }
@@ -130,16 +133,22 @@ bool wifiStart()
   return true;
 }
 
-bool fileServerStart()
+// #############################################################################################
+bool mdnsStart(void)
 {
-  if (!StartMDNSservice(ServerName))
+  if (!MDNS.begin(SERVER_NAME.c_str()))
   {
-    Serial.println("Error starting mDNS Service...");
-    ;
-    StartupErrors = true;
+    Serial.println("ERR: MDNS cannot start");
+    Serial.println("ERR: ServerName = " + SERVER_NAME);
     return false;
   }
 
+  Serial.println("mDNS ServerName = " + SERVER_NAME);
+  return true;
+}
+
+bool fileServerStart()
+{
   // ##################### HOMEPAGE HANDLER ###########################
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
             {
@@ -291,7 +300,7 @@ void Display_System_Info()
 
   webpage += "<br>";
   webpage += "<h4>SPIFFS:　Transfer Statistics</h4>";
-  
+
   webpage += "<table class='center'>";
   webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
   webpage += "<tr><td>" + ConvBinUnits(FS_uploadsize, 1) + "</td><td>" + ConvBinUnits(FS_downloadsize, 1) + "</td><td>File Size</td></tr> ";
@@ -321,11 +330,15 @@ void Display_System_Info()
   // webpage += "<br>";
   webpage += "<h4>SD:　Filing System</h4>";
   webpage += "<table class='center'>";
-  webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
+  // webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
+  webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Card Type</th></tr>";
   webpage += "<tr><td>" + statusReport(STREP_SD_TOTALBYTES, 1) + "</td>";
   webpage += "<td>" + statusReport(STREP_SD_USEDBYTES, 1) + "</td>";
   webpage += "<td>" + statusReport(STREP_SD_FREESPACE, 1) + "</td>";
-  webpage += "<td>" + (SD_numfiles == 0 ? "Pending Dir or Empty" : String(SD_numfiles)) + "</td></tr>";
+  // webpage += "<td>" + (SD_numfiles == 0 ? "Pending Dir or Empty" : String(SD_numfiles)) + "</td></tr>";
+  webpage += "<td>" + statusReport(STREP_SD_CARDTYPE,1) + "</td>";
+  // webpage += "<td>" + (SD_numfiles == 0 ? "Pending Dir or Empty" : String(SD_numfiles)) + "</td></tr>";
+
   webpage += "</table>";
 
   webpage += "<br><br>";
@@ -480,23 +493,41 @@ String HTML_Footer()
 }
 
 // #############################################################################################
-String ConvBinUnits(int bytes, int resolution)
-{ // int resolution : 小数点以下の桁数、decimal places
-  if (bytes < 1024)
+String ConvBinUnits(uint64_t bytes, int dp)
+{ // int dp : 小数点以下の桁数、decimal places
+  // Serial.println("bytes = " + String(bytes));
+
+  const uint64_t KILO = 1024ULL;
+  const uint64_t MEGA = KILO * KILO;
+  const uint64_t GIGA = MEGA * KILO;
+  const uint64_t TERA = GIGA * KILO;
+
+  if(bytes < KILO)
   {
-    return String(bytes) + " B";
+    return (String(bytes) + " B" );
   }
-  else if (bytes < 1024 * 1024)
+  else if (bytes < MEGA)
   {
-    return String((bytes / 1024.0), resolution) + " KB";
+    float kb = (float)bytes/(float)KILO;
+    return String(kb, dp) + " KB";
   }
-  else if (bytes < (1024 * 1024 * 1024))
+  else if (bytes < GIGA)
   {
-    return String((bytes / 1024.0 / 1024.0), resolution) + " MB";
+    float mb = (float)bytes/(float)MEGA;
+    return (String(mb, dp) + " MB");
+  }
+  else if(bytes < TERA)
+  {
+    float gb = (float)bytes/(float)GIGA;
+    return (String(gb, dp) + " GB");
   }
   else
-    return "";
+  {
+    float tb = (float)bytes/(float)TERA;
+    return (String(tb, dp) + " TB");
+  }
 }
+
 
 // #############################################################################################
 String EncryptionType(wifi_auth_mode_t encryptionType)
@@ -523,21 +554,6 @@ String EncryptionType(wifi_auth_mode_t encryptionType)
 }
 
 // #############################################################################################
-bool StartMDNSservice(const char *Name)
-{
-  esp_err_t err = mdns_init(); // Initialise mDNS service
-  if (err)
-  {
-    printf("MDNS Init failed: %d\n", err);
-    SERVER_NAME = "";
-    return false;
-  }
-  mdns_hostname_set(Name); // Set hostname
-  SERVER_NAME = String(Name);
-  return true;
-}
-
-// #############################################################################################
 void SelectInput(String Heading, String Command, String Arg_name)
 {
   webpage = HTML_Header();
@@ -548,4 +564,3 @@ void SelectInput(String Heading, String Command, String Arg_name)
   webpage += "</form>";
   webpage += HTML_Footer();
 }
-

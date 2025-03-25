@@ -36,12 +36,15 @@ void SDdir_SelectInputDirName(String Heading, String Command, String Arg_name);
 void SDdir_DirList();
 void SDdir_FilesList();
 bool SDdir_notFound(AsyncWebServerRequest *request);
-String SD_StatusReport(int reportNo, int decimalPlaces);
+String SD_StatusReport(int reportNo, int dp);
+bool SD_Start();
+bool SD_cardInfo(void);
 // -------------------------------------------------------
 extern void SelectInput(String Heading, String Command, String Arg_name);
 extern String getContentType(String filenametype);
 extern void Home();
-extern String ConvBinUnits(int bytes, int resolution);
+// extern String ConvBinUnits(int bytes, int resolution);
+extern String ConvBinUnits(uint64_t bytes, int resolution);
 extern String EncryptionType(wifi_auth_mode_t encryptionType);
 extern String HTML_Header();
 extern String HTML_Footer();
@@ -62,21 +65,30 @@ std::vector<fileinfo> SD_Filenames;
 String SD_MessageLine;
 int SD_start, SD_downloadtime = 1, SD_uploadtime = 1, SD_downloadsize, SD_uploadsize, SD_downloadrate, SD_uploadrate, SD_numfiles;
 String SdPath = "/";
+bool SD_ENABLE = false;
+
+bool SD_Start()
+{
+  if (!SD.begin())
+  {
+    Serial.println("ERR: SD_Start...");
+    SD_ENABLE = false;
+    return false;
+  }
+
+  if (!SD_cardInfo())
+  {
+    SD_ENABLE = false;
+    return false;
+  }
+
+  SD_ENABLE = true;
+  return true;
+}
 
 void SD_flServerSetup()
 {
   Serial.println(__FILE__);
-
-  if (!SD.begin())
-  {
-    Serial.println("Error preparing Filing System...");
-    StartupErrors = true;
-  }
-  uint8_t cardType = SD.cardType();
-  if (cardType == CARD_NONE)
-  {
-    Serial.println("No SD card attached");
-  }
 
   // ##################### DOWNLOAD HANDLER ##########################
   server.on("/SD_download", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -194,7 +206,11 @@ void SD_Directory()
         fileinfo tmp;
         tmp.filename = tmp_filename;
         tmp.ftype = (file.isDirectory() ? "Dir" : "File");
-        tmp.fsize = ConvBinUnits(file.size(), 1);
+        if(tmp.ftype == "File")
+          tmp.fsize = ConvBinUnits(file.size(), 1);
+        else
+        tmp.fsize = "";
+
         SD_Filenames.push_back(tmp);
         SD_numfiles++;
       }
@@ -396,7 +412,7 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
 
 // #############################################################################################
 bool SD_notFound(AsyncWebServerRequest *request)
-{// Serial.println("SD_notFund func ... : " + request->url());
+{ // Serial.println("SD_notFund func ... : " + request->url());
 
   String filename;
   if (request->url().startsWith("/SD_downloadhandler") ||
@@ -769,8 +785,11 @@ void SDdir_DirList()
       {
         fileinfo tmp;
         tmp.filename = tmp_filename;
-        tmp.ftype = (file.isDirectory() ? "Dir" : "File");
-        tmp.fsize = ConvBinUnits(file.size(), 1);
+        // tmp.ftype = (file.isDirectory() ? "Dir" : "File");
+        // tmp.fsize = ConvBinUnits(file.size(), 1);
+        tmp.ftype = "Dir";
+        tmp.fsize = "";
+        
         SD_Filenames.push_back(tmp);
         SD_numfiles++;
       }
@@ -804,8 +823,9 @@ void SDdir_FilesList()
       {
         fileinfo tmp;
         tmp.filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
-        tmp.ftype = (file.isDirectory() ? "Dir" : "File");
+        tmp.ftype = "File";
         tmp.fsize = ConvBinUnits(file.size(), 1);
+
         SD_Filenames.push_back(tmp);
         SD_numfiles++;
       }
@@ -858,17 +878,62 @@ bool SDdir_notFound(AsyncWebServerRequest *request)
 #define STREP_SD_TOTALBYTES 21
 #define STREP_SD_USEDBYTES 22
 #define STREP_SD_FREESPACE 23
+#define STREP_SD_CARDTYPE 24
 
-String SD_StatusReport(int reportNo, int decimalPlaces)
-{
+String SD_StatusReport(int reportNo, int dp)
+{// dp:deciamlPoint小数点以下の桁数
+  sdcard_type_t cardType = SD.cardType();
+  const String cType[]={"NONE","MMC","SD","SDHC","UNKNOWN"};
+
   switch (reportNo)
   {
   case STREP_SD_TOTALBYTES:
-    return ConvBinUnits(SD.totalBytes(), decimalPlaces);
+    return ConvBinUnits(SD.totalBytes(), dp);
   case STREP_SD_USEDBYTES:
-    return ConvBinUnits(SD.usedBytes(), decimalPlaces);
-  case STREP_SD_FREESPACE:
-    return ConvBinUnits(SD.totalBytes() - SD.usedBytes(), decimalPlaces);
+    return ConvBinUnits(SD.usedBytes(), dp);
+    case STREP_SD_FREESPACE:
+    return ConvBinUnits(SD.totalBytes() - SD.usedBytes(), dp);
+  case STREP_SD_CARDTYPE:
+    return cType[cardType];
+  default:
+    return String("");
   }
-  return String("");
+}
+
+
+bool SD_cardInfo(void)
+{
+  sdcard_type_t cardType = SD.cardType();
+  switch (cardType)
+  {
+  case CARD_MMC:
+    Serial.println("MMC detected");
+    break;
+  case CARD_SD:
+    Serial.println("SD detected");
+    break;
+  case CARD_SDHC:
+    Serial.println("SDHC detected");
+    break;
+  case CARD_NONE:
+    Serial.println("ERR: No SD card attached");
+    SD_ENABLE = false;
+    return false;
+  case CARD_UNKNOWN:
+    Serial.println("ERR: SD card unknown Type");
+    SD_ENABLE = false;
+    return false;
+  default:
+    Serial.println("ERR: SD cardType is default Type");
+    SD_ENABLE = false;
+    return false;
+  }
+
+  Serial.println("SD_totalbytes = " + SD_StatusReport(STREP_SD_TOTALBYTES, 1));
+  Serial.println("SD_usedbytes  = " + SD_StatusReport(STREP_SD_USEDBYTES, 1));
+  Serial.println("SD_freespace  = " + SD_StatusReport(STREP_SD_FREESPACE, 1));
+  Serial.println("SD_CardType   = " + SD_StatusReport(STREP_SD_CARDTYPE, 1));
+
+  SD_ENABLE = true;
+  return true;
 }
