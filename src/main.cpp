@@ -21,14 +21,17 @@ extern bool FS_SettingRd(const String filename);
 extern bool wifiStart();
 extern bool mdnsStart(void);
 extern bool fileServerStart();
-bool SD_ENABLE;
-bool SPIFFS_ENABLE;
 
 extern const String VERSION;
 extern const String PROG_NAME;
 const String VERSION = "v1.03a-250326";
 const String PROG_NAME = "m5stack-fileServer";
 String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
+
+bool SD_ENABLE;
+bool SPIFFS_ENABLE;
+const bool SD_USE = true;      // 'false' if not use SD
+const bool SPIFFS_USE = true;  // 'false' if not use SPIFFS
 
 #define NETWORK_SETTING_FILE "/wifi.txt"
 // you should change your own settings below 3-lines
@@ -65,6 +68,12 @@ void setup()
   SPIFFS_ENABLE = SPIFFS_Start();
   if (SPIFFS_ENABLE) prt("SPIFFS  .....  OK");
   else  prt("SPIFFS  .....  NG");
+
+  if(SD_ENABLE && SD_USE) SD_ENABLE = true;
+  else SD_ENABLE=false;
+  
+  if(SPIFFS_ENABLE && SPIFFS_USE) SPIFFS_ENABLE = true;
+  else SPIFFS_ENABLE=false;
 
   if (!SPIFFS_ENABLE && !SD_ENABLE)
   {

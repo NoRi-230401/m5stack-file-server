@@ -43,7 +43,7 @@ extern String HTML_Header();
 extern String HTML_Footer();
 extern AsyncWebServer server;
 extern String webpage;
-extern bool StartupErrors;
+// extern bool StartupErrors;
 // -------------------------------------------------------
 std::vector<fileinfo> FS_Filenames;
 String FS_MessageLine;
@@ -55,7 +55,7 @@ bool SPIFFS_Start()
   if (!FS.begin(true))
   {
     Serial.println("ERR: SPIFFS begin erro...");
-    StartupErrors = true;
+    // StartupErrors = true;
     // SPIFFS_ENABLE = false;
     return false;
   }

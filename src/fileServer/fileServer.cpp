@@ -50,6 +50,9 @@ extern int SD_start, SD_downloadtime, SD_uploadtime, SD_downloadsize, SD_uploads
 extern void SDdir_flserverSetup();
 extern bool SDdir_notFound(AsyncWebServerRequest *request);
 // -------------------------------------------------------
+extern bool SD_ENABLE;
+extern bool SPIFFS_ENABLE;
+
 extern const String VERSION;
 extern const String PROG_NAME;
 extern String IP_ADDR;
@@ -58,7 +61,7 @@ extern String SdPath;
 // -------------------------------------------------------
 AsyncWebServer server(80);
 String webpage;
-bool StartupErrors = false;
+// bool StartupErrors = false;
 
 // ####### REPORT FILE SYSTEM  ############
 #define STREP_FS_TOTALBYTES 11
@@ -108,7 +111,7 @@ extern String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
 
 bool wifiStart()
 {
-  
+
   WiFi.mode(WIFI_STA);
   WiFi.begin(SSID, SSID_PASS);
 
@@ -129,7 +132,7 @@ bool wifiStart()
       return false;
     }
   }
-  
+
   IP_ADDR = WiFi.localIP().toString();
   Serial.println("\nIP Address: " + IP_ADDR);
   if (WiFi.scanComplete() == -2)
@@ -161,30 +164,29 @@ bool fileServerStart()
   Home();
   request->send(200, "text/html", webpage); });
 
-  // ##################### SYSTEM HANDLER ############################
+  // ##################### SYSTEM HANDLER #####################
   server.on("/system", HTTP_GET, [](AsyncWebServerRequest *request)
             {
   Display_System_Info();
   request->send(200, "text/html", webpage); });
 
-  // --------------------------------------------
-  FS_flServerSetup();
-  SD_flServerSetup();
-  SDdir_flserverSetup();
-  // --------------------------------------------
-
+  // ################# FS and SD , SDdir HANDLER ##############
+  if(SPIFFS_ENABLE)
+    FS_flServerSetup();
+  
+  if(SD_ENABLE)
+  {
+    SD_flServerSetup();
+    SDdir_flserverSetup();
+  }
+  
   // ##################### NotFound ############################
   server.onNotFound(notFound);
 
   server.begin(); // Start the server
-  if (StartupErrors)
-  {
-    Serial.println("There were problems starting all services...");
-    return false;
-  }
+  if(SPIFFS_ENABLE)  FS_Directory();
+  if(SD_ENABLE)  SD_Directory();
 
-  FS_Directory(); // Update the SPIFFS file list
-  SD_Directory(); // Update the SD file list
   Serial.println("System started successfully...");
   return true;
 }
@@ -256,14 +258,20 @@ void notFound(AsyncWebServerRequest *request)
 {
   Serial.println("notFound func : " + request->url());
 
-  if (FS_notFound(request))
-    return;
+  if (SPIFFS_ENABLE)
+  {
+    if (FS_notFound(request))
+      return;
+  }
 
-  if (SD_notFound(request))
-    return;
+  if (SD_ENABLE)
+  {
+    if (SD_notFound(request))
+      return;
 
-  if (SDdir_notFound(request))
-    return;
+    if (SDdir_notFound(request))
+      return;
+  }
 
   Page_Not_Found();
   request->send(200, "text/html", webpage);
@@ -303,9 +311,10 @@ void Display_System_Info()
   webpage = HTML_Header();
   webpage += "<h3>System Information</h3>";
 
-  webpage += "<br>";
+  if(SPIFFS_ENABLE)
+  {
+  webpage += "<br><br>";
   webpage += "<h4>SPIFFS:　Transfer Statistics</h4>";
-
   webpage += "<table class='center'>";
   webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
   webpage += "<tr><td>" + ConvBinUnits(FS_uploadsize, 1) + "</td><td>" + ConvBinUnits(FS_downloadsize, 1) + "</td><td>File Size</td></tr> ";
@@ -313,16 +322,6 @@ void Display_System_Info()
   webpage += "<td>" + ConvBinUnits((float)FS_downloadsize / FS_downloadtime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
   webpage += "</table>";
 
-  // webpage += "<br>";
-  webpage += "<h4>SD:　Transfer Statistics</h4>";
-  webpage += "<table class='center'>";
-  webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
-  webpage += "<tr><td>" + ConvBinUnits(SD_uploadsize, 1) + "</td><td>" + ConvBinUnits(SD_downloadsize, 1) + "</td><td>File Size</td></tr> ";
-  webpage += "<tr><td>" + ConvBinUnits((float)SD_uploadsize / SD_uploadtime * 1024.0, 1) + "/Sec</td>";
-  webpage += "<td>" + ConvBinUnits((float)SD_downloadsize / SD_downloadtime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
-  webpage += "</table>";
-
-  webpage += "<br><br>";
   webpage += "<h4>SPIFFS:　Filing System</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
@@ -331,20 +330,28 @@ void Display_System_Info()
   webpage += "<td>" + statusReport(STREP_FS_FREESPACE, 1) + "</td>";
   webpage += "<td>" + (FS_numfiles == 0 ? "Pending Dir or Empty" : String(FS_numfiles)) + "</td></tr>";
   webpage += "</table>";
+  }
 
-  // webpage += "<br>";
+  if(SD_ENABLE)
+  {
+  webpage += "<br><br>";
+  webpage += "<h4>SD:　Transfer Statistics</h4>";
+  webpage += "<table class='center'>";
+  webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
+  webpage += "<tr><td>" + ConvBinUnits(SD_uploadsize, 1) + "</td><td>" + ConvBinUnits(SD_downloadsize, 1) + "</td><td>File Size</td></tr> ";
+  webpage += "<tr><td>" + ConvBinUnits((float)SD_uploadsize / SD_uploadtime * 1024.0, 1) + "/Sec</td>";
+  webpage += "<td>" + ConvBinUnits((float)SD_downloadsize / SD_downloadtime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
+  webpage += "</table>";
+
   webpage += "<h4>SD:　Filing System</h4>";
   webpage += "<table class='center'>";
-  // webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
   webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Card Type</th></tr>";
   webpage += "<tr><td>" + statusReport(STREP_SD_TOTALBYTES, 1) + "</td>";
   webpage += "<td>" + statusReport(STREP_SD_USEDBYTES, 1) + "</td>";
   webpage += "<td>" + statusReport(STREP_SD_FREESPACE, 1) + "</td>";
-  // webpage += "<td>" + (SD_numfiles == 0 ? "Pending Dir or Empty" : String(SD_numfiles)) + "</td></tr>";
-  webpage += "<td>" + statusReport(STREP_SD_CARDTYPE,1) + "</td>";
-  // webpage += "<td>" + (SD_numfiles == 0 ? "Pending Dir or Empty" : String(SD_numfiles)) + "</td></tr>";
-
+  webpage += "<td>" + statusReport(STREP_SD_CARDTYPE, 1) + "</td>";
   webpage += "</table>";
+  }
 
   webpage += "<br><br>";
   webpage += "<h4>CPU Information</h4>";
@@ -438,46 +445,53 @@ String HTML_Header()
   page += "<a href='/system'>Status</a>";
   page += "</div>";
 
-  // -- 2 --
-  // page += "<br><br>";
+  // --------------- SPIFFS ------------------------
+  if (SPIFFS_ENABLE)
+  {
+    // -- 2 SPIFFS --
+    page += "<br>";
+    page += "<div class = 'topnav2'>";
+    page += "SPIFFS:<a href='/FS_dir'>Dir</a>";
+    page += "<a href='/FS_upload'>Upload</a> ";
+    page += "<a href='/FS_download'>Download</a>";
+    page += "<a href='/FS_stream'>Stream</a>";
+    page += "<a href='/FS_delete'>Delete</a>";
+    page += "<a href='/FS_rename'>Rename</a>";
+    page += "</div>";
+  }
+  // -------------< end of SPIFFS > ----------------
+
+  // ------------------ SD -------------------------
+  if (SD_ENABLE)
+  {
+    // -- 3 SD --
+    page += "<br>";
+    page += "<div class = 'topnav2'>";
+    page += "SD:<a href='/SD_dir'>Dir</a>";
+    page += "<a href='/SD_upload'>Upload</a> ";
+    page += "<a href='/SD_download'>Download</a>";
+    page += "<a href='/SD_stream'>Stream</a>";
+    page += "<a href='/SD_delete'>Delete</a>";
+    page += "<a href='/SD_rename'>Rename</a>";
+    page += "</div>";
+
+    // -- 4 SD path --
+    page += "<div class = 'topnav2'>";
+    page += "path:　" + SdPath;
+    page += "<a href='/SDdir_chTop'>　Top　</a>";
+    page += "<a href='/SDdir_chUp'>　Up　</a>";
+    page += "</div>";
+
+    // -- 5 SD dir --
+    page += "<div class = 'topnav2'>";
+    page += "<a href='/SDdir_chdir'>Chdir</a>";
+    page += "<a href='/SDdir_mkdir'>Mkdir</a>";
+    page += "<a href='/SDdir_rmdir'>Rmdir</a>";
+    page += "</div>";
+  }
+  // -------------< end of SD >-----------------------
+
   page += "<br>";
-  page += "<div class = 'topnav2'>";
-  page += "SPIFFS:<a href='/FS_dir'>Dir</a>";
-  page += "<a href='/FS_upload'>Upload</a> ";
-  page += "<a href='/FS_download'>Download</a>";
-  page += "<a href='/FS_stream'>Stream</a>";
-  page += "<a href='/FS_delete'>Delete</a>";
-  page += "<a href='/FS_rename'>Rename</a>";
-  page += "</div>";
-
-  // -- 3 --
-  page += "<br>";
-  page += "<div class = 'topnav2'>";
-  page += "SD:<a href='/SD_dir'>Dir</a>";
-  page += "<a href='/SD_upload'>Upload</a> ";
-  page += "<a href='/SD_download'>Download</a>";
-  page += "<a href='/SD_stream'>Stream</a>";
-  page += "<a href='/SD_delete'>Delete</a>";
-  page += "<a href='/SD_rename'>Rename</a>";
-  page += "</div>";
-
-  // -- 4 --
-  // String SdPath = "/";
-  page += "<div class = 'topnav2'>";
-  page += "path:　" + SdPath;
-  page += "<a href='/SDdir_chTop'>　Top　</a>";
-  page += "<a href='/SDdir_chUp'>　Up　</a>";
-  page += "</div>";
-
-  // -- 5 --
-  page += "<div class = 'topnav2'>";
-  page += "<a href='/SDdir_chdir'>Chdir</a>";
-  page += "<a href='/SDdir_mkdir'>Mkdir</a>";
-  page += "<a href='/SDdir_rmdir'>Rmdir</a>";
-  page += "</div>";
-  // page += "<br><br>";
-  page += "<br>";
-
   return page;
 }
 
@@ -507,32 +521,31 @@ String ConvBinUnits(uint64_t bytes, int dp)
   const uint64_t GIGA = MEGA * KILO;
   const uint64_t TERA = GIGA * KILO;
 
-  if(bytes < KILO)
+  if (bytes < KILO)
   {
-    return (String(bytes) + " B" );
+    return (String(bytes) + " B");
   }
   else if (bytes < MEGA)
   {
-    float kb = (float)bytes/(float)KILO;
+    float kb = (float)bytes / (float)KILO;
     return String(kb, dp) + " KB";
   }
   else if (bytes < GIGA)
   {
-    float mb = (float)bytes/(float)MEGA;
+    float mb = (float)bytes / (float)MEGA;
     return (String(mb, dp) + " MB");
   }
-  else if(bytes < TERA)
+  else if (bytes < TERA)
   {
-    float gb = (float)bytes/(float)GIGA;
+    float gb = (float)bytes / (float)GIGA;
     return (String(gb, dp) + " GB");
   }
   else
   {
-    float tb = (float)bytes/(float)TERA;
+    float tb = (float)bytes / (float)TERA;
     return (String(tb, dp) + " TB");
   }
 }
-
 
 // #############################################################################################
 String EncryptionType(wifi_auth_mode_t encryptionType)

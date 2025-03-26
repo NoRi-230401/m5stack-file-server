@@ -52,7 +52,7 @@ extern String HTML_Footer();
 // -------------------------------------------------------
 extern AsyncWebServer server;
 extern String webpage;
-extern bool StartupErrors;
+// extern bool StartupErrors;
 
 typedef struct
 {
