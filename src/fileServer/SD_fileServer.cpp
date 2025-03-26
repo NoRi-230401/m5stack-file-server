@@ -23,7 +23,6 @@ bool SD_notFound(AsyncWebServerRequest *request);
 void SD_Handle_File_Download();
 void SD_Select_File_For_Function(String title, String function);
 int SD_GetFileSize(String filename);
-bool SD_isExists(const String filename);
 // -------------------------------------------------------
 void SDdir_flserverSetup();
 void SDdir_handle_chTop();
@@ -37,14 +36,18 @@ void SDdir_SelectInputDirName(String Heading, String Command, String Arg_name);
 void SDdir_DirList();
 void SDdir_FilesList();
 bool SDdir_notFound(AsyncWebServerRequest *request);
+// -------------------------------------------------------
 String SD_StatusReport(int reportNo, int dp);
+bool SD_isExists(const String filename);
 bool SD_Start();
 bool SD_cardInfo(void);
+bool SD_SettingRd(const String filename);
+extern String SSID, SSID_PASS, SERVER_NAME;
+
 // -------------------------------------------------------
 extern void SelectInput(String Heading, String Command, String Arg_name);
 extern String getContentType(String filenametype);
 extern void Home();
-// extern String ConvBinUnits(int bytes, int resolution);
 extern String ConvBinUnits(uint64_t bytes, int resolution);
 extern String EncryptionType(wifi_auth_mode_t encryptionType);
 extern String HTML_Header();
@@ -52,7 +55,6 @@ extern String HTML_Footer();
 // -------------------------------------------------------
 extern AsyncWebServer server;
 extern String webpage;
-// extern bool StartupErrors;
 
 typedef struct
 {
@@ -66,24 +68,20 @@ std::vector<fileinfo> SD_Filenames;
 String SD_MessageLine;
 int SD_start, SD_downloadtime = 1, SD_uploadtime = 1, SD_downloadsize, SD_uploadsize, SD_downloadrate, SD_uploadrate, SD_numfiles;
 String SdPath = "/";
-// bool SD_ENABLE = false;
 
 bool SD_Start()
 {
   if (!SD.begin())
   {
     Serial.println("ERR: SD_Start...");
-    // SD_ENABLE = false;
     return false;
   }
 
   if (!SD_cardInfo())
   {
-    // SD_ENABLE = false;
     return false;
   }
 
-  // SD_ENABLE = true;
   return true;
 }
 
@@ -741,12 +739,12 @@ void SDdir_Select_Dir_For_Function(String title, String function)
   while (index < SD_numfiles)
   {
     Fname1 = SD_Filenames[index].filename;
-    // Fname2 = SD_Filenames[index + 1].filename;
-    Fname2 = (index + 1 < SD_numfiles) ? SD_Filenames[index + 1].filename : ""; // 10. 変更点
+    Fname2 = (index + 1 < SD_numfiles) ? SD_Filenames[index + 1].filename : "";
     if (Fname1.startsWith("/"))
       Fname1 = Fname1.substring(1);
-    // if (Fname2.startsWith("/"))
-    //   Fname2 = Fname2.substring(1);
+
+    if (Fname2.startsWith("/"))
+      Fname2 = Fname2.substring(1);
 
     webpage += "<tr>";
     webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td>";
@@ -767,7 +765,7 @@ void SDdir_Select_Dir_For_Function(String title, String function)
 void SDdir_DirList()
 {
   SD_numfiles = 0;
-  SD_Filenames.clear(); // vectorをクリア
+  SD_Filenames.clear();
 
   if (SdPath == "")
     SdPath = "/";
@@ -786,8 +784,6 @@ void SDdir_DirList()
       {
         fileinfo tmp;
         tmp.filename = tmp_filename;
-        // tmp.ftype = (file.isDirectory() ? "Dir" : "File");
-        // tmp.fsize = ConvBinUnits(file.size(), 1);
         tmp.ftype = "Dir";
         tmp.fsize = "";
 
@@ -934,7 +930,6 @@ bool SD_cardInfo(void)
   Serial.println("SD_freespace  = " + SD_StatusReport(STREP_SD_FREESPACE, 1));
   Serial.println("SD_CardType   = " + SD_StatusReport(STREP_SD_CARDTYPE, 1));
 
-  // SD_ENABLE = true;
   return true;
 }
 
@@ -942,12 +937,6 @@ bool SD_isExists(const String filename)
 {
   return (SD.exists(filename));
 }
-
-bool SD_SettingRd(const String filename);
-const String WIFI_TXT = "/wifi.txt";
-extern String SERVER_NAME;
-extern String SSID;
-extern String SSID_PASS;
 
 bool SD_SettingRd(const String filename)
 {
@@ -958,18 +947,19 @@ bool SD_SettingRd(const String filename)
   if (!fs)
     return false;
 
-  size_t sz = fs.size();
-  if (sz <= 3)  // at least 3bytes size 
+  size_t length = fs.size();
+  if (length <= 3) // at least 3bytes size
     return false;
 
-  char buf[sz + 1];
-  fs.read((uint8_t *)buf, sz);
-  buf[sz] = 0;
+  char buf[length + 1];
+  fs.read((uint8_t *)buf, length);
+  buf[length] = 0;
   fs.close();
 
+  int x;
   int y = 0;
   int z = 0;
-  for (int x = 0; x < sz; x++)
+  for (x = 0; x < length; x++)
   {
     if (buf[x] == 0x0a || buf[x] == 0x0d)
       buf[x] = 0;
@@ -979,14 +969,20 @@ bool SD_SettingRd(const String filename)
       z = x;
   }
 
+  if (y == 0)
+    return false;
   SSID = String(buf);
   SSID_PASS = String(&buf[y]);
+  Serial.println("SSID        = " + SSID);
+  Serial.println("SSID_PASS   = " + SSID_PASS);
+
+  if (z == 0)
+    return false;
   SERVER_NAME = String(&buf[z]);
+  Serial.println("SERVER_NAME = " + SERVER_NAME);
+
   if (SSID == "" || SSID_PASS == "" || SERVER_NAME == "")
     return false;
 
-  Serial.println("SSID        = " + SSID);
-  Serial.println("SSID_PASS   = " + SSID_PASS);
-  Serial.println("SERVER_NAME = " + SERVER_NAME);
   return true;
 }

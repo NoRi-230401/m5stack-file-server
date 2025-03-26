@@ -12,7 +12,6 @@
 #include "esp_spi_flash.h"
 #include "esp_wifi_types.h"
 #include "esp_bt.h"
-#include "credentials.h"
 
 // -------------------------------------------------------
 typedef struct

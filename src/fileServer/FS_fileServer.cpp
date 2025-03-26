@@ -32,7 +32,15 @@ bool FS_notFound(AsyncWebServerRequest *request);
 void FS_Handle_File_Download();
 void FS_Select_File_For_Function(String title, String function);
 int FS_GetFileSize(String filename);
+// --------------------------------------------------------------------
+#define STREP_FS_TOTALBYTES 11
+#define STREP_FS_USEDBYTES 12
+#define STREP_FS_FREESPACE 13
+String FS_StatusReport(int reportNo, int decimalPlaces);
 bool FS_isExists(const String filename);
+bool FS_SettingRd(const String filename);
+extern String SSID, SSID_PASS, SERVER_NAME;
+
 // -------------------------------------------------------
 extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 extern void SelectInput(String Heading, String Command, String Arg_name);
@@ -43,31 +51,25 @@ extern String HTML_Header();
 extern String HTML_Footer();
 extern AsyncWebServer server;
 extern String webpage;
-// extern bool StartupErrors;
 // -------------------------------------------------------
 std::vector<fileinfo> FS_Filenames;
 String FS_MessageLine;
 int FS_start, FS_downloadtime = 1, FS_uploadtime = 1, FS_downloadsize, FS_uploadsize, FS_downloadrate, FS_uploadrate, FS_numfiles;
-// bool SPIFFS_ENABLE=false;
 
 bool SPIFFS_Start()
 {
   if (!FS.begin(true))
   {
     Serial.println("ERR: SPIFFS begin erro...");
-    // StartupErrors = true;
-    // SPIFFS_ENABLE = false;
     return false;
   }
-  // SPIFFS_ENABLE = true;
   return true;
 }
-
 
 void FS_flServerSetup()
 {
   Serial.println(__FILE__);
-  
+
   // ##################### DOWNLOAD HANDLER ##########################
   server.on("/FS_download", HTTP_GET, [](AsyncWebServerRequest *request)
             {
@@ -136,7 +138,7 @@ void FS_Directory()
       fileinfo tmp;
       tmp.filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
       tmp.ftype = (file.isDirectory() ? "Dir" : "File");
-      if(tmp.ftype == "File")
+      if (tmp.ftype == "File")
         tmp.fsize = ConvBinUnits(file.size(), 1);
       else
         tmp.fsize = "";
@@ -488,11 +490,6 @@ int FS_GetFileSize(String filename)
 }
 
 // --------------------------------------------------------------------
-#define STREP_FS_TOTALBYTES 11
-#define STREP_FS_USEDBYTES 12
-#define STREP_FS_FREESPACE 13
-String FS_StatusReport(int reportNo, int decimalPlaces);
-
 String FS_StatusReport(int reportNo, int decimalPlaces)
 {
   switch (reportNo)
@@ -509,13 +506,8 @@ String FS_StatusReport(int reportNo, int decimalPlaces)
 
 bool FS_isExists(const String filename)
 {
-  return(FS.exists(filename));
+  return (FS.exists(filename));
 }
-
-bool FS_SettingRd(const String filename);
-extern String SERVER_NAME;
-extern String SSID;
-extern String SSID_PASS;
 
 bool FS_SettingRd(const String filename)
 {
@@ -526,18 +518,19 @@ bool FS_SettingRd(const String filename)
   if (!fs)
     return false;
 
-  size_t sz = fs.size();
-  if (sz <= 3)  // at least 3bytes size 
+  size_t length = fs.size();
+  if (length <= 3) // at least 3bytes size
     return false;
 
-  char buf[sz + 1];
-  fs.read((uint8_t *)buf, sz);
-  buf[sz] = 0;
+  char buf[length + 1];
+  fs.read((uint8_t *)buf, length);
+  buf[length] = 0;
   fs.close();
 
+  int x;
   int y = 0;
   int z = 0;
-  for (int x = 0; x < sz; x++)
+  for (x = 0; x < length; x++)
   {
     if (buf[x] == 0x0a || buf[x] == 0x0d)
       buf[x] = 0;
@@ -547,14 +540,20 @@ bool FS_SettingRd(const String filename)
       z = x;
   }
 
+  if (y == 0)
+    return false;
   SSID = String(buf);
   SSID_PASS = String(&buf[y]);
+  Serial.println("SSID        = " + SSID);
+  Serial.println("SSID_PASS   = " + SSID_PASS);
+
+  if (z == 0)
+    return false;
   SERVER_NAME = String(&buf[z]);
+  Serial.println("SERVER_NAME = " + SERVER_NAME);
+
   if (SSID == "" || SSID_PASS == "" || SERVER_NAME == "")
     return false;
 
-  Serial.println("SSID        = " + SSID);
-  Serial.println("SSID_PASS   = " + SSID_PASS);
-  Serial.println("SERVER_NAME = " + SERVER_NAME);
   return true;
 }
