@@ -23,6 +23,7 @@ bool SD_notFound(AsyncWebServerRequest *request);
 void SD_Handle_File_Download();
 void SD_Select_File_For_Function(String title, String function);
 int SD_GetFileSize(String filename);
+bool SD_isExists(const String filename);
 // -------------------------------------------------------
 void SDdir_flserverSetup();
 void SDdir_handle_chTop();
@@ -65,24 +66,24 @@ std::vector<fileinfo> SD_Filenames;
 String SD_MessageLine;
 int SD_start, SD_downloadtime = 1, SD_uploadtime = 1, SD_downloadsize, SD_uploadsize, SD_downloadrate, SD_uploadrate, SD_numfiles;
 String SdPath = "/";
-bool SD_ENABLE = false;
+// bool SD_ENABLE = false;
 
 bool SD_Start()
 {
   if (!SD.begin())
   {
     Serial.println("ERR: SD_Start...");
-    SD_ENABLE = false;
+    // SD_ENABLE = false;
     return false;
   }
 
   if (!SD_cardInfo())
   {
-    SD_ENABLE = false;
+    // SD_ENABLE = false;
     return false;
   }
 
-  SD_ENABLE = true;
+  // SD_ENABLE = true;
   return true;
 }
 
@@ -206,10 +207,10 @@ void SD_Directory()
         fileinfo tmp;
         tmp.filename = tmp_filename;
         tmp.ftype = (file.isDirectory() ? "Dir" : "File");
-        if(tmp.ftype == "File")
+        if (tmp.ftype == "File")
           tmp.fsize = ConvBinUnits(file.size(), 1);
         else
-        tmp.fsize = "";
+          tmp.fsize = "";
 
         SD_Filenames.push_back(tmp);
         SD_numfiles++;
@@ -789,7 +790,7 @@ void SDdir_DirList()
         // tmp.fsize = ConvBinUnits(file.size(), 1);
         tmp.ftype = "Dir";
         tmp.fsize = "";
-        
+
         SD_Filenames.push_back(tmp);
         SD_numfiles++;
       }
@@ -881,9 +882,9 @@ bool SDdir_notFound(AsyncWebServerRequest *request)
 #define STREP_SD_CARDTYPE 24
 
 String SD_StatusReport(int reportNo, int dp)
-{// dp:deciamlPoint小数点以下の桁数
+{ // dp:deciamlPoint小数点以下の桁数
   sdcard_type_t cardType = SD.cardType();
-  const String cType[]={"NONE","MMC","SD","SDHC","UNKNOWN"};
+  const String cType[] = {"NONE", "MMC", "SD", "SDHC", "UNKNOWN"};
 
   switch (reportNo)
   {
@@ -891,7 +892,7 @@ String SD_StatusReport(int reportNo, int dp)
     return ConvBinUnits(SD.totalBytes(), dp);
   case STREP_SD_USEDBYTES:
     return ConvBinUnits(SD.usedBytes(), dp);
-    case STREP_SD_FREESPACE:
+  case STREP_SD_FREESPACE:
     return ConvBinUnits(SD.totalBytes() - SD.usedBytes(), dp);
   case STREP_SD_CARDTYPE:
     return cType[cardType];
@@ -899,7 +900,6 @@ String SD_StatusReport(int reportNo, int dp)
     return String("");
   }
 }
-
 
 bool SD_cardInfo(void)
 {
@@ -917,15 +917,15 @@ bool SD_cardInfo(void)
     break;
   case CARD_NONE:
     Serial.println("ERR: No SD card attached");
-    SD_ENABLE = false;
+    // SD_ENABLE = false;
     return false;
   case CARD_UNKNOWN:
     Serial.println("ERR: SD card unknown Type");
-    SD_ENABLE = false;
+    // SD_ENABLE = false;
     return false;
   default:
     Serial.println("ERR: SD cardType is default Type");
-    SD_ENABLE = false;
+    // SD_ENABLE = false;
     return false;
   }
 
@@ -934,6 +934,59 @@ bool SD_cardInfo(void)
   Serial.println("SD_freespace  = " + SD_StatusReport(STREP_SD_FREESPACE, 1));
   Serial.println("SD_CardType   = " + SD_StatusReport(STREP_SD_CARDTYPE, 1));
 
-  SD_ENABLE = true;
+  // SD_ENABLE = true;
+  return true;
+}
+
+bool SD_isExists(const String filename)
+{
+  return (SD.exists(filename));
+}
+
+bool SD_SettingRd(const String filename);
+const String WIFI_TXT = "/wifi.txt";
+extern String SERVER_NAME;
+extern String SSID;
+extern String SSID_PASS;
+
+bool SD_SettingRd(const String filename)
+{
+  if (!SD.exists(filename))
+    return false;
+
+  File fs = SD.open(filename, FILE_READ);
+  if (!fs)
+    return false;
+
+  size_t sz = fs.size();
+  if (sz <= 3)  // at least 3bytes size 
+    return false;
+
+  char buf[sz + 1];
+  fs.read((uint8_t *)buf, sz);
+  buf[sz] = 0;
+  fs.close();
+
+  int y = 0;
+  int z = 0;
+  for (int x = 0; x < sz; x++)
+  {
+    if (buf[x] == 0x0a || buf[x] == 0x0d)
+      buf[x] = 0;
+    else if (!y && x > 0 && !buf[x - 1] && buf[x])
+      y = x;
+    else if (!z && x > 0 && !buf[x - 1] && buf[x])
+      z = x;
+  }
+
+  SSID = String(buf);
+  SSID_PASS = String(&buf[y]);
+  SERVER_NAME = String(&buf[z]);
+  if (SSID == "" || SSID_PASS == "" || SERVER_NAME == "")
+    return false;
+
+  Serial.println("SSID        = " + SSID);
+  Serial.println("SSID_PASS   = " + SSID_PASS);
+  Serial.println("SERVER_NAME = " + SERVER_NAME);
   return true;
 }

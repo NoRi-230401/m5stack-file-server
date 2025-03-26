@@ -103,10 +103,14 @@ bool compareFileinfo(const fileinfo &a, const fileinfo &b)
   return a.filename < b.filename;
 }
 
+// extern bool SD_isExists(String filename);
+extern String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
+
 bool wifiStart()
 {
+  
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
+  WiFi.begin(SSID, SSID_PASS);
 
   int count = 1;
   const int COUNT_MAX = 10;
@@ -118,15 +122,16 @@ bool wifiStart()
     // Serial.printf("STA: Failed!\n");
     WiFi.disconnect(false);
     delay(500);
-    WiFi.begin(ssid, password);
+    WiFi.begin(SSID, SSID_PASS);
     if (count >= COUNT_MAX)
     {
       Serial.printf("\nSTA: Failed!\n");
       return false;
     }
   }
-
-  Serial.println("\nIP Address: " + WiFi.localIP().toString());
+  
+  IP_ADDR = WiFi.localIP().toString();
+  Serial.println("\nIP Address: " + IP_ADDR);
   if (WiFi.scanComplete() == -2)
     WiFi.scanNetworks(true); // Complete an initial scan for WiFi networks, otherwise = 0 on first display!
 

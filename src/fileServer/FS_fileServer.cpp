@@ -32,6 +32,7 @@ bool FS_notFound(AsyncWebServerRequest *request);
 void FS_Handle_File_Download();
 void FS_Select_File_For_Function(String title, String function);
 int FS_GetFileSize(String filename);
+bool FS_isExists(const String filename);
 // -------------------------------------------------------
 extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 extern void SelectInput(String Heading, String Command, String Arg_name);
@@ -47,8 +48,7 @@ extern bool StartupErrors;
 std::vector<fileinfo> FS_Filenames;
 String FS_MessageLine;
 int FS_start, FS_downloadtime = 1, FS_uploadtime = 1, FS_downloadsize, FS_uploadsize, FS_downloadrate, FS_uploadrate, FS_numfiles;
-bool SPIFFS_ENABLE = false;
-
+// bool SPIFFS_ENABLE=false;
 
 bool SPIFFS_Start()
 {
@@ -56,10 +56,10 @@ bool SPIFFS_Start()
   {
     Serial.println("ERR: SPIFFS begin erro...");
     StartupErrors = true;
-    SPIFFS_ENABLE = false;
+    // SPIFFS_ENABLE = false;
     return false;
   }
-  SPIFFS_ENABLE = true;
+  // SPIFFS_ENABLE = true;
   return true;
 }
 
@@ -67,12 +67,7 @@ bool SPIFFS_Start()
 void FS_flServerSetup()
 {
   Serial.println(__FILE__);
-  // if (!FS.begin(true))
-  // {
-  //   Serial.println("Error preparing Filing System...");
-  //   StartupErrors = true;
-  // }
-
+  
   // ##################### DOWNLOAD HANDLER ##########################
   server.on("/FS_download", HTTP_GET, [](AsyncWebServerRequest *request)
             {
@@ -510,4 +505,56 @@ String FS_StatusReport(int reportNo, int decimalPlaces)
     return ConvBinUnits(FS.totalBytes() - FS.usedBytes(), decimalPlaces);
   }
   return String("");
+}
+
+bool FS_isExists(const String filename)
+{
+  return(FS.exists(filename));
+}
+
+bool FS_SettingRd(const String filename);
+extern String SERVER_NAME;
+extern String SSID;
+extern String SSID_PASS;
+
+bool FS_SettingRd(const String filename)
+{
+  if (!FS.exists(filename))
+    return false;
+
+  File fs = FS.open(filename, FILE_READ);
+  if (!fs)
+    return false;
+
+  size_t sz = fs.size();
+  if (sz <= 3)  // at least 3bytes size 
+    return false;
+
+  char buf[sz + 1];
+  fs.read((uint8_t *)buf, sz);
+  buf[sz] = 0;
+  fs.close();
+
+  int y = 0;
+  int z = 0;
+  for (int x = 0; x < sz; x++)
+  {
+    if (buf[x] == 0x0a || buf[x] == 0x0d)
+      buf[x] = 0;
+    else if (!y && x > 0 && !buf[x - 1] && buf[x])
+      y = x;
+    else if (!z && x > 0 && !buf[x - 1] && buf[x])
+      z = x;
+  }
+
+  SSID = String(buf);
+  SSID_PASS = String(&buf[y]);
+  SERVER_NAME = String(&buf[z]);
+  if (SSID == "" || SSID_PASS == "" || SERVER_NAME == "")
+    return false;
+
+  Serial.println("SSID        = " + SSID);
+  Serial.println("SSID_PASS   = " + SSID_PASS);
+  Serial.println("SERVER_NAME = " + SERVER_NAME);
+  return true;
 }
