@@ -1,7 +1,7 @@
 // *******************************************************
 //  m5stack-fileServer          by NoRi 2025-01-23
 // -------------------------------------------------------
-// fileServer.cpp      
+// fileServer.cpp
 // *******************************************************
 #include <Arduino.h>
 #include <M5Unified.h>
@@ -34,37 +34,33 @@ String getContentType(String filenametype);
 void SelectInput(String Heading, String Command, String Arg_name);
 String statusReport(int reportNo, int decimalPlaces);
 // -------------------------------------------------------
-extern bool FS_notFound(AsyncWebServerRequest *request);
-extern void FS_flServerSetup();
-extern void FS_Directory();
-extern int FS_start, FS_downloadtime, FS_uploadtime, FS_downloadsize, FS_uploadsize, FS_downloadrate, FS_uploadrate, FS_numfiles;
+extern bool SPIFFS_notFound(AsyncWebServerRequest *request);
+extern void SPIFFS_flServerSetup();
+extern void SPIFFS_Directory();
+extern bool SPIFFS_isExists(const String filename);
+extern String SPIFFS_StatusReport(int reportNo, int decimalPlaces);
+extern int SPIFFS_start, SPIFFS_downloadtime, SPIFFS_uploadtime, SPIFFS_downloadsize, SPIFFS_uploadsize, SPIFFS_downloadrate, SPIFFS_uploadrate, SPIFFS_numfiles;
 extern bool SD_notFound(AsyncWebServerRequest *request);
 extern void SD_flServerSetup();
 extern void SD_Directory();
-extern int SD_start, SD_downloadtime, SD_uploadtime, SD_downloadsize, SD_uploadsize, SD_downloadrate, SD_uploadrate, SD_numfiles;
-extern void SDdir_flserverSetup();
-extern bool SDdir_notFound(AsyncWebServerRequest *request);
-extern String FS_StatusReport(int reportNo, int decimalPlaces);
-extern String SD_StatusReport(int reportNo, int decimalPlaces);
 extern bool SD_isExists(const String filename);
-extern bool FS_isExists(const String filename);
-
+extern String SD_StatusReport(int reportNo, int decimalPlaces);
+extern int SD_start, SD_downloadtime, SD_uploadtime, SD_downloadsize, SD_uploadsize, SD_downloadrate, SD_uploadrate, SD_numfiles;
+extern bool SDdir_notFound(AsyncWebServerRequest *request);
+extern void SDdir_flserverSetup();
 // -------------------------------------------------------
-extern String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
-extern bool SD_ENABLE;
-extern bool FS_ENABLE;
-extern const String VERSION;
-extern const String PROG_NAME;
+String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
+bool SD_ENABLE, SPIFFS_ENABLE;
+const String ICON_FILE = "/icon.gif";
 extern String SdPath;
-// -------------------------------------------------------
 AsyncWebServer server(80);
 String webpage;
 
 String statusReport(int reportNo, int decimalPlaces)
 {
-  if (reportNo >= STREP_FS_START && reportNo <= STREP_FS_END)
+  if (reportNo >= STREP_SPIFFS_START && reportNo <= STREP_SPIFFS_END)
   {
-    return FS_StatusReport(reportNo, decimalPlaces);
+    return SPIFFS_StatusReport(reportNo, decimalPlaces);
   }
   else if (reportNo >= STREP_SD_START && reportNo <= STREP_SD_END)
   {
@@ -77,7 +73,7 @@ String statusReport(int reportNo, int decimalPlaces)
 }
 
 bool compareFileinfo(const fileinfo &a, const fileinfo &b)
-{// ファイル情報を比較するための関数
+{ // ファイル情報を比較するための関数
   // ディレクトリをファイルより前に配置
   if (a.ftype == "Dir" && b.ftype != "Dir")
   {
@@ -118,7 +114,9 @@ bool wifiStart()
   IP_ADDR = WiFi.localIP().toString();
   Serial.println("\nIP Address: " + IP_ADDR);
   if (WiFi.scanComplete() == -2)
-    WiFi.scanNetworks(true); // Complete an initial scan for WiFi networks, otherwise = 0 on first display!
+    WiFi.scanNetworks(true);
+  // Complete an initial scan for WiFi networks,
+  //  otherwise = 0 on first display!
 
   return true;
 }
@@ -149,20 +147,21 @@ bool fileServerStart()
   Display_System_Info();
   request->send(200, "text/html", webpage); });
 
-  if(FS_ENABLE)
-    FS_flServerSetup();
-  
-  if(SD_ENABLE)
+  if (SPIFFS_ENABLE)
+    SPIFFS_flServerSetup();
+
+  if (SD_ENABLE)
   {
     SD_flServerSetup();
     SDdir_flserverSetup();
   }
-  
+
   server.onNotFound(notFound);
 
   server.begin();
-  if(FS_ENABLE)  FS_Directory();
-  if(SD_ENABLE)  SD_Directory();
+  if (SPIFFS_ENABLE)
+    SPIFFS_Directory();
+  // if(SD_ENABLE)  SD_Directory();
 
   Serial.println("System started successfully...");
   return true;
@@ -176,19 +175,19 @@ String getContentType(String filenametype)
   }
   else if (filenametype.endsWith(".txt"))
   {
-    return "text/plainn";
+    return "text/plain;charset=UTF-8";
   }
   else if (filenametype.endsWith(".htm"))
   {
-    return "text/html";
+    return "text/html;charset=UTF-8";
   }
   else if (filenametype.endsWith(".html"))
   {
-    return "text/html";
+    return "text/html;charset=UTF-8";
   }
   else if (filenametype.endsWith(".css"))
   {
-    return "text/css";
+    return "text/css;charset=UTF-8";
   }
   else if (filenametype.endsWith(".js"))
   {
@@ -212,7 +211,7 @@ String getContentType(String filenametype)
   }
   else if (filenametype.endsWith(".xml"))
   {
-    return "text/xml";
+    return "text/xml;charset=UTF-8";
   }
   else if (filenametype.endsWith(".pdf"))
   {
@@ -226,16 +225,34 @@ String getContentType(String filenametype)
   {
     return "application/x-gzip";
   }
-  return "text/plain";
+  // ----- Add by NoRi 2025-03-27 ------------
+  else if (filenametype.endsWith(".csv"))
+  {
+    return "text/csv;charset=UTF-8";
+  }
+  // else if (filenametype.endsWith(".json"))
+  // {
+  //   return "application/json";
+  // }
+  else if (filenametype.endsWith(".mp3"))
+  {
+    return "audio/mpeg";
+  }
+  else if (filenametype.endsWith(".mp4"))
+  {
+    return "video/mp4";
+  }
+
+  return "text/plain;charset=UTF-8";
 }
 
 void notFound(AsyncWebServerRequest *request)
 {
   Serial.println("notFound func : " + request->url());
 
-  if (FS_ENABLE)
+  if (SPIFFS_ENABLE)
   {
-    if (FS_notFound(request))
+    if (SPIFFS_notFound(request))
       return;
   }
 
@@ -265,18 +282,15 @@ void Page_Not_Found()
   webpage += HTML_Footer();
 }
 
-#define ICON_FLNAME "/icon.gif"
-
 void Home()
 {
   webpage = HTML_Header();
   webpage += "<br>";
-  
-  if(SD_ENABLE && SD_isExists(ICON_FLNAME))
+  if (SD_ENABLE && SD_isExists(ICON_FILE))
   {
     webpage += "<img src = 'SD_icon' alt='icon'>";
   }
-  else if( FS_ENABLE && FS_isExists(ICON_FLNAME) )
+  else if (SPIFFS_ENABLE && SPIFFS_isExists(ICON_FILE))
   {
     webpage += "<img src = 'FD_icon' alt='icon'>";
   }
@@ -290,50 +304,52 @@ void Display_System_Info()
   esp_chip_info_t chip_info;
   esp_chip_info(&chip_info);
   if (WiFi.scanComplete() == -2)
-    WiFi.scanNetworks(true, false); // Scan parameters are (async, show_hidden) if async = true, don't wait for the result
+    WiFi.scanNetworks(true, false);
+  // Scan parameters are (async, show_hidden)
+  // if async = true, don't wait for the result
   webpage = HTML_Header();
   webpage += "<h3>System Information</h3>";
 
-  if(FS_ENABLE)
+  if (SPIFFS_ENABLE)
   {
-  webpage += "<br><br>";
-  webpage += "<h4>SPIFFS:　Transfer Statistics</h4>";
-  webpage += "<table class='center'>";
-  webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
-  webpage += "<tr><td>" + ConvBinUnits(FS_uploadsize, 1) + "</td><td>" + ConvBinUnits(FS_downloadsize, 1) + "</td><td>File Size</td></tr> ";
-  webpage += "<tr><td>" + ConvBinUnits((float)FS_uploadsize / FS_uploadtime * 1024.0, 1) + "/Sec</td>";
-  webpage += "<td>" + ConvBinUnits((float)FS_downloadsize / FS_downloadtime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
-  webpage += "</table>";
+    webpage += "<br><br>";
+    webpage += "<h4>SPIFFS:　Transfer Statistics</h4>";
+    webpage += "<table class='center'>";
+    webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
+    webpage += "<tr><td>" + ConvBinUnits(SPIFFS_uploadsize, 1) + "</td><td>" + ConvBinUnits(SPIFFS_downloadsize, 1) + "</td><td>File Size</td></tr> ";
+    webpage += "<tr><td>" + ConvBinUnits((float)SPIFFS_uploadsize / SPIFFS_uploadtime * 1024.0, 1) + "/Sec</td>";
+    webpage += "<td>" + ConvBinUnits((float)SPIFFS_downloadsize / SPIFFS_downloadtime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
+    webpage += "</table>";
 
-  webpage += "<h4>SPIFFS:　Filing System</h4>";
-  webpage += "<table class='center'>";
-  webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
-  webpage += "<tr><td>" + statusReport(STREP_FS_TOTALBYTES, 1) + "</td>";
-  webpage += "<td>" + statusReport(STREP_FS_USEDBYTES, 1) + "</td>";
-  webpage += "<td>" + statusReport(STREP_FS_FREESPACE, 1) + "</td>";
-  webpage += "<td>" + (FS_numfiles == 0 ? "Pending Dir or Empty" : String(FS_numfiles)) + "</td></tr>";
-  webpage += "</table>";
+    webpage += "<h4>SPIFFS:　Filing System</h4>";
+    webpage += "<table class='center'>";
+    webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
+    webpage += "<tr><td>" + statusReport(STREP_SPIFFS_TOTALBYTES, 1) + "</td>";
+    webpage += "<td>" + statusReport(STREP_SPIFFS_USEDBYTES, 1) + "</td>";
+    webpage += "<td>" + statusReport(STREP_SPIFFS_FREESPACE, 1) + "</td>";
+    webpage += "<td>" + (SPIFFS_numfiles == 0 ? "Pending Dir or Empty" : String(SPIFFS_numfiles)) + "</td></tr>";
+    webpage += "</table>";
   }
 
-  if(SD_ENABLE)
+  if (SD_ENABLE)
   {
-  webpage += "<br><br>";
-  webpage += "<h4>SD:　Transfer Statistics</h4>";
-  webpage += "<table class='center'>";
-  webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
-  webpage += "<tr><td>" + ConvBinUnits(SD_uploadsize, 1) + "</td><td>" + ConvBinUnits(SD_downloadsize, 1) + "</td><td>File Size</td></tr> ";
-  webpage += "<tr><td>" + ConvBinUnits((float)SD_uploadsize / SD_uploadtime * 1024.0, 1) + "/Sec</td>";
-  webpage += "<td>" + ConvBinUnits((float)SD_downloadsize / SD_downloadtime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
-  webpage += "</table>";
+    webpage += "<br><br>";
+    webpage += "<h4>SD:　Transfer Statistics</h4>";
+    webpage += "<table class='center'>";
+    webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
+    webpage += "<tr><td>" + ConvBinUnits(SD_uploadsize, 1) + "</td><td>" + ConvBinUnits(SD_downloadsize, 1) + "</td><td>File Size</td></tr> ";
+    webpage += "<tr><td>" + ConvBinUnits((float)SD_uploadsize / SD_uploadtime * 1024.0, 1) + "/Sec</td>";
+    webpage += "<td>" + ConvBinUnits((float)SD_downloadsize / SD_downloadtime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
+    webpage += "</table>";
 
-  webpage += "<h4>SD:　Filing System</h4>";
-  webpage += "<table class='center'>";
-  webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Card Type</th></tr>";
-  webpage += "<tr><td>" + statusReport(STREP_SD_TOTALBYTES, 1) + "</td>";
-  webpage += "<td>" + statusReport(STREP_SD_USEDBYTES, 1) + "</td>";
-  webpage += "<td>" + statusReport(STREP_SD_FREESPACE, 1) + "</td>";
-  webpage += "<td>" + statusReport(STREP_SD_CARDTYPE, 1) + "</td>";
-  webpage += "</table>";
+    webpage += "<h4>SD:　Filing System</h4>";
+    webpage += "<table class='center'>";
+    webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Card Type</th></tr>";
+    webpage += "<tr><td>" + statusReport(STREP_SD_TOTALBYTES, 1) + "</td>";
+    webpage += "<td>" + statusReport(STREP_SD_USEDBYTES, 1) + "</td>";
+    webpage += "<td>" + statusReport(STREP_SD_FREESPACE, 1) + "</td>";
+    webpage += "<td>" + statusReport(STREP_SD_CARDTYPE, 1) + "</td>";
+    webpage += "</table>";
   }
 
   webpage += "<br><br>";
@@ -387,16 +403,13 @@ String HTML_Header()
 
   // TOPNAV
   page += ".topnav {overflow: visible;background-color:cyan;}";
-  // page += ".topnav a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.5rem;}";
   page += ".topnav a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.6rem;}";
   page += ".topnav a:hover {background-color:deepskyblue;color:white;}";
   page += ".topnav a.active {background-color:lightblue;color:blue;}";
 
   // TOPNAV2
   page += ".topnav2 {overflow: visible;background-color:lightcyan;}";
-  // page += ".topnav2 a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.5rem;}";
   page += ".topnav2 a {float:center;color:blue;text-align:center;padding:1.2rem 1.2rem;text-decoration:none;font-size:1.5rem;}";
-
   page += ".topnav2 a:hover {background-color:deepskyblue;color:white;}";
   page += ".topnav2 a.active {background-color:lightblue;color:blue;}";
   page += ".notfound {padding:0.8rem;text-align:center;font-size:1.3rem;}";
@@ -406,16 +419,15 @@ String HTML_Header()
   page += ".sp {background-color:silver;white-space:nowrap;width:2%;}";
 
   // TOPNAV3
-  page += ".topnav3 {overflow: visible;background-color:lightPink;}";
-  // page += ".topnav3 {overflow: visible;background-color:lightcyan;}";
-  page += ".topnav3 a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.5rem;}";
-  page += ".topnav3 a:hover {background-color:deepskyblue;color:white;}";
-  page += ".topnav3 a.active {background-color:lightblue;color:blue;}";
-  page += ".notfound {padding:0.8rem;text-align:center;font-size:1.3rem;}";
-  page += ".left {text-align:left;}";
-  page += ".medium {font-size:1.9rem;padding:0;margin:0}";
-  page += ".ps {font-size:1.4rem;padding:0;margin:0}";
-  page += ".sp {background-color:silver;white-space:nowrap;width:2%;}";
+  // page += ".topnav3 {overflow: visible;background-color:lightPink;}";
+  // page += ".topnav3 a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.5rem;}";
+  // page += ".topnav3 a:hover {background-color:deepskyblue;color:white;}";
+  // page += ".topnav3 a.active {background-color:lightblue;color:blue;}";
+  // page += ".notfound {padding:0.8rem;text-align:center;font-size:1.3rem;}";
+  // page += ".left {text-align:left;}";
+  // page += ".medium {font-size:1.9rem;padding:0;margin:0}";
+  // page += ".ps {font-size:1.4rem;padding:0;margin:0}";
+  // page += ".sp {background-color:silver;white-space:nowrap;width:2%;}";
 
   // --- end of style ---
   page += "</style></head><body>";
@@ -428,20 +440,20 @@ String HTML_Header()
   page += "</div>";
 
   // --------------- SPIFFS ------------------------
-  if (FS_ENABLE)
+  if (SPIFFS_ENABLE)
   {
     // -- 2 SPIFFS --
     page += "<br>";
     page += "<div class = 'topnav2'>";
-    page += "SPIFFS:<a href='/FS_dir'>Dir</a>";
-    page += "<a href='/FS_upload'>Upload</a> ";
-    page += "<a href='/FS_download'>Download</a>";
-    page += "<a href='/FS_stream'>Stream</a>";
-    page += "<a href='/FS_delete'>Delete</a>";
-    page += "<a href='/FS_rename'>Rename</a>";
+    page += "SPIFFS:<a href='/SPIFFS_dir'>Dir</a>";
+    page += "<a href='/SPIFFS_upload'>Upload</a> ";
+    page += "<a href='/SPIFFS_download'>Download</a>";
+    page += "<a href='/SPIFFS_stream'>Stream</a>";
+    page += "<a href='/SPIFFS_delete'>Delete</a>";
+    page += "<a href='/SPIFFS_rename'>Rename</a>";
     page += "</div>";
   }
-  
+
   // ------------------ SD -------------------------
   if (SD_ENABLE)
   {
@@ -470,7 +482,7 @@ String HTML_Header()
     page += "<a href='/SDdir_rmdir'>Rmdir</a>";
     page += "</div>";
   }
-  
+
   page += "<br>";
   return page;
 }
@@ -480,8 +492,6 @@ String HTML_Footer()
   String page;
   page += "<br>";
   page += "<footer>";
-  // page += "<p class='medium'>m5stack file server</p>";
-  // page += "<p class='medium'> Server Name : " + SERVER_NAME + "</p>";
   page += "<p class='ps'><i> " + PROG_NAME + "　" + VERSION + "</i></p>";
   page += "</footer>";
   page += "<br>";

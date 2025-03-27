@@ -3,6 +3,8 @@
 // -------------------------------------------------------
 // SD_handler.cpp
 // *******************************************************
+#include <Arduino.h>
+#include <M5Unified.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <algorithm>
@@ -102,19 +104,19 @@ void SD_flServerSetup()
   server.on("/SD_stream", HTTP_GET, [](AsyncWebServerRequest *request)
             {
     Serial.println("SD_Streaming file...");
-    SD_Select_File_For_Function("[STREAM]", "SD_streamhandler"); // Build webpage ready for display
+    SD_Select_File_For_Function("[STREAM]", "SD_streamhandler");
     request->send(200, "text/html", webpage); });
 
   server.on("/SD_rename", HTTP_GET, [](AsyncWebServerRequest *request)
             {
     Serial.println("SD_Renaming file...");
-    SD_File_Rename(); // Build webpage ready for display
+    SD_File_Rename();
     request->send(200, "text/html", webpage); });
 
   server.on("/SD_dir", HTTP_GET, [](AsyncWebServerRequest *request)
             {
     Serial.println("SD_File Directory...");
-    SD_Dir(request); // Build webpage ready for display
+    SD_Dir(request);
     request->send(200, "text/html", webpage); });
 
   server.on("/SD_delete", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -124,7 +126,7 @@ void SD_flServerSetup()
     request->send(200, "text/html", webpage); });
 
   server.on("/SD_icon", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SD, "/icon.gif", "image/gif"); });
+            { request->send(SD, ICON_FILE, "image/gif"); });
 }
 
 void SD_Dir(AsyncWebServerRequest *request)
@@ -202,7 +204,6 @@ void SD_Directory()
     }
     root.close();
   }
-  // ファイル名でソート
   std::sort(SD_Filenames.begin(), SD_Filenames.end(), compareFileinfo);
 }
 
@@ -242,7 +243,7 @@ void SD_handleFileUpload(AsyncWebServerRequest *request, const String &filename,
   {
     if (len)
     {
-      request->_tempFile.write(data, len); // Chunked data
+      request->_tempFile.write(data, len);
       Serial.println("Transferred : " + String(len) + " Bytes");
       SD_uploadsize = SD_uploadsize + len;
     }
@@ -279,7 +280,7 @@ void SD_Handle_File_Delete(String filename)
     filename = SdPath + filename;
 
   Serial.println("filename = " + filename);
-  File dataFile = SD.open(filename, "r"); // Now read FS to see if file exists
+  File dataFile = SD.open(filename, "r");
 
   if (dataFile)
   {
@@ -477,7 +478,6 @@ void SD_Select_File_For_Function(String title, String function)
     if (Fname1.startsWith("/"))
       Fname1 = Fname1.substring(1);
 
-    // if (Fname2.startsWith("/"))
     if (!Fname2.isEmpty() && Fname2.startsWith("/"))
       Fname2 = Fname2.substring(1);
 
@@ -564,8 +564,6 @@ void SDdir_handle_chUp()
     SdPath = String("/");
 
   Serial.println("SdPath = " + SdPath);
-  // Serial.println("change SdPath to Up Directory");
-
   webpage = HTML_Header();
   webpage += "<h3>Change SD Path to Up Directory</h3>";
   webpage += "<a href='/SD_dir'>[Enter]</a><br><br>";

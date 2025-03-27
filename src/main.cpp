@@ -1,52 +1,39 @@
 // *******************************************************
-//  m5stack-fileServer          by NoRi 2025-01-23
+//  m5stack-fileServer          by NoRi 2025-04-01
 // -------------------------------------------------------
 // main.cpp
 // *******************************************************
 #include <M5Unified.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include "fileServer/fileServer.h"
 #if defined(ENABLE_SD_UPDATER)
 #include "SDUpdater.h"
 #endif
+
 void setup();
 void loop();
 void prt(String msg);
 void error_stop();
-extern bool SD_Start();
-extern bool FS_Start();
-extern bool SD_SettingRd(const String filename);
-extern bool FS_SettingRd(const String filename);
-extern bool wifiStart();
-extern bool mdnsStart(void);
-extern bool fileServerStart();
-String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
-bool SD_ENABLE, FS_ENABLE;
-extern const String VERSION;
-extern const String PROG_NAME;
+
 const String PROG_NAME = "m5stack-fileServer";
 const String VERSION = "v1.04a-250327";
-
-// ---------------------------------------------------
-// set 'false' if you do not use SD or FS(SPIFFS)
-const bool SD_USE = true;
-const bool FS_USE = true; //"FS" instead of SPIFFS
-// In preparation for the introduction of LITTLFS
-//  see https://github.com/lorol/LITTLEFS replace SPIFFS with LITTLEFS
-
-//----------------------------------------------------
-#define SETTING_FILE "/wifi.txt"
+const String SETTING_FILE = "/wifi.txt";
+//----------------------------------------------------------
 //  change your own settings below 3-lines
-//    or  settings in the SETTING_FILE
-#define YOUR_SSID "NAME_OF_YOUR_SSID"
-#define YOUR_SSID_PASS "PASSWORD_OF_YOUR_SSID"
-#define YOUR_SERVER_NAME "flServer" // SERVER_NAME
-//----------------------------------------------------
+//     or write in the SETTING_FILE
+const String YOUR_SSID = "YOUR_SSID";
+const String YOUR_SSID_PASS = "YOUR_SSID_PASSWORD";
+const String YOUR_SERVER_NAME = "m5fileServer";
+//----------------------------------------------------------
+const bool SD_USE = true;     // 'false' if not use SD
+const bool SPIFFS_USE = true; // 'false' if not use SPIFFS
+//----------------------------------------------------------
 
 void setup()
 {
   auto cfg = M5.config();
-  cfg.serial_baudrate = 115200; // M5Unified v0.1.17:default=0
+  cfg.serial_baudrate = 115200;
   M5.begin(cfg);
 
 #if defined(ENABLE_SD_UPDATER)
@@ -69,17 +56,17 @@ void setup()
       prt("SD      .....  NG");
   }
 
-  FS_ENABLE = false;
-  if (FS_USE)
+  SPIFFS_ENABLE = false;
+  if (SPIFFS_USE)
   {
-    FS_ENABLE = FS_Start();
-    if (FS_ENABLE)
+    SPIFFS_ENABLE = SPIFFS_Start();
+    if (SPIFFS_ENABLE)
       prt("SPIFFS  .....  OK");
     else
       prt("SPIFFS  .....  NG");
   }
 
-  if (!FS_ENABLE && !SD_ENABLE)
+  if (!SPIFFS_ENABLE && !SD_ENABLE)
   {
     prt("SD and SPIFFS are not available");
     error_stop();
@@ -91,9 +78,9 @@ void setup()
   SERVER_NAME = "";
 
   if (SD_ENABLE && SD_SettingRd(SETTING_FILE))
-    prt(" Settings from SD");
-  else if (FS_ENABLE && FS_SettingRd(SETTING_FILE))
-    prt(" Settings from SPIFFS");
+    prt(" Settings read from SD");
+  else if (SPIFFS_ENABLE && SPIFFS_SettingRd(SETTING_FILE))
+    prt(" Settings read from SPIFFS");
 
   if (SSID == "")
     SSID = YOUR_SSID;
@@ -101,7 +88,7 @@ void setup()
 
   if (SSID_PASS == "")
     SSID_PASS = YOUR_SSID_PASS;
-  
+
   if (SERVER_NAME == "")
     SERVER_NAME = YOUR_SERVER_NAME;
 
