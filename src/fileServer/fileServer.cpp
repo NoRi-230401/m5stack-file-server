@@ -1,4 +1,8 @@
-// *** Modified by NoRi 2025-03-18 ***
+// *******************************************************
+//  m5stack-fileServer          by NoRi 2025-01-23
+// -------------------------------------------------------
+// fileServer.cpp      
+// *******************************************************
 #include <Arduino.h>
 #include <M5Unified.h>
 #include <SPIFFS.h>
@@ -12,14 +16,7 @@
 #include "esp_spi_flash.h"
 #include "esp_wifi_types.h"
 #include "esp_bt.h"
-
-// -------------------------------------------------------
-typedef struct
-{
-  String filename;
-  String ftype;
-  String fsize;
-} fileinfo;
+#include "fileServer.h"
 
 bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 bool wifiStart();
@@ -33,7 +30,6 @@ String HTML_Header();
 String HTML_Footer();
 String ConvBinUnits(uint64_t bytes, int dp);
 String EncryptionType(wifi_auth_mode_t encryptionType);
-// bool StartMDNSservice(const char *Name);
 String getContentType(String filenametype);
 void SelectInput(String Heading, String Command, String Arg_name);
 String statusReport(int reportNo, int decimalPlaces);
@@ -48,38 +44,29 @@ extern void SD_Directory();
 extern int SD_start, SD_downloadtime, SD_uploadtime, SD_downloadsize, SD_uploadsize, SD_downloadrate, SD_uploadrate, SD_numfiles;
 extern void SDdir_flserverSetup();
 extern bool SDdir_notFound(AsyncWebServerRequest *request);
-// -------------------------------------------------------
-extern bool SD_ENABLE;
-extern bool SPIFFS_ENABLE;
+extern String FS_StatusReport(int reportNo, int decimalPlaces);
+extern String SD_StatusReport(int reportNo, int decimalPlaces);
+extern bool SD_isExists(const String filename);
+extern bool FS_isExists(const String filename);
 
+// -------------------------------------------------------
+extern String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
+extern bool SD_ENABLE;
+extern bool FS_ENABLE;
 extern const String VERSION;
 extern const String PROG_NAME;
-extern String IP_ADDR;
-extern String SERVER_NAME;
 extern String SdPath;
 // -------------------------------------------------------
 AsyncWebServer server(80);
 String webpage;
-// bool StartupErrors = false;
 
-// ####### REPORT FILE SYSTEM  ############
-#define STREP_FS_TOTALBYTES 11
-#define STREP_FS_USEDBYTES 12
-#define STREP_FS_FREESPACE 13
-#define STREP_SD_TOTALBYTES 21
-#define STREP_SD_USEDBYTES 22
-#define STREP_SD_FREESPACE 23
-#define STREP_SD_CARDTYPE 24
-
-extern String FS_StatusReport(int reportNo, int decimalPlaces);
-extern String SD_StatusReport(int reportNo, int decimalPlaces);
 String statusReport(int reportNo, int decimalPlaces)
 {
-  if (reportNo >= STREP_FS_TOTALBYTES && reportNo <= STREP_FS_FREESPACE)
+  if (reportNo >= STREP_FS_START && reportNo <= STREP_FS_END)
   {
     return FS_StatusReport(reportNo, decimalPlaces);
   }
-  else if (reportNo >= STREP_SD_TOTALBYTES && reportNo <= STREP_SD_CARDTYPE)
+  else if (reportNo >= STREP_SD_START && reportNo <= STREP_SD_END)
   {
     return SD_StatusReport(reportNo, decimalPlaces);
   }
@@ -89,9 +76,8 @@ String statusReport(int reportNo, int decimalPlaces)
   }
 }
 
-// ファイル情報を比較するための関数
 bool compareFileinfo(const fileinfo &a, const fileinfo &b)
-{
+{// ファイル情報を比較するための関数
   // ディレクトリをファイルより前に配置
   if (a.ftype == "Dir" && b.ftype != "Dir")
   {
@@ -104,9 +90,6 @@ bool compareFileinfo(const fileinfo &a, const fileinfo &b)
   // 同じタイプの場合はファイル名でソート
   return a.filename < b.filename;
 }
-
-// extern bool SD_isExists(String filename);
-extern String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
 
 bool wifiStart()
 {
@@ -140,7 +123,6 @@ bool wifiStart()
   return true;
 }
 
-// #############################################################################################
 bool mdnsStart(void)
 {
   if (!MDNS.begin(SERVER_NAME.c_str()))
@@ -156,21 +138,18 @@ bool mdnsStart(void)
 
 bool fileServerStart()
 {
-  // ##################### HOMEPAGE HANDLER ###########################
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
             {
   Serial.println("Home Page...");
   Home();
   request->send(200, "text/html", webpage); });
 
-  // ##################### SYSTEM HANDLER #####################
   server.on("/system", HTTP_GET, [](AsyncWebServerRequest *request)
             {
   Display_System_Info();
   request->send(200, "text/html", webpage); });
 
-  // ################# FS and SD , SDdir HANDLER ##############
-  if(SPIFFS_ENABLE)
+  if(FS_ENABLE)
     FS_flServerSetup();
   
   if(SD_ENABLE)
@@ -179,20 +158,18 @@ bool fileServerStart()
     SDdir_flserverSetup();
   }
   
-  // ##################### NotFound ############################
   server.onNotFound(notFound);
 
-  server.begin(); // Start the server
-  if(SPIFFS_ENABLE)  FS_Directory();
+  server.begin();
+  if(FS_ENABLE)  FS_Directory();
   if(SD_ENABLE)  SD_Directory();
 
   Serial.println("System started successfully...");
   return true;
 }
 
-// #############################################################################################
 String getContentType(String filenametype)
-{ // Tell the browser what file type is being sent
+{
   if (filenametype == "download")
   {
     return "application/octet-stream";
@@ -252,12 +229,11 @@ String getContentType(String filenametype)
   return "text/plain";
 }
 
-// #############################################################################################
 void notFound(AsyncWebServerRequest *request)
 {
   Serial.println("notFound func : " + request->url());
 
-  if (SPIFFS_ENABLE)
+  if (FS_ENABLE)
   {
     if (FS_notFound(request))
       return;
@@ -276,7 +252,6 @@ void notFound(AsyncWebServerRequest *request)
   request->send(200, "text/html", webpage);
 }
 
-// #############################################################################################
 void Page_Not_Found()
 {
   webpage = HTML_Header();
@@ -290,17 +265,26 @@ void Page_Not_Found()
   webpage += HTML_Footer();
 }
 
-// #############################################################################################
+#define ICON_FLNAME "/icon.gif"
+
 void Home()
 {
   webpage = HTML_Header();
   webpage += "<br>";
-  webpage += "<img src = 'FS_icon' alt='icon'>";
+  
+  if(SD_ENABLE && SD_isExists(ICON_FLNAME))
+  {
+    webpage += "<img src = 'SD_icon' alt='icon'>";
+  }
+  else if( FS_ENABLE && FS_isExists(ICON_FLNAME) )
+  {
+    webpage += "<img src = 'FD_icon' alt='icon'>";
+  }
+
   webpage += "<h3>[&nbsp;Home&nbsp;]　" + SERVER_NAME + "　IP=" + IP_ADDR + "</h3>";
   webpage += HTML_Footer();
 }
 
-// #############################################################################################
 void Display_System_Info()
 {
   esp_chip_info_t chip_info;
@@ -310,7 +294,7 @@ void Display_System_Info()
   webpage = HTML_Header();
   webpage += "<h3>System Information</h3>";
 
-  if(SPIFFS_ENABLE)
+  if(FS_ENABLE)
   {
   webpage += "<br><br>";
   webpage += "<h4>SPIFFS:　Transfer Statistics</h4>";
@@ -378,7 +362,6 @@ void Display_System_Info()
   webpage += HTML_Footer();
 }
 
-// #############################################################################################
 String HTML_Header()
 {
   String page;
@@ -445,7 +428,7 @@ String HTML_Header()
   page += "</div>";
 
   // --------------- SPIFFS ------------------------
-  if (SPIFFS_ENABLE)
+  if (FS_ENABLE)
   {
     // -- 2 SPIFFS --
     page += "<br>";
@@ -458,8 +441,7 @@ String HTML_Header()
     page += "<a href='/FS_rename'>Rename</a>";
     page += "</div>";
   }
-  // -------------< end of SPIFFS > ----------------
-
+  
   // ------------------ SD -------------------------
   if (SD_ENABLE)
   {
@@ -488,21 +470,19 @@ String HTML_Header()
     page += "<a href='/SDdir_rmdir'>Rmdir</a>";
     page += "</div>";
   }
-  // -------------< end of SD >-----------------------
-
+  
   page += "<br>";
   return page;
 }
 
-// #############################################################################################
 String HTML_Footer()
 {
   String page;
   page += "<br>";
   page += "<footer>";
-  page += "<p class='medium'>m5stack file server</p>";
+  // page += "<p class='medium'>m5stack file server</p>";
   // page += "<p class='medium'> Server Name : " + SERVER_NAME + "</p>";
-  page += "<p class='ps'><i> " + VERSION + "</i></p>";
+  page += "<p class='ps'><i> " + PROG_NAME + "　" + VERSION + "</i></p>";
   page += "</footer>";
   page += "<br>";
   page += "</body>";
@@ -510,11 +490,8 @@ String HTML_Footer()
   return page;
 }
 
-// #############################################################################################
 String ConvBinUnits(uint64_t bytes, int dp)
 { // int dp : 小数点以下の桁数、decimal places
-  // Serial.println("bytes = " + String(bytes));
-
   const uint64_t KILO = 1024ULL;
   const uint64_t MEGA = KILO * KILO;
   const uint64_t GIGA = MEGA * KILO;
@@ -546,7 +523,6 @@ String ConvBinUnits(uint64_t bytes, int dp)
   }
 }
 
-// #############################################################################################
 String EncryptionType(wifi_auth_mode_t encryptionType)
 {
   switch (encryptionType)
@@ -570,7 +546,6 @@ String EncryptionType(wifi_auth_mode_t encryptionType)
   }
 }
 
-// #############################################################################################
 void SelectInput(String Heading, String Command, String Arg_name)
 {
   webpage = HTML_Header();
