@@ -39,13 +39,18 @@ extern void SPIFFS_flServerSetup();
 extern void SPIFFS_Directory();
 extern bool SPIFFS_isExists(const String filename);
 extern String SPIFFS_StatusReport(int reportNo, int decimalPlaces);
-extern int SPIFFS_start, SPIFFS_downloadtime, SPIFFS_uploadtime, SPIFFS_downloadsize, SPIFFS_uploadsize, SPIFFS_downloadrate, SPIFFS_uploadrate, SPIFFS_numfiles;
+extern uint32_t SPIFFS_startTime, SPIFFS_downloadTime, SPIFFS_uploadTime;
+extern uint64_t SPIFFS_downloadSize, SPIFFS_uploadSize;
+extern uint32_t SPIFFS_numfiles;
+// -------------------------------------------------------
 extern bool SD_notFound(AsyncWebServerRequest *request);
 extern void SD_flServerSetup();
 extern void SD_Directory();
 extern bool SD_isExists(const String filename);
 extern String SD_StatusReport(int reportNo, int decimalPlaces);
-extern int SD_start, SD_downloadtime, SD_uploadtime, SD_downloadsize, SD_uploadsize, SD_downloadrate, SD_uploadrate, SD_numfiles;
+extern uint32_t SD_start, SD_downloadTime, SD_uploadTime;
+extern uint64_t SD_downloadSize, SD_uploadSize;
+extern uint32_t SD_numfiles;
 extern bool SDdir_notFound(AsyncWebServerRequest *request);
 extern void SDdir_flserverSetup();
 // -------------------------------------------------------
@@ -136,6 +141,8 @@ bool mdnsStart(void)
 
 bool fileServerStart()
 {
+  Serial.println(__FILE__);
+
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
             {
   Serial.println("Home Page...");
@@ -157,13 +164,12 @@ bool fileServerStart()
   }
 
   server.onNotFound(notFound);
-
   server.begin();
+
   if (SPIFFS_ENABLE)
     SPIFFS_Directory();
   // if(SD_ENABLE)  SD_Directory();
 
-  Serial.println("System started successfully...");
   return true;
 }
 
@@ -230,13 +236,21 @@ String getContentType(String filenametype)
   {
     return "text/csv;charset=UTF-8";
   }
-  // else if (filenametype.endsWith(".json"))
-  // {
-  //   return "application/json";
-  // }
+  else if (filenametype.endsWith(".json"))
+  {
+    return "application/json;charset=UTF-8";
+  }
+  else if (filenametype.endsWith(".bmp"))
+  {
+    return "image/bmp";
+  }
+  else if (filenametype.endsWith(".wav"))
+  {
+    return "audio/wav";
+  }
   else if (filenametype.endsWith(".mp3"))
   {
-    return "audio/mpeg";
+    return "audio/mp3";
   }
   else if (filenametype.endsWith(".mp4"))
   {
@@ -316,9 +330,9 @@ void Display_System_Info()
     webpage += "<h4>SPIFFS:　Transfer Statistics</h4>";
     webpage += "<table class='center'>";
     webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
-    webpage += "<tr><td>" + ConvBinUnits(SPIFFS_uploadsize, 1) + "</td><td>" + ConvBinUnits(SPIFFS_downloadsize, 1) + "</td><td>File Size</td></tr> ";
-    webpage += "<tr><td>" + ConvBinUnits((float)SPIFFS_uploadsize / SPIFFS_uploadtime * 1024.0, 1) + "/Sec</td>";
-    webpage += "<td>" + ConvBinUnits((float)SPIFFS_downloadsize / SPIFFS_downloadtime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
+    webpage += "<tr><td>" + ConvBinUnits(SPIFFS_uploadSize, 1) + "</td><td>" + ConvBinUnits(SPIFFS_downloadSize, 1) + "</td><td>File Size</td></tr> ";
+    webpage += "<tr><td>" + ConvBinUnits((float)SPIFFS_uploadSize / SPIFFS_uploadTime * 1024.0, 1) + "/Sec</td>";
+    webpage += "<td>" + ConvBinUnits((float)SPIFFS_downloadSize / SPIFFS_downloadTime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
     webpage += "</table>";
 
     webpage += "<h4>SPIFFS:　Filing System</h4>";
@@ -337,9 +351,9 @@ void Display_System_Info()
     webpage += "<h4>SD:　Transfer Statistics</h4>";
     webpage += "<table class='center'>";
     webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
-    webpage += "<tr><td>" + ConvBinUnits(SD_uploadsize, 1) + "</td><td>" + ConvBinUnits(SD_downloadsize, 1) + "</td><td>File Size</td></tr> ";
-    webpage += "<tr><td>" + ConvBinUnits((float)SD_uploadsize / SD_uploadtime * 1024.0, 1) + "/Sec</td>";
-    webpage += "<td>" + ConvBinUnits((float)SD_downloadsize / SD_downloadtime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
+    webpage += "<tr><td>" + ConvBinUnits(SD_uploadSize, 1) + "</td><td>" + ConvBinUnits(SD_downloadSize, 1) + "</td><td>File Size</td></tr> ";
+    webpage += "<tr><td>" + ConvBinUnits((float)SD_uploadSize / SD_uploadTime * 1024.0, 1) + "/Sec</td>";
+    webpage += "<td>" + ConvBinUnits((float)SD_downloadSize / SD_downloadTime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
     webpage += "</table>";
 
     webpage += "<h4>SD:　Filing System</h4>";

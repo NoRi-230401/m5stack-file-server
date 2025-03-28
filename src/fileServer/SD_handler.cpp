@@ -1,5 +1,5 @@
 // *******************************************************
-//  m5stack-fileServer          by NoRi 2025-03-27
+//  m5stack-fileServer          by NoRi 2025-04-01
 // -------------------------------------------------------
 // SD_handler.cpp
 // *******************************************************
@@ -27,7 +27,7 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
 bool SD_notFound(AsyncWebServerRequest *request);
 void SD_Handle_File_Download();
 void SD_Select_File_For_Function(String title, String function);
-int SD_GetFileSize(String filename);
+uint64_t SD_GetFileSize(String filename);
 // -------------------------------------------------------
 void SDdir_flserverSetup();
 void SDdir_handle_chTop();
@@ -57,13 +57,14 @@ extern String HTML_Header();
 extern String HTML_Footer();
 extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 // -------------------------------------------------------
-extern String SSID, SSID_PASS, SERVER_NAME;
 extern AsyncWebServer server;
 extern String webpage;
-
 std::vector<fileinfo> SD_Filenames;
 String SD_MessageLine;
-int SD_start, SD_downloadtime = 1, SD_uploadtime = 1, SD_downloadsize, SD_uploadsize, SD_downloadrate, SD_uploadrate, SD_numfiles;
+
+uint32_t SD_start, SD_downloadTime = 1, SD_uploadTime = 1;
+uint64_t SD_downloadSize, SD_uploadSize;
+uint32_t SD_numfiles;
 String SdPath = "/";
 
 bool SD_Start()
@@ -235,7 +236,7 @@ void SD_handleFileUpload(AsyncWebServerRequest *request, const String &filename,
     if (!request->_tempFile)
       Serial.println("Error creating file for upload...");
 
-    SD_uploadsize = 0;
+    SD_uploadSize = 0;
     SD_start = millis();
   }
 
@@ -245,16 +246,16 @@ void SD_handleFileUpload(AsyncWebServerRequest *request, const String &filename,
     {
       request->_tempFile.write(data, len);
       Serial.println("Transferred : " + String(len) + " Bytes");
-      SD_uploadsize = SD_uploadsize + len;
+      SD_uploadSize = SD_uploadSize + len;
     }
 
     if (final)
     {
       request->_tempFile.close();
-      SD_uploadtime = millis() - SD_start;
+      SD_uploadTime = millis() - SD_start;
       Serial.println("FileName = " + file);
-      Serial.println("SD_uploadsize = " + String(SD_uploadsize) + " Bytes");
-      Serial.println("SD_uploadtime = " + String(SD_uploadtime) + " mSEC");
+      Serial.println("SD_uploadSize = " + String(SD_uploadSize) + " Bytes");
+      Serial.println("SD_uploadTime = " + String(SD_uploadTime) + " mSEC");
       request->redirect("/SD_dir");
     }
   }
@@ -401,12 +402,16 @@ bool SD_notFound(AsyncWebServerRequest *request)
       Serial.println("filename_tmp = " + filename_tmp);
       File file = SD.open(filename_tmp, "r");
       String contentType = getContentType("download");
-      AsyncWebServerResponse *response = request->beginResponse(contentType, file.size(), [file](uint8_t *buffer, size_t maxLen, size_t total) mutable -> size_t
-                                                                { return file.read(buffer, maxLen); });
+      
+      AsyncWebServerResponse *response = request->beginResponse(contentType, file.size(),
+         [file](uint8_t *buffer, size_t maxLen, size_t total) mutable -> size_t { return file.read(buffer, maxLen); });
+
       response->addHeader("Server", "ESP Async Web Server");
       request->send(response);
-      SD_downloadtime = millis() - SD_start;
-      SD_downloadsize = SD_GetFileSize(filename);
+
+      SD_downloadTime = millis() - SD_start;
+      SD_downloadSize = SD_GetFileSize(filename);
+      Serial.println("SD download handler done...");
     }
 
     if (request->url().startsWith("/SD_streamhandler"))
@@ -420,9 +425,10 @@ bool SD_notFound(AsyncWebServerRequest *request)
       String ContentType = getContentType(filename);
       AsyncWebServerResponse *response = request->beginResponse(SD, filename_tmp, ContentType);
       request->send(response);
-      SD_downloadsize = SD_GetFileSize(filename);
-      SD_downloadtime = millis() - SD_start;
+      SD_downloadSize = SD_GetFileSize(filename);
+      SD_downloadTime = millis() - SD_start;
     }
+    
     if (request->url().startsWith("/SD_deletehandler"))
     {
       Serial.println("SD_Delete handler started...");
@@ -430,12 +436,13 @@ bool SD_notFound(AsyncWebServerRequest *request)
       SD_Handle_File_Delete(filename);
       request->send(200, "text/html", webpage);
     }
+    
     if (request->url().startsWith("/SD_renamehandler"))
     {
+      Serial.println("SD Rename handler started...");
       SD_Handle_File_Rename(request, filename, request->args());
       request->send(200, "text/html", webpage);
     }
-
     return true;
   }
   return false;
@@ -496,14 +503,13 @@ void SD_Select_File_For_Function(String title, String function)
   webpage += HTML_Footer();
 }
 
-int SD_GetFileSize(String filename)
+uint64_t SD_GetFileSize(String filename)
 {
-  int filesize;
+  uint64_t filesize;
   if (SdPath != "/")
     filename = SdPath + filename;
-
   File CheckFile = SD.open(filename, "r");
-  filesize = CheckFile.size();
+  filesize = (uint64_t)CheckFile.size();
   CheckFile.close();
   return filesize;
 }

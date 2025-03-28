@@ -1,5 +1,5 @@
 // *******************************************************
-//  m5stack-fileServer          by NoRi 2025-01-23
+//  m5stack-fileServer          by NoRi 2025-04-01
 // -------------------------------------------------------
 // SPIFFS_handler.cpp
 // *******************************************************
@@ -25,26 +25,29 @@ void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, 
 bool SPIFFS_notFound(AsyncWebServerRequest *request);
 void SPIFFS_Handle_File_Download();
 void SPIFFS_Select_File_For_Function(String title, String function);
-int SPIFFS_GetFileSize(String filename);
+uint64_t SPIFFS_GetFileSize(String filename);
 // -------------------------------------------------------
 String SPIFFS_StatusReport(int reportNo, int decimalPlaces);
 bool SPIFFS_isExists(const String filename);
 bool SPIFFS_Start();
 bool SPIFFS_SettingRd(const String filename);
 // -------------------------------------------------------
-extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 extern void SelectInput(String Heading, String Command, String Arg_name);
 extern String getContentType(String filenametype);
 extern String ConvBinUnits(uint64_t bytes, int resolution);
 extern String EncryptionType(wifi_auth_mode_t encryptionType);
 extern String HTML_Header();
 extern String HTML_Footer();
+extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
+// -------------------------------------------------------
 extern AsyncWebServer server;
 extern String webpage;
-// -------------------------------------------------------
 std::vector<fileinfo> SPIFFS_Filenames;
 String SPIFFS_MessageLine;
-int SPIFFS_start, SPIFFS_downloadtime = 1, SPIFFS_uploadtime = 1, SPIFFS_downloadsize, SPIFFS_uploadsize, SPIFFS_downloadrate, SPIFFS_uploadrate, SPIFFS_numfiles;
+
+uint32_t SPIFFS_startTime, SPIFFS_downloadTime = 1, SPIFFS_uploadTime = 1;
+uint64_t SPIFFS_downloadSize, SPIFFS_uploadSize;
+uint32_t SPIFFS_numfiles;
 
 bool SPIFFS_Start()
 {
@@ -194,8 +197,8 @@ void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filen
     if (!request->_tempFile)
       Serial.println("Error creating file for SPIFFS upload...");
 
-    SPIFFS_uploadsize = 0;
-    SPIFFS_start = millis();
+    SPIFFS_uploadSize = 0;
+    SPIFFS_startTime = millis();
   }
 
   if (request->_tempFile)
@@ -204,16 +207,16 @@ void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filen
     {
       request->_tempFile.write(data, len);
       Serial.println("Transferred : " + String(len) + " Bytes");
-      SPIFFS_uploadsize = SPIFFS_uploadsize + len;
+      SPIFFS_uploadSize = SPIFFS_uploadSize + len;
     }
 
     if (final)
     {
       request->_tempFile.close();
-      SPIFFS_uploadtime = millis() - SPIFFS_start;
+      SPIFFS_uploadTime = millis() - SPIFFS_startTime;
       Serial.println("FileName = " + file);
-      Serial.println("SPIFFS_uploadsize = " + String(SPIFFS_uploadsize) + " Bytes");
-      Serial.println("SPIFFS_uploadtime = " + String(SPIFFS_uploadtime) + " mSEC");
+      Serial.println("SPIFFS_uploadSize = " + String(SPIFFS_uploadSize) + " Bytes");
+      Serial.println("SPIFFS_uploadTime = " + String(SPIFFS_uploadTime) + " mSEC");
       request->redirect("/SPIFFS_dir");
     }
   }
@@ -334,7 +337,7 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
     if (!request->url().startsWith("/SPIFFS_renamehandler"))
       filename = request->url().substring(request->url().indexOf("~/") + 1);
 
-    SPIFFS_start = millis();
+    SPIFFS_startTime = millis();
 
     if (request->url().startsWith("/SPIFFS_downloadhandler"))
     {
@@ -346,9 +349,9 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
                                                                 { return file.read(buffer, maxLen); });
       response->addHeader("Server", "ESP Async Web Server");
       request->send(response);
-      SPIFFS_downloadtime = millis() - SPIFFS_start;
-      SPIFFS_downloadsize = SPIFFS_GetFileSize(filename);
-      // request->redirect("/SPIFFS_dir");
+      SPIFFS_downloadTime = millis() - SPIFFS_startTime;
+      SPIFFS_downloadSize = SPIFFS_GetFileSize(filename);
+      Serial.println("SPIFFS download handler done...");
     }
 
     if (request->url().startsWith("/SPIFFS_streamhandler"))
@@ -357,9 +360,8 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
       String ContentType = getContentType(filename);
       AsyncWebServerResponse *response = request->beginResponse(SPIFFS, filename, ContentType);
       request->send(response);
-      SPIFFS_downloadsize = SPIFFS_GetFileSize(filename);
-      SPIFFS_downloadtime = millis() - SPIFFS_start;
-      // request->redirect("/SPIFFS_dir");
+      SPIFFS_downloadSize = SPIFFS_GetFileSize(filename);
+      SPIFFS_downloadTime = millis() - SPIFFS_startTime;
     }
 
     if (request->url().startsWith("/SPIFFS_deletehandler"))
@@ -434,11 +436,11 @@ void SPIFFS_Select_File_For_Function(String title, String function)
   webpage += HTML_Footer();
 }
 
-int SPIFFS_GetFileSize(String filename)
+uint64_t SPIFFS_GetFileSize(String filename)
 {
-  int filesize;
+  uint64_t filesize;
   File CheckFile = SPIFFS.open(filename, "r");
-  filesize = CheckFile.size();
+  filesize = (uint64_t)CheckFile.size();
   CheckFile.close();
   return filesize;
 }

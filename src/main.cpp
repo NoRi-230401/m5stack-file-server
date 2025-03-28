@@ -7,27 +7,31 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include "fileServer/fileServer.h"
+
 #if defined(ENABLE_SD_UPDATER)
 #include "SDUpdater.h"
 #endif
 
 void setup();
 void loop();
-void prt(String msg);
+bool setupFileServer();
+void prt(String message);
 void error_stop();
 
 const String PROG_NAME = "m5stack-fileServer";
 const String VERSION = "v1.04a-250327";
-const String SETTING_FILE = "/wifi.txt";
 //----------------------------------------------------------
-//  change your own settings below 3-lines
-//     or write in the SETTING_FILE
+// *** SETTINGS ***
+const String SETTING_FILE = "/wifi.txt";
+// Write the settings in the above file(SD or SPIFFS).
+// If those are no present, change the settings in the 3-lines below.
 const String YOUR_SSID = "YOUR_SSID";
 const String YOUR_SSID_PASS = "YOUR_SSID_PASSWORD";
 const String YOUR_SERVER_NAME = "m5fileServer";
 //----------------------------------------------------------
 const bool SD_USE = true;     // 'false' if not use SD
 const bool SPIFFS_USE = true; // 'false' if not use SPIFFS
+const bool DISP_ON = true;    // 'false' if not print message on display
 //----------------------------------------------------------
 
 void setup()
@@ -40,12 +44,27 @@ void setup()
   SDU_lobby(PROG_NAME);
 #endif
 
-  Serial.println(__FILE__);
   M5.Display.setBrightness(120);
   M5.Lcd.setTextSize(2);
+  Serial.println(__FILE__);
   prt("-   " + PROG_NAME + "   -\n");
 
-  // --- SD and FS(SPIFFS) start ------
+  if (!setupFileServer())
+    error_stop();
+
+  prt("SUCCESS: System started");
+  prt("\nIP Addr: " + IP_ADDR);
+  prt("\nServerName: " + SERVER_NAME);
+}
+
+void loop()
+{
+  delay(1);
+}
+
+bool setupFileServer()
+{
+  // --- SD and SPIFFS start ------
   SD_ENABLE = false;
   if (SD_USE)
   {
@@ -68,8 +87,8 @@ void setup()
 
   if (!SPIFFS_ENABLE && !SD_ENABLE)
   {
-    prt("SD and SPIFFS are not available");
-    error_stop();
+    prt("Both SD and SPIFFS are not available");
+    return false;
   }
 
   // ------- Network Settings Read ---------
@@ -94,32 +113,35 @@ void setup()
 
   // --- wifi and Server Start --------------
   if (!wifiStart())
-    error_stop();
+  {  
+    prt("WiFi    .....  NG");
+    return false;
+  }
   prt("WiFi    .....  OK");
 
   if (!mdnsStart())
-    error_stop();
+  {  
+    prt("mDNS    .....  NG");
+    return false;
+  }
   prt("mDNS    .....  OK");
 
   if (!fileServerStart())
-    error_stop();
+  {
+    prt("fileServer ..  NG");
+    return false;
+  }
   prt("fileServer ..  OK");
 
-  prt("SUCCESS: System started");
-  prt("\nIP Addr: " + IP_ADDR);
-  prt("\nServerName: " + SERVER_NAME);
+  return true;
 }
 
-void loop()
+void prt(String message)
 {
-  // Nothing to do here yet
-  delay(1);
-}
+  Serial.println(message);
 
-void prt(String msg)
-{
-  M5.Display.println(msg);
-  Serial.println(msg);
+  if (DISP_ON)
+    M5.Display.println(message);
 }
 
 void error_stop()
