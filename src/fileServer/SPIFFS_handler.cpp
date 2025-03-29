@@ -17,8 +17,6 @@ void SPIFFS_Dir(AsyncWebServerRequest *request);
 void SPIFFS_Directory();
 void SPIFFS_UploadFileSelect();
 void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final);
-void SPIFFS_File_Stream();
-void SPIFFS_File_Delete();
 void SPIFFS_Handle_File_Delete(String filename);
 void SPIFFS_File_Rename();
 void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args);
@@ -32,10 +30,8 @@ bool SPIFFS_isExists(const String filename);
 bool SPIFFS_Start();
 bool SPIFFS_SettingRd(const String filename);
 // -------------------------------------------------------
-extern void SelectInput(String Heading, String Command, String Arg_name);
 extern String getContentType(String filenametype);
 extern String ConvBinUnits(uint64_t bytes, int resolution);
-extern String EncryptionType(wifi_auth_mode_t encryptionType);
 extern String HTML_Header();
 extern String HTML_Footer();
 extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
@@ -43,8 +39,6 @@ extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 extern AsyncWebServer server;
 extern String webpage;
 std::vector<fileinfo> SPIFFS_Filenames;
-String SPIFFS_MessageLine;
-
 uint32_t SPIFFS_startTime, SPIFFS_downloadTime = 1, SPIFFS_uploadTime = 1;
 uint64_t SPIFFS_downloadSize, SPIFFS_uploadSize;
 uint32_t SPIFFS_numfiles;
@@ -162,8 +156,6 @@ void SPIFFS_Dir(AsyncWebServerRequest *request)
       index = index + 2;
     }
     webpage += "</table>";
-    webpage += "<p style='background-color:yellow;'><b>" + SPIFFS_MessageLine + "</b></p>";
-    SPIFFS_MessageLine = "";
   }
   else
   {
@@ -220,16 +212,6 @@ void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filen
       request->redirect("/SPIFFS_dir");
     }
   }
-}
-
-void SPIFFS_File_Stream()
-{
-  SelectInput("Select a File to Stream", "SPIFFS_handlestream", "filename");
-}
-
-void SPIFFS_File_Delete()
-{
-  SelectInput("Select a File to Delete", "SPIFFS_handledelete", "filename");
 }
 
 void SPIFFS_Handle_File_Delete(String filename)
@@ -342,7 +324,6 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
     if (request->url().startsWith("/SPIFFS_downloadhandler"))
     {
       Serial.println("SPIFFS Download handler started...");
-      SPIFFS_MessageLine = "";
       File file = SPIFFS.open(filename, "r");
       String contentType = getContentType("download");
       AsyncWebServerResponse *response = request->beginResponse(contentType, file.size(), [file](uint8_t *buffer, size_t maxLen, size_t total) mutable -> size_t
@@ -397,7 +378,6 @@ void SPIFFS_Handle_File_Download()
     index++;
   }
   webpage += "</table>";
-  webpage += "<p>" + SPIFFS_MessageLine + "</p>";
   webpage += HTML_Footer();
 }
 

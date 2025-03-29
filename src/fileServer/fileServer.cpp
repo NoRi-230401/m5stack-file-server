@@ -1,5 +1,5 @@
 // *******************************************************
-//  m5stack-fileServer          by NoRi 2025-01-23
+//  m5stack-fileServer          by NoRi 2025-04-01
 // -------------------------------------------------------
 // fileServer.cpp
 // *******************************************************
@@ -31,7 +31,6 @@ String HTML_Footer();
 String ConvBinUnits(uint64_t bytes, int dp);
 String EncryptionType(wifi_auth_mode_t encryptionType);
 String getContentType(String filenametype);
-void SelectInput(String Heading, String Command, String Arg_name);
 String statusReport(int reportNo, int decimalPlaces);
 // -------------------------------------------------------
 extern bool SPIFFS_notFound(AsyncWebServerRequest *request);
@@ -94,7 +93,6 @@ bool compareFileinfo(const fileinfo &a, const fileinfo &b)
 
 bool wifiStart()
 {
-
   WiFi.mode(WIFI_STA);
   WiFi.begin(SSID, SSID_PASS);
 
@@ -165,12 +163,10 @@ bool fileServerStart()
 
   server.onNotFound(notFound);
   server.begin();
-
   if (SPIFFS_ENABLE)
     SPIFFS_Directory();
-  // if(SD_ENABLE)  SD_Directory();
 
-  return true;
+    return true;
 }
 
 String getContentType(String filenametype)
@@ -300,13 +296,14 @@ void Home()
 {
   webpage = HTML_Header();
   webpage += "<br>";
+
   if (SD_ENABLE && SD_isExists(ICON_FILE))
   {
     webpage += "<img src = 'SD_icon' alt='icon'>";
   }
   else if (SPIFFS_ENABLE && SPIFFS_isExists(ICON_FILE))
   {
-    webpage += "<img src = 'FD_icon' alt='icon'>";
+    webpage += "<img src = 'SPIFFS_icon' alt='icon'>";
   }
 
   webpage += "<h3>[&nbsp;Home&nbsp;]　" + SERVER_NAME + "　IP=" + IP_ADDR + "</h3>";
@@ -431,18 +428,6 @@ String HTML_Header()
   page += ".medium {font-size:1.9rem;padding:0;margin:0}";
   page += ".ps {font-size:1.4rem;padding:0;margin:0}";
   page += ".sp {background-color:silver;white-space:nowrap;width:2%;}";
-
-  // TOPNAV3
-  // page += ".topnav3 {overflow: visible;background-color:lightPink;}";
-  // page += ".topnav3 a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.5rem;}";
-  // page += ".topnav3 a:hover {background-color:deepskyblue;color:white;}";
-  // page += ".topnav3 a.active {background-color:lightblue;color:blue;}";
-  // page += ".notfound {padding:0.8rem;text-align:center;font-size:1.3rem;}";
-  // page += ".left {text-align:left;}";
-  // page += ".medium {font-size:1.9rem;padding:0;margin:0}";
-  // page += ".ps {font-size:1.4rem;padding:0;margin:0}";
-  // page += ".sp {background-color:silver;white-space:nowrap;width:2%;}";
-
   // --- end of style ---
   page += "</style></head><body>";
 
@@ -568,15 +553,4 @@ String EncryptionType(wifi_auth_mode_t encryptionType)
   default:
     return "";
   }
-}
-
-void SelectInput(String Heading, String Command, String Arg_name)
-{
-  webpage = HTML_Header();
-  webpage += "<h3>" + Heading + "</h3>";
-  webpage += "<form  action='/" + Command + "'>";
-  webpage += "Filename: <input type='text' name='" + Arg_name + "'><br><br>";
-  webpage += "<input type='submit' value='Enter'>";
-  webpage += "</form>";
-  webpage += HTML_Footer();
 }

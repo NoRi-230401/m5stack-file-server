@@ -19,8 +19,6 @@ void SD_Dir(AsyncWebServerRequest *request);
 void SD_Directory();
 void SD_UploadFileSelect();
 void SD_handleFileUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final);
-void SD_File_Stream();
-void SD_File_Delete();
 void SD_Handle_File_Delete(String filename);
 void SD_File_Rename();
 void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args);
@@ -28,6 +26,12 @@ bool SD_notFound(AsyncWebServerRequest *request);
 void SD_Handle_File_Download();
 void SD_Select_File_For_Function(String title, String function);
 uint64_t SD_GetFileSize(String filename);
+// -------------------------------------------------------
+String SD_StatusReport(int reportNo, int dp);
+bool SD_isExists(const String filename);
+bool SD_Start();
+bool SD_cardInfo(void);
+bool SD_SettingRd(const String filename);
 // -------------------------------------------------------
 void SDdir_flserverSetup();
 void SDdir_handle_chTop();
@@ -37,22 +41,13 @@ void SDdir_Handle_chdir(String filename);
 void SDdir_Handle_rmdir(String filename);
 void SDdir_Handle_mkdir(AsyncWebServerRequest *request);
 void SDdir_DirMake();
-void SDdir_SelectInputDirName(String Heading, String Command, String Arg_name);
 void SDdir_DirList();
 void SDdir_FilesList();
 bool SDdir_notFound(AsyncWebServerRequest *request);
+void SDdir_InputNewDirName(String Heading, String Command, String Arg_name);
 // -------------------------------------------------------
-String SD_StatusReport(int reportNo, int dp);
-bool SD_isExists(const String filename);
-bool SD_Start();
-bool SD_cardInfo(void);
-bool SD_SettingRd(const String filename);
-// -------------------------------------------------------
-extern void SelectInput(String Heading, String Command, String Arg_name);
 extern String getContentType(String filenametype);
-extern void Home();
 extern String ConvBinUnits(uint64_t bytes, int resolution);
-extern String EncryptionType(wifi_auth_mode_t encryptionType);
 extern String HTML_Header();
 extern String HTML_Footer();
 extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
@@ -60,8 +55,6 @@ extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 extern AsyncWebServer server;
 extern String webpage;
 std::vector<fileinfo> SD_Filenames;
-String SD_MessageLine;
-
 uint32_t SD_start, SD_downloadTime = 1, SD_uploadTime = 1;
 uint64_t SD_downloadSize, SD_uploadSize;
 uint32_t SD_numfiles;
@@ -158,8 +151,6 @@ void SD_Dir(AsyncWebServerRequest *request)
       index = index + 2;
     }
     webpage += "</table>";
-    webpage += "<p style='background-color:yellow;'><b>" + SD_MessageLine + "</b></p>";
-    SD_MessageLine = "";
   }
   else
   {
@@ -259,16 +250,6 @@ void SD_handleFileUpload(AsyncWebServerRequest *request, const String &filename,
       request->redirect("/SD_dir");
     }
   }
-}
-
-void SD_File_Stream()
-{
-  SelectInput("[SD] Select a File to Stream", "SD_handlestream", "filename");
-}
-
-void SD_File_Delete()
-{
-  SelectInput("[SD] Select a File to Delete", "SD_handledelete", "filename");
 }
 
 void SD_Handle_File_Delete(String filename)
@@ -393,13 +374,12 @@ bool SD_notFound(AsyncWebServerRequest *request)
     if (request->url().startsWith("/SD_downloadhandler"))
     {
       Serial.println("SD_Download handler started...");
-      SD_MessageLine = "";
 
       String filename_tmp = filename;
       if (SdPath != "/")
         filename_tmp = SdPath + filename_tmp;
 
-      Serial.println("filename_tmp = " + filename_tmp);
+      Serial.println("filename = " + filename_tmp);
       File file = SD.open(filename_tmp, "r");
       String contentType = getContentType("download");
       
@@ -421,7 +401,7 @@ bool SD_notFound(AsyncWebServerRequest *request)
       if (SdPath != "/")
         filename_tmp = SdPath + filename_tmp;
 
-      Serial.println("filename_tmp = " + filename_tmp);
+      Serial.println("filename = " + filename_tmp);
       String ContentType = getContentType(filename);
       AsyncWebServerResponse *response = request->beginResponse(SD, filename_tmp, ContentType);
       request->send(response);
@@ -464,7 +444,6 @@ void SD_Handle_File_Download()
     index++;
   }
   webpage += "</table>";
-  webpage += "<p>" + SD_MessageLine + "</p>";
   webpage += HTML_Footer();
 }
 
@@ -578,7 +557,7 @@ void SDdir_handle_chUp()
 
 void SDdir_Handle_chdir(String filename)
 { // chdri
-  Serial.println("filename = " + filename);
+  // Serial.println("filename = " + filename);
 
   webpage = HTML_Header();
   if (!filename.startsWith("/"))
@@ -586,7 +565,7 @@ void SDdir_Handle_chdir(String filename)
 
   if (SdPath != "/")
     filename = SdPath + filename;
-  Serial.println("filename = " + filename);
+  // Serial.println("filename = " + filename);
 
   if (SD.exists(filename))
   { // success
@@ -611,10 +590,11 @@ void SDdir_Handle_rmdir(String filename)
 
   if (SdPath != "/")
     filename = SdPath + filename;
-  Serial.println("filename = " + filename);
+  // Serial.println("filename = " + filename);
 
   if (SD.rmdir(filename))
   { // success
+    Serial.println("removed dir = " + filename);
     webpage += "<h3>Directory '" + filename.substring(1) + "' has been removed</h3>";
     webpage += "<a href='/SD_dir'>[Enter]</a><br><br>";
   }
@@ -628,7 +608,6 @@ void SDdir_Handle_rmdir(String filename)
 
 void SDdir_Handle_mkdir(AsyncWebServerRequest *request)
 { // Dir Make
-
   webpage = HTML_Header();
   String filename = request->arg("filename");
 
@@ -637,10 +616,11 @@ void SDdir_Handle_mkdir(AsyncWebServerRequest *request)
 
   if (SdPath != "/")
     filename = SdPath + filename;
-  Serial.println("filename = " + filename);
+  // Serial.println("filename = " + filename);
 
   if (SD.mkdir(filename))
   { // success
+    Serial.println("created new dir = " + filename);
     webpage += "<h3>Directory '" + filename + "' has been created</h3>";
     webpage += "<a href='/SD_dir'>[Enter]</a><br><br>";
   }
@@ -654,18 +634,7 @@ void SDdir_Handle_mkdir(AsyncWebServerRequest *request)
 
 void SDdir_DirMake()
 {
-  SDdir_SelectInputDirName("Make New Directory", "SDdir_mkdirhandler", "filename");
-}
-
-void SDdir_SelectInputDirName(String Heading, String Command, String Arg_name)
-{
-  webpage = HTML_Header();
-  webpage += "<h3>" + Heading + "</h3>";
-  webpage += "<form  action='/" + Command + "'>";
-  webpage += "DirName: <input type='text' name='" + Arg_name + "'><br><br>";
-  webpage += "<input type='submit' value='Enter'>";
-  webpage += "</form>";
-  webpage += HTML_Footer();
+  SDdir_InputNewDirName("Make New Directory", "SDdir_mkdirhandler", "filename");
 }
 
 void SDdir_Select_Dir_For_Function(String title, String function)
@@ -674,7 +643,7 @@ void SDdir_Select_Dir_For_Function(String title, String function)
   int index = 0;
   SDdir_DirList();
   webpage = HTML_Header();
-  webpage += "<h3>Select a Directory to " + title + " from this device</h3>";
+  webpage += "<h3>[SD] Select a Directory to " + title + " from this device</h3>";
   webpage += "<table class='center'>";
   webpage += "<tr> <th>Directory Name</th> <th>Directory Name</th> </tr>";
 
@@ -911,4 +880,16 @@ bool SD_SettingRd(const String filename)
     return false;
 
   return true;
+}
+
+
+void SDdir_InputNewDirName(String Heading, String Command, String Arg_name)
+{
+  webpage = HTML_Header();
+  webpage += "<h3>" + Heading + "</h3>";
+  webpage += "<form  action='/" + Command + "'>";
+  webpage += "New Directory Name: <input type='text' name='" + Arg_name + "'><br><br>";
+  webpage += "<input type='submit' value='Enter'>";
+  webpage += "</form>";
+  webpage += HTML_Footer();
 }

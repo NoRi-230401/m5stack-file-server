@@ -17,22 +17,23 @@ void loop();
 bool setupFileServer();
 void prt(String message);
 void error_stop();
-
 const String PROG_NAME = "m5stack-fileServer";
-const String VERSION = "v1.04a-250327";
-//----------------------------------------------------------
-// *** SETTINGS ***
-const String SETTING_FILE = "/wifi.txt";
-// Write the settings in the above file(SD or SPIFFS).
-// If those are no present, change the settings in the 3-lines below.
+const String VERSION = "v1.04a-250329";
+
+//---------------------------------------------------------------------------
+// **  SETTINGS  **
+//---------------------------------------------------------------------------
+const bool SD_USE = true;     // 'false' if not use SD
+const bool SPIFFS_USE = true; // 'false' if not use SPIFFS
+const bool DISP_ON = true;    // 'false' if not print message on the display
+//---------------------------------------------------------------------------
+const String NETWORK_SETTING_FILE = "/wifi.txt";
+// Write the network settings in the above file(SD or SPIFFS).
+// If those are no present, use in the 3-lines below.
 const String YOUR_SSID = "YOUR_SSID";
 const String YOUR_SSID_PASS = "YOUR_SSID_PASSWORD";
 const String YOUR_SERVER_NAME = "m5fileServer";
-//----------------------------------------------------------
-const bool SD_USE = true;     // 'false' if not use SD
-const bool SPIFFS_USE = true; // 'false' if not use SPIFFS
-const bool DISP_ON = true;    // 'false' if not print message on display
-//----------------------------------------------------------
+//---------------------------------------------------------------------------
 
 void setup()
 {
@@ -96,9 +97,9 @@ bool setupFileServer()
   SSID_PASS = "";
   SERVER_NAME = "";
 
-  if (SD_ENABLE && SD_SettingRd(SETTING_FILE))
+  if (SD_ENABLE && SD_SettingRd(NETWORK_SETTING_FILE))
     prt(" Settings read from SD");
-  else if (SPIFFS_ENABLE && SPIFFS_SettingRd(SETTING_FILE))
+  else if (SPIFFS_ENABLE && SPIFFS_SettingRd(NETWORK_SETTING_FILE))
     prt(" Settings read from SPIFFS");
 
   if (SSID == "")
@@ -111,16 +112,22 @@ bool setupFileServer()
   if (SERVER_NAME == "")
     SERVER_NAME = YOUR_SERVER_NAME;
 
+  if (SSID == "" || SSID_PASS == "" || SERVER_NAME == "")
+  {
+    prt("SETTINGS.....  NG");
+    return false;
+  }
+
   // --- wifi and Server Start --------------
   if (!wifiStart())
-  {  
+  {
     prt("WiFi    .....  NG");
     return false;
   }
   prt("WiFi    .....  OK");
 
   if (!mdnsStart())
-  {  
+  {
     prt("mDNS    .....  NG");
     return false;
   }

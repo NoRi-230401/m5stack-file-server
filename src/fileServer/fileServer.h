@@ -1,5 +1,5 @@
 // *******************************************************
-//  m5stack-fileServer          by NoRi 2025-01-23
+//  m5stack-fileServer          by NoRi 2025-04-01
 // -------------------------------------------------------
 // fileServer.h
 // *******************************************************
@@ -7,7 +7,6 @@
 #define _M5_FILE_SERVER_H
 // -------------------------------------------------------
 #include <Arduino.h>
-// #include <M5Unified.h>
 
 typedef struct
 {
@@ -44,7 +43,6 @@ extern const String PROG_NAME;
 extern const String YOUR_SSID;
 extern const String YOUR_SSID_PASS;
 extern const String YOUR_SERVER_NAME;
-extern const String SETTING_FILE;
 extern const String ICON_FILE;
 
 // -------------------------------------------------------
