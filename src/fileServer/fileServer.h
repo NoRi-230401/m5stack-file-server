@@ -7,6 +7,15 @@
 #define _M5_FILE_SERVER_H
 // -------------------------------------------------------
 #include <Arduino.h>
+#include <M5Unified.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <algorithm>
+#include <vector>
+#include "FS.h"
+#include "SD.h"
+#include "SPI.h"
+#include <SPIFFS.h>
 
 typedef struct
 {
@@ -15,18 +24,13 @@ typedef struct
   String fsize;
 } fileinfo;
 
-// --- Status Report File System ------
-#define STREP_SPIFFS_TOTALBYTES 11
-#define STREP_SPIFFS_USEDBYTES 12
-#define STREP_SPIFFS_FREESPACE 13
-#define STREP_SD_TOTALBYTES 21
-#define STREP_SD_USEDBYTES 22
-#define STREP_SD_FREESPACE 23
-#define STREP_SD_CARDTYPE 24
-#define STREP_SPIFFS_START STREP_SPIFFS_TOTALBYTES
-#define STREP_SPIFFS_END STREP_SPIFFS_FREESPACE
-#define STREP_SD_START STREP_SD_TOTALBYTES
-#define STREP_SD_END STREP_SD_CARDTYPE
+//---- units ------
+#define UNIT_AUTO 1
+#define UNIT_BYTE 2
+#define UNIT_KIRO 3
+#define UNIT_MEGA 4
+#define UNIT_GIGA 5
+#define UNIT_TERA 6
 
 extern bool SD_Start();
 extern bool SPIFFS_Start();
@@ -37,7 +41,12 @@ extern bool mdnsStart(void);
 extern bool fileServerStart();
 extern String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
 extern bool SD_ENABLE, SPIFFS_ENABLE;
-
+// extern String ConvBytesUnits(uint64_t bytes, int resolution);
+extern String ConvBytesUnits(uint64_t bytes, int dp, int unit=UNIT_AUTO);
+extern String HTML_Header();
+extern String HTML_Footer();
+extern String getContentType(String filenametype);
+extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 extern const String VERSION;
 extern const String PROG_NAME;
 extern const String YOUR_SSID;

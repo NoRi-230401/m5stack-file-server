@@ -3,13 +3,6 @@
 // -------------------------------------------------------
 // SPIFFS_handler.cpp
 // *******************************************************
-#include <Arduino.h>
-#include <M5Unified.h>
-#include <SPIFFS.h>
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-#include <algorithm>
-#include <vector>
 #include "fileServer.h"
 // -------------------------------------------------------
 void SPIFFS_flServerSetup();
@@ -25,16 +18,10 @@ void SPIFFS_Handle_File_Download();
 void SPIFFS_Select_File_For_Function(String title, String function);
 uint64_t SPIFFS_GetFileSize(String filename);
 // -------------------------------------------------------
-String SPIFFS_StatusReport(int reportNo, int decimalPlaces);
+// String SPIFFS_StatusReport(int reportNo, int decimalPlaces);
 bool SPIFFS_isExists(const String filename);
 bool SPIFFS_Start();
 bool SPIFFS_SettingRd(const String filename);
-// -------------------------------------------------------
-extern String getContentType(String filenametype);
-extern String ConvBinUnits(uint64_t bytes, int resolution);
-extern String HTML_Header();
-extern String HTML_Footer();
-extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 // -------------------------------------------------------
 extern AsyncWebServer server;
 extern String webpage;
@@ -117,7 +104,7 @@ void SPIFFS_Directory()
       tmp.filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
       tmp.ftype = (file.isDirectory() ? "Dir" : "File");
       if (tmp.ftype == "File")
-        tmp.fsize = ConvBinUnits(file.size(), 1);
+        tmp.fsize = ConvBytesUnits(file.size(), 1);
       else
         tmp.fsize = "";
 
@@ -423,20 +410,6 @@ uint64_t SPIFFS_GetFileSize(String filename)
   filesize = (uint64_t)CheckFile.size();
   CheckFile.close();
   return filesize;
-}
-
-String SPIFFS_StatusReport(int reportNo, int decimalPlaces)
-{
-  switch (reportNo)
-  {
-  case STREP_SPIFFS_TOTALBYTES:
-    return ConvBinUnits(SPIFFS.totalBytes(), decimalPlaces);
-  case STREP_SPIFFS_USEDBYTES:
-    return ConvBinUnits(SPIFFS.usedBytes(), decimalPlaces);
-  case STREP_SPIFFS_FREESPACE:
-    return ConvBinUnits(SPIFFS.totalBytes() - SPIFFS.usedBytes(), decimalPlaces);
-  }
-  return String("");
 }
 
 bool SPIFFS_isExists(const String filename)

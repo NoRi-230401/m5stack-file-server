@@ -3,15 +3,6 @@
 // -------------------------------------------------------
 // SD_handler.cpp
 // *******************************************************
-#include <Arduino.h>
-#include <M5Unified.h>
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-#include <algorithm>
-#include <vector>
-#include "FS.h"
-#include "SD.h"
-#include "SPI.h"
 #include "fileServer.h"
 // -------------------------------------------------------
 void SD_flServerSetup();
@@ -27,7 +18,7 @@ void SD_Handle_File_Download();
 void SD_Select_File_For_Function(String title, String function);
 uint64_t SD_GetFileSize(String filename);
 // -------------------------------------------------------
-String SD_StatusReport(int reportNo, int dp);
+// String SD_StatusReport(int reportNo, int dp);
 bool SD_isExists(const String filename);
 bool SD_Start();
 bool SD_cardInfo(void);
@@ -45,12 +36,6 @@ void SDdir_DirList();
 void SDdir_FilesList();
 bool SDdir_notFound(AsyncWebServerRequest *request);
 void SDdir_InputNewDirName(String Heading, String Command, String Arg_name);
-// -------------------------------------------------------
-extern String getContentType(String filenametype);
-extern String ConvBinUnits(uint64_t bytes, int resolution);
-extern String HTML_Header();
-extern String HTML_Footer();
-extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 // -------------------------------------------------------
 extern AsyncWebServer server;
 extern String webpage;
@@ -185,7 +170,7 @@ void SD_Directory()
         tmp.filename = tmp_filename;
         tmp.ftype = (file.isDirectory() ? "Dir" : "File");
         if (tmp.ftype == "File")
-          tmp.fsize = ConvBinUnits(file.size(), 1);
+          tmp.fsize = ConvBytesUnits(file.size(), 1);
         else
           tmp.fsize = "";
 
@@ -727,7 +712,7 @@ void SDdir_FilesList()
         fileinfo tmp;
         tmp.filename = (String(file.name()).startsWith("/") ? String(file.name()).substring(1) : file.name());
         tmp.ftype = "File";
-        tmp.fsize = ConvBinUnits(file.size(), 1);
+        tmp.fsize = ConvBytesUnits(file.size(), 1);
 
         SD_Filenames.push_back(tmp);
         SD_numfiles++;
@@ -775,26 +760,6 @@ bool SDdir_notFound(AsyncWebServerRequest *request)
   return false;
 }
 
-String SD_StatusReport(int reportNo, int dp)
-{ // dp:deciamlPoint小数点以下の桁数
-  sdcard_type_t cardType = SD.cardType();
-  const String cType[] = {"NONE", "MMC", "SD", "SDHC", "UNKNOWN"};
-
-  switch (reportNo)
-  {
-  case STREP_SD_TOTALBYTES:
-    return ConvBinUnits(SD.totalBytes(), dp);
-  case STREP_SD_USEDBYTES:
-    return ConvBinUnits(SD.usedBytes(), dp);
-  case STREP_SD_FREESPACE:
-    return ConvBinUnits(SD.totalBytes() - SD.usedBytes(), dp);
-  case STREP_SD_CARDTYPE:
-    return cType[cardType];
-  default:
-    return String("");
-  }
-}
-
 bool SD_cardInfo(void)
 {
   sdcard_type_t cardType = SD.cardType();
@@ -819,11 +784,6 @@ bool SD_cardInfo(void)
     Serial.println("ERR: SD cardType is default Type");
     return false;
   }
-
-  Serial.println("SD_totalbytes = " + SD_StatusReport(STREP_SD_TOTALBYTES, 1));
-  Serial.println("SD_usedbytes  = " + SD_StatusReport(STREP_SD_USEDBYTES, 1));
-  Serial.println("SD_freespace  = " + SD_StatusReport(STREP_SD_FREESPACE, 1));
-  Serial.println("SD_CardType   = " + SD_StatusReport(STREP_SD_CARDTYPE, 1));
 
   return true;
 }

@@ -3,9 +3,6 @@
 // -------------------------------------------------------
 // main.cpp
 // *******************************************************
-#include <M5Unified.h>
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
 #include "fileServer/fileServer.h"
 
 #if defined(ENABLE_SD_UPDATER)
