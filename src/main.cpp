@@ -15,7 +15,7 @@ bool setupFileServer();
 void prt(String message);
 void error_stop();
 const String PROG_NAME = "m5stack-fileServer";
-const String VERSION = "v1.04a-250329";
+const String VERSION = "v1.05a-250401a";
 
 //---------------------------------------------------------------------------
 // **  SETTINGS  **
