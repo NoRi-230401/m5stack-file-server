@@ -67,7 +67,7 @@ void Display_System_Info()
   // Scan parameters are (async, show_hidden)
   // if async = true, don't wait for the result
   webpage = HTML_Header();
-  webpage += "<h3>System Information</h3>";
+  webpage += "<h3>Status and System Information</h3>";
   webpage += "<br>";
 
   if (SPIFFS_ENABLE)
@@ -104,7 +104,7 @@ void Display_System_Info()
 
   if (SD_ENABLE)
   {
-    // - 3.SD trx Statistics
+    // - SD trx Statistics
     webpage += "<h4>SD:　Transfer Statistics</h4>";
     webpage += "<table class='center'>";
     webpage += "<tr><th>last upload</th><th>last download/stream</th><th>units</th></tr>";
@@ -114,7 +114,7 @@ void Display_System_Info()
     webpage += "</table>";
     webpage += "<br>";
 
-    // - 4.SD Filing-Sys
+    // - SD Filing-Sys
     webpage += "<h4>SD:　Filing System</h4>";
     webpage += "<table class='center'>";
     webpage += "<tr><th>total space</th><th>used Space</th><th>free space</th><th>card type</th></tr>";
@@ -139,7 +139,7 @@ void Display_System_Info()
   // - program size
   webpage += "<h4>Program size in FLASH</h4>";
   webpage += "<table class='center'>";
-  webpage += "<tr><th>max space</th><th>used program space</th><th>free space</th></tr>";
+  webpage += "<tr><th>max space</th><th>used program size</th><th>free space</th></tr>";
   webpage += "<tr>";
   //-----------------------------------
   uint64_t prog_max = (uint64_t)ESP.getFreeSketchSpace();
@@ -152,9 +152,9 @@ void Display_System_Info()
   webpage += "</tr>";
   webpage += "</table>";
   webpage += "<br><br>";
-  
+
   //-------------------
-  // - 5.SRAM: Internal RAM
+  // - SRAM: Internal RAM
   webpage += "<h4>Internal RAM (SRAM)</h4><table class='center'>";
   webpage += "<tr><th>total heap size</th><th>free heap</th><th>min free heap<br>since boot</th><th>available max<br>allocate block</th></tr><tr>";
   webpage += "<td>" + ConvBytesUnits(ESP.getHeapSize(), 1, UNIT_KIRO) + "</td>";
@@ -173,8 +173,31 @@ void Display_System_Info()
   webpage += "<td>" + ConvBytesUnits(ESP.getMinFreePsram(), 1, UNIT_KIRO) + "</td>";
   webpage += "<td>" + ConvBytesUnits(ESP.getMaxAllocPsram(), 1, UNIT_KIRO) + "</td>";
   webpage += "</tr></table>";
-  //-------------------
   webpage += "<br><br>";
+  //-------------------
+
+// - NVS
+nvs_stats_t nvsStats;
+if (ESP_OK == nvs_get_stats("nvs", &nvsStats))
+{
+  webpage += "<h4>NVS : Non-Volatile Storage</h4>";
+  webpage += "<table class='center'>";
+  webpage += "<tr><th>available entries</th><th>used entries</th><th>free entries</th><th>name space</th></tr><tr>";
+
+  size_t total_ent = nvsStats.total_entries;
+  size_t used_ent = nvsStats.used_entries;
+  size_t free_ent = nvsStats.free_entries;
+  size_t namespace_cnt = nvsStats.namespace_count;
+  webpage += "<td>" + String(total_ent) + "</td>";
+  webpage += "<td>" + String(used_ent) + "</td>";
+  webpage += "<td>" + String(free_ent) + "</td>";
+  webpage += "<td>" + String(namespace_cnt) + "</td>";
+
+  webpage += "</tr></table>";
+  webpage += "<br><br>";
+}
+
+  // - CPU information
   webpage += "<h4>CPU Information</h4><table class='center'>";
   webpage += "<tr><th>parameter</th><th>value</th></tr>";
   //-------------------
@@ -193,6 +216,7 @@ void Display_System_Info()
   webpage += "</table>";
   webpage += "<br><br>";
 
+  
   // - MAC Address
   webpage += "<h4>MAC Address</h4>";
   webpage += "<table class='center'>";
@@ -217,7 +241,7 @@ void Display_System_Info()
   webpage += "</table>";
   webpage += "<br><br>";
 
-   // - 6.Network Info
+  // - 6.Network Info
   webpage += "<h4>Network Information</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>parameter</th><th>value</th></tr>";
@@ -229,7 +253,7 @@ void Display_System_Info()
   webpage += "<tr><td>WiFi Encryption Type</td><td>" + String(EncryptionType(WiFi.encryptionType(0))) + "</td></tr>";
   webpage += "</table> ";
   webpage += "<br><br>";
- 
+
   // ------------------------------------------------------
   webpage += HTML_Footer();
 }
