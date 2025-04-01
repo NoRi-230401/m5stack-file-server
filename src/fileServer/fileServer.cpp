@@ -58,6 +58,182 @@ extern String SdPath;
 AsyncWebServer server(80);
 String webpage;
 
+void Display_System_Info()
+{
+  esp_chip_info_t chip_info;
+  esp_chip_info(&chip_info);
+  if (WiFi.scanComplete() == -2)
+    WiFi.scanNetworks(true, false);
+  // Scan parameters are (async, show_hidden)
+  // if async = true, don't wait for the result
+  webpage = HTML_Header();
+  webpage += "<h3>System Information</h3>";
+  webpage += "<br>";
+
+  if (SPIFFS_ENABLE)
+  {
+    // - 1.SPIFFS trx Statistics
+    webpage += "<h4>SPIFFS:　Transfer Statistics</h4>";
+    webpage += "<table class='center'>";
+    webpage += "<tr><th>last upload</th><th>last download/stream</th><th>units</th></tr>";
+    webpage += "<tr><td>" + ConvBytesUnits(SPIFFS_uploadSize, 1) + "</td><td>" + ConvBytesUnits(SPIFFS_downloadSize, 1) + "</td><td>File Size</td></tr> ";
+    webpage += "<tr><td>" + ConvBytesUnits((float)SPIFFS_uploadSize / SPIFFS_uploadTime * 1024.0, 1) + "/Sec</td>";
+    webpage += "<td>" + ConvBytesUnits((float)SPIFFS_downloadSize / SPIFFS_downloadTime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
+    webpage += "</table>";
+    webpage += "<br>";
+
+    // - 2.SPIFFS Filing-Sys
+    webpage += "<h4>SPIFFS:　Filing System</h4>";
+    webpage += "<table class='center'>";
+    webpage += "<tr><th>total space</th><th>used space</th><th>free space</th><th>number of files</th></tr>";
+    webpage += "<tr>";
+    //-----------------------------------
+    uint64_t SPIFFS_total = (uint64_t)SPIFFS.totalBytes();
+    uint64_t SPIFFS_used = (uint64_t)SPIFFS.usedBytes();
+    uint64_t SPIFFS_free = SPIFFS_total - SPIFFS_used;
+    webpage += "<td>" + ConvBytesUnits(SPIFFS_total, 1) + "</td>";
+    webpage += "<td>" + ConvBytesUnits(SPIFFS_used, 1) + "</td>";
+    webpage += "<td>" + ConvBytesUnits(SPIFFS_free, 1) + "</td>";
+
+    webpage += "<td>" + (SPIFFS_numfiles == 0 ? "Pending Dir or Empty" : String(SPIFFS_numfiles)) + "</td>";
+    //-----------------------------------
+    webpage += "</tr>";
+    webpage += "</table>";
+    webpage += "<br><br>";
+  }
+
+  if (SD_ENABLE)
+  {
+    // - 3.SD trx Statistics
+    webpage += "<h4>SD:　Transfer Statistics</h4>";
+    webpage += "<table class='center'>";
+    webpage += "<tr><th>last upload</th><th>last download/stream</th><th>units</th></tr>";
+    webpage += "<tr><td>" + ConvBytesUnits(SD_uploadSize, 1) + "</td><td>" + ConvBytesUnits(SD_downloadSize, 1) + "</td><td>File Size</td></tr> ";
+    webpage += "<tr><td>" + ConvBytesUnits((float)SD_uploadSize / SD_uploadTime * 1024.0, 1) + "/Sec</td>";
+    webpage += "<td>" + ConvBytesUnits((float)SD_downloadSize / SD_downloadTime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
+    webpage += "</table>";
+    webpage += "<br>";
+
+    // - 4.SD Filing-Sys
+    webpage += "<h4>SD:　Filing System</h4>";
+    webpage += "<table class='center'>";
+    webpage += "<tr><th>total space</th><th>used Space</th><th>free space</th><th>card type</th></tr>";
+    webpage += "<tr>";
+    //-----------------------------------
+    uint64_t SD_total = (uint64_t)SD.totalBytes();
+    uint64_t SD_used = (uint64_t)SD.usedBytes();
+    uint64_t SD_free = SD_total - SD_used;
+    webpage += "<td>" + ConvBytesUnits(SD_total, 1) + "</td>";
+    webpage += "<td>" + ConvBytesUnits(SD_used, 1) + "</td>";
+    webpage += "<td>" + ConvBytesUnits(SD_free, 1) + "</td>";
+
+    sdcard_type_t cardType = SD.cardType();
+    const String cType[] = {"NONE", "MMC", "SD", "SDHC", "UNKNOWN"};
+    webpage += "<td>" + cType[cardType] + "</td>";
+    //-----------------------------------
+    webpage += "</tr>";
+    webpage += "</table>";
+    webpage += "<br><br>";
+  }
+
+  // - program size
+  webpage += "<h4>Program size in FLASH</h4>";
+  webpage += "<table class='center'>";
+  webpage += "<tr><th>max space</th><th>used program space</th><th>free space</th></tr>";
+  webpage += "<tr>";
+  //-----------------------------------
+  uint64_t prog_max = (uint64_t)ESP.getFreeSketchSpace();
+  uint64_t prog_used = (uint64_t)ESP.getSketchSize();
+  uint64_t prog_available = prog_max - prog_used;
+  webpage += "<td>" + ConvBytesUnits(prog_max, 1, UNIT_AUTO) + "</td>";
+  webpage += "<td>" + ConvBytesUnits(prog_used, 1, UNIT_AUTO) + "</td>";
+  webpage += "<td>" + ConvBytesUnits(prog_available, 1, UNIT_AUTO) + "</td>";
+  //-----------------------------------
+  webpage += "</tr>";
+  webpage += "</table>";
+  webpage += "<br><br>";
+  
+  //-------------------
+  // - 5.SRAM: Internal RAM
+  webpage += "<h4>Internal RAM (SRAM)</h4><table class='center'>";
+  webpage += "<tr><th>total heap size</th><th>free heap</th><th>min free heap<br>since boot</th><th>available max<br>allocate block</th></tr><tr>";
+  webpage += "<td>" + ConvBytesUnits(ESP.getHeapSize(), 1, UNIT_KIRO) + "</td>";
+  webpage += "<td>" + ConvBytesUnits(ESP.getFreeHeap(), 1, UNIT_KIRO) + "</td>";
+  webpage += "<td>" + ConvBytesUnits(ESP.getMinFreeHeap(), 1, UNIT_KIRO) + "</td>";
+  webpage += "<td>" + ConvBytesUnits(ESP.getMaxAllocHeap(), 1, UNIT_KIRO) + "</td>";
+  webpage += "</tr></table>";
+  //-------------------
+  webpage += "<br><br>";
+
+  // - PSRAM : External RAM
+  webpage += "<h4>External RAM (PSRAM)</h4><table class='center'>";
+  webpage += "<tr><th>total heap size</th><th>free heap</th><th>min free heap<br>since boot</th><th>available max<br>allocate block</th></tr><tr>";
+  webpage += "<td>" + ConvBytesUnits(ESP.getPsramSize(), 1, UNIT_KIRO) + "</td>";
+  webpage += "<td>" + ConvBytesUnits(ESP.getFreePsram(), 1, UNIT_KIRO) + "</td>";
+  webpage += "<td>" + ConvBytesUnits(ESP.getMinFreePsram(), 1, UNIT_KIRO) + "</td>";
+  webpage += "<td>" + ConvBytesUnits(ESP.getMaxAllocPsram(), 1, UNIT_KIRO) + "</td>";
+  webpage += "</tr></table>";
+  //-------------------
+  webpage += "<br><br>";
+  webpage += "<h4>CPU Information</h4><table class='center'>";
+  webpage += "<tr><th>parameter</th><th>value</th></tr>";
+  //-------------------
+  webpage += "<tr><td>CPU Model</td><td>" + String(ESP.getChipModel()) + "</td></tr>";
+  webpage += "<tr><td>Chip revision</td><td>" + String(ESP.getChipRevision()) + "</td></tr>";
+  webpage += "<tr><td>SDK Version</td><td>" + String(ESP.getSdkVersion()) + "</td></tr>";
+
+  webpage += "<tr><td>Number of Cores</td><td>" + String(ESP.getChipCores()) + "</td></tr>";
+  // webpage += "<tr><td>Cycle Count</td><td>" + String(ESP.getCycleCount()) + "</td></tr>";
+
+  webpage += "<tr><td>CPU Freq</td><td>" + String(ESP.getCpuFreqMHz()) + " MHz" + "</td></tr>";
+  webpage += "<tr><td>Flash Memory Size</td><td>" + ConvBytesUnits(ESP.getFlashChipSize(), 0, UNIT_AUTO) + "</td></tr>";
+  webpage += "<tr><td>Flash Freq</td><td>" + String(ESP.getFlashChipSpeed() / 1000000) + " MHz" + "</td></tr>";
+  // webpage += "<tr><td>Flash Chip Mode</td><td>" + String(ESP.getFlashChipMode()) + "</td></tr>";
+  //-------------------
+  webpage += "</table>";
+  webpage += "<br><br>";
+
+  // - MAC Address
+  webpage += "<h4>MAC Address</h4>";
+  webpage += "<table class='center'>";
+  webpage += "<tr><th>parameter</th><th>value</th></tr>";
+  //-------------------
+  char buf[256];
+  uint8_t mac0[6];
+  uint64_t chipid;
+  esp_read_mac(mac0, ESP_MAC_WIFI_STA);
+  sprintf(buf, "%02X:%02X:%02X:%02X:%02X:%02X", mac0[0], mac0[1], mac0[2], mac0[3], mac0[4], mac0[5]);
+  webpage += "<tr><td>WiFi STAtion MAC (default)</td><td>" + String(buf) + "</td></tr>";
+  esp_read_mac(mac0, ESP_MAC_WIFI_SOFTAP);
+  sprintf(buf, "%02X:%02X:%02X:%02X:%02X:%02X", mac0[0], mac0[1], mac0[2], mac0[3], mac0[4], mac0[5]);
+  webpage += "<tr><td>WiFi softAP MAC</td><td>" + String(buf) + "</td></tr>";
+  esp_read_mac(mac0, ESP_MAC_BT);
+  sprintf(buf, "%02X:%02X:%02X:%02X:%02X:%02X", mac0[0], mac0[1], mac0[2], mac0[3], mac0[4], mac0[5]);
+  webpage += "<tr><td>Bluetooth MAC</td><td>" + String(buf) + "</td></tr>";
+  esp_read_mac(mac0, ESP_MAC_ETH);
+  sprintf(buf, "%02X:%02X:%02X:%02X:%02X:%02X", mac0[0], mac0[1], mac0[2], mac0[3], mac0[4], mac0[5]);
+  webpage += "<tr><td>Ethernet MAC</td><td>" + String(buf) + "</td></tr>";
+  //-------------------
+  webpage += "</table>";
+  webpage += "<br><br>";
+
+   // - 6.Network Info
+  webpage += "<h4>Network Information</h4>";
+  webpage += "<table class='center'>";
+  webpage += "<tr><th>parameter</th><th>value</th></tr>";
+  webpage += "<tr><td>LAN IP Address</td><td>" + String(WiFi.localIP().toString()) + "</td></tr>";
+  webpage += "<tr><td>Network Adapter MAC Address</td><td>" + String(WiFi.BSSIDstr()) + "</td></tr>";
+  webpage += "<tr><td>WiFi SSID</td><td>" + String(WiFi.SSID()) + "</td></tr>";
+  webpage += "<tr><td>WiFi RSSI</td><td>" + String(WiFi.RSSI()) + " dB</td></tr>";
+  webpage += "<tr><td>WiFi Channel</td><td>" + String(WiFi.channel()) + "</td></tr>";
+  webpage += "<tr><td>WiFi Encryption Type</td><td>" + String(EncryptionType(WiFi.encryptionType(0))) + "</td></tr>";
+  webpage += "</table> ";
+  webpage += "<br><br>";
+ 
+  // ------------------------------------------------------
+  webpage += HTML_Footer();
+}
+
 bool compareFileinfo(const fileinfo &a, const fileinfo &b)
 { // ファイル情報を比較するための関数
   // ディレクトリをファイルより前に配置
@@ -292,139 +468,139 @@ void Home()
   webpage += HTML_Footer();
 }
 
-void Display_System_Info()
-{
-  esp_chip_info_t chip_info;
-  esp_chip_info(&chip_info);
-  if (WiFi.scanComplete() == -2)
-    WiFi.scanNetworks(true, false);
-  // Scan parameters are (async, show_hidden)
-  // if async = true, don't wait for the result
-  webpage = HTML_Header();
-  webpage += "<h3>System Information</h3>";
-  webpage += "<br><br>";
+// void Display_System_Info()
+// {
+//   esp_chip_info_t chip_info;
+//   esp_chip_info(&chip_info);
+//   if (WiFi.scanComplete() == -2)
+//     WiFi.scanNetworks(true, false);
+//   // Scan parameters are (async, show_hidden)
+//   // if async = true, don't wait for the result
+//   webpage = HTML_Header();
+//   webpage += "<h3>System Information</h3>";
+//   webpage += "<br><br>";
 
-  if (SPIFFS_ENABLE)
-  {
-    // - 1.SPIFFS trx Statistics
-    webpage += "<h4>SPIFFS:　Transfer Statistics</h4>";
-    webpage += "<table class='center'>";
-    webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
-    webpage += "<tr><td>" + ConvBytesUnits(SPIFFS_uploadSize, 1) + "</td><td>" + ConvBytesUnits(SPIFFS_downloadSize, 1) + "</td><td>File Size</td></tr> ";
-    webpage += "<tr><td>" + ConvBytesUnits((float)SPIFFS_uploadSize / SPIFFS_uploadTime * 1024.0, 1) + "/Sec</td>";
-    webpage += "<td>" + ConvBytesUnits((float)SPIFFS_downloadSize / SPIFFS_downloadTime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
-    webpage += "</table>";
+//   if (SPIFFS_ENABLE)
+//   {
+//     // - 1.SPIFFS trx Statistics
+//     webpage += "<h4>SPIFFS:　Transfer Statistics</h4>";
+//     webpage += "<table class='center'>";
+//     webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
+//     webpage += "<tr><td>" + ConvBytesUnits(SPIFFS_uploadSize, 1) + "</td><td>" + ConvBytesUnits(SPIFFS_downloadSize, 1) + "</td><td>File Size</td></tr> ";
+//     webpage += "<tr><td>" + ConvBytesUnits((float)SPIFFS_uploadSize / SPIFFS_uploadTime * 1024.0, 1) + "/Sec</td>";
+//     webpage += "<td>" + ConvBytesUnits((float)SPIFFS_downloadSize / SPIFFS_downloadTime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
+//     webpage += "</table>";
 
-    // - 2.SPIFFS Filing-Sys
-    webpage += "<h4>SPIFFS:　Filing System</h4>";
-    webpage += "<table class='center'>";
-    webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
-    webpage += "<tr>";
-    //-----------------------------------        
-    uint64_t SPIFFS_total = (uint64_t)SPIFFS.totalBytes();
-    uint64_t SPIFFS_used = (uint64_t)SPIFFS.usedBytes();
-    uint64_t SPIFFS_free = SPIFFS_total -SPIFFS_used;
-    webpage += "<td>" + ConvBytesUnits(SPIFFS_total,1) + "</td>";
-    webpage += "<td>" + ConvBytesUnits(SPIFFS_used,1) + "</td>";
-    webpage += "<td>" + ConvBytesUnits(SPIFFS_free,1) + "</td>";
+//     // - 2.SPIFFS Filing-Sys
+//     webpage += "<h4>SPIFFS:　Filing System</h4>";
+//     webpage += "<table class='center'>";
+//     webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
+//     webpage += "<tr>";
+//     //-----------------------------------
+//     uint64_t SPIFFS_total = (uint64_t)SPIFFS.totalBytes();
+//     uint64_t SPIFFS_used = (uint64_t)SPIFFS.usedBytes();
+//     uint64_t SPIFFS_free = SPIFFS_total -SPIFFS_used;
+//     webpage += "<td>" + ConvBytesUnits(SPIFFS_total,1) + "</td>";
+//     webpage += "<td>" + ConvBytesUnits(SPIFFS_used,1) + "</td>";
+//     webpage += "<td>" + ConvBytesUnits(SPIFFS_free,1) + "</td>";
 
-    webpage += "<td>" + (SPIFFS_numfiles == 0 ? "Pending Dir or Empty" : String(SPIFFS_numfiles)) + "</td>";
-    //-----------------------------------        
-    webpage += "</tr>";
-    webpage += "</table>";
-    webpage += "<br><br>";
-  }
+//     webpage += "<td>" + (SPIFFS_numfiles == 0 ? "Pending Dir or Empty" : String(SPIFFS_numfiles)) + "</td>";
+//     //-----------------------------------
+//     webpage += "</tr>";
+//     webpage += "</table>";
+//     webpage += "<br><br>";
+//   }
 
-  if (SD_ENABLE)
-  {
-    // - 3.SD trx Statistics
-    webpage += "<h4>SD:　Transfer Statistics</h4>";
-    webpage += "<table class='center'>";
-    webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
-    webpage += "<tr><td>" + ConvBytesUnits(SD_uploadSize, 1) + "</td><td>" + ConvBytesUnits(SD_downloadSize, 1) + "</td><td>File Size</td></tr> ";
-    webpage += "<tr><td>" + ConvBytesUnits((float)SD_uploadSize / SD_uploadTime * 1024.0, 1) + "/Sec</td>";
-    webpage += "<td>" + ConvBytesUnits((float)SD_downloadSize / SD_downloadTime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
-    webpage += "</table>";
+//   if (SD_ENABLE)
+//   {
+//     // - 3.SD trx Statistics
+//     webpage += "<h4>SD:　Transfer Statistics</h4>";
+//     webpage += "<table class='center'>";
+//     webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
+//     webpage += "<tr><td>" + ConvBytesUnits(SD_uploadSize, 1) + "</td><td>" + ConvBytesUnits(SD_downloadSize, 1) + "</td><td>File Size</td></tr> ";
+//     webpage += "<tr><td>" + ConvBytesUnits((float)SD_uploadSize / SD_uploadTime * 1024.0, 1) + "/Sec</td>";
+//     webpage += "<td>" + ConvBytesUnits((float)SD_downloadSize / SD_downloadTime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
+//     webpage += "</table>";
 
-    // - 4.SD Filing-Sys
-    webpage += "<h4>SD:　Filing System</h4>";
-    webpage += "<table class='center'>";
-    webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Card Type</th></tr>";
-    webpage += "<tr>";
-    //-----------------------------------        
-    uint64_t SD_total=(uint64_t)SD.totalBytes();
-    uint64_t SD_used=(uint64_t)SD.usedBytes();
-    uint64_t SD_free= SD_total - SD_used;
-    webpage += "<td>" + ConvBytesUnits(SD_total, 1) + "</td>";
-    webpage += "<td>" + ConvBytesUnits(SD_used, 1) + "</td>";
-    webpage += "<td>" + ConvBytesUnits(SD_free, 1) + "</td>";
+//     // - 4.SD Filing-Sys
+//     webpage += "<h4>SD:　Filing System</h4>";
+//     webpage += "<table class='center'>";
+//     webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Card Type</th></tr>";
+//     webpage += "<tr>";
+//     //-----------------------------------
+//     uint64_t SD_total=(uint64_t)SD.totalBytes();
+//     uint64_t SD_used=(uint64_t)SD.usedBytes();
+//     uint64_t SD_free= SD_total - SD_used;
+//     webpage += "<td>" + ConvBytesUnits(SD_total, 1) + "</td>";
+//     webpage += "<td>" + ConvBytesUnits(SD_used, 1) + "</td>";
+//     webpage += "<td>" + ConvBytesUnits(SD_free, 1) + "</td>";
 
-    sdcard_type_t cardType = SD.cardType();
-    const String cType[] = {"NONE", "MMC", "SD", "SDHC", "UNKNOWN"};
-    webpage += "<td>" + cType[cardType] + "</td>";
-    //-----------------------------------        
-    webpage += "</tr>";
-    webpage += "</table>";
-    webpage += "<br><br>";
-  }
+//     sdcard_type_t cardType = SD.cardType();
+//     const String cType[] = {"NONE", "MMC", "SD", "SDHC", "UNKNOWN"};
+//     webpage += "<td>" + cType[cardType] + "</td>";
+//     //-----------------------------------
+//     webpage += "</tr>";
+//     webpage += "</table>";
+//     webpage += "<br><br>";
+//   }
 
-  // - 5.Heap
-  webpage += "<h4>Free Heap Space</h4>";
-  webpage += "<table class='center'>";
-  webpage += "<tr><th>Total</th><th>PSRAM</th><th>SRAM</th><th>MaxAllocate DMA</th></tr><tr>";
-  
-  size_t FHS_total,FHS_psram,FHS_other,FHS_maxDMA;
-  FHS_total = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
-  FHS_psram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
-  FHS_other = FHS_total - FHS_psram ;
-  FHS_maxDMA = heap_caps_get_largest_free_block(MALLOC_CAP_DMA);
-  
-  webpage += "<td>" + ConvBytesUnits(FHS_total, 1,UNIT_KIRO) + "</td>";
-  webpage += "<td>" + ConvBytesUnits(FHS_psram, 1,UNIT_KIRO) + "</td>";
-  webpage += "<td>" + ConvBytesUnits(FHS_other, 1,UNIT_KIRO) + "</td>";
-  webpage += "<td>" + ConvBytesUnits(FHS_maxDMA, 1,UNIT_KIRO) + "</td>";
-  webpage += "</tr></table>";
+//   // - 5.Heap
+//   webpage += "<h4>Free Heap Space</h4>";
+//   webpage += "<table class='center'>";
+//   webpage += "<tr><th>Total</th><th>PSRAM</th><th>SRAM</th><th>MaxAllocate DMA</th></tr><tr>";
 
-  webpage += "<br><br>";
-  webpage += "<h4>Free Heap RAM Space2</h4>";
-  webpage += "<table class='center'>";
-  webpage += "<tr><th>Parameter</th><th>Value</th></tr>";
-  webpage += "<tr><td>Heap Size</td><td>" + ConvBytesUnits(ESP.getHeapSize(), 1) + "</td></tr>";
-  webpage += "<tr><td>Free Heap</td><td>" + ConvBytesUnits(ESP.getFreeHeap(), 1) + "</td></tr>";
-  webpage += "<tr><td>Min Free Heap</td><td>" + ConvBytesUnits(ESP.getMinFreeHeap(), 1) + "</td></tr>";
-  webpage += "<tr><td>Max Allocate Heap</td><td>" + ConvBytesUnits(ESP.getMaxAllocHeap(), 1) + "</td></tr>";
-  webpage += "</table>";
-  webpage += "<br><br>";
+//   size_t FHS_total,FHS_psram,FHS_other,FHS_maxDMA;
+//   FHS_total = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
+//   FHS_psram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+//   FHS_other = FHS_total - FHS_psram ;
+//   FHS_maxDMA = heap_caps_get_largest_free_block(MALLOC_CAP_DMA);
 
-  // - 5.CPU Info
-  webpage += "<h4>CPU Information</h4>";
-  webpage += "<table class='center'>";
-  webpage += "<tr><th>Parameter</th><th>Value</th></tr>";
-  webpage += "<tr><td>Number of Cores</td><td>" + String(chip_info.cores) + "</td></tr>";
-  webpage += "<tr><td>Chip revision</td><td>" + String(chip_info.revision) + "</td></tr>";
-  webpage += "<tr><td>Internal or External Flash Memory</td><td>" + String(((chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "Embedded" : "External")) + "</td></tr>";
-  webpage += "<tr><td>Flash Memory Size</td><td>" + String((spi_flash_get_chip_size() / (1024 * 1024))) + " MB</td></tr>";
-  webpage += "<tr><td>Current Free RAM</td><td>" + ConvBytesUnits(ESP.getFreeHeap(), 1) + "</td></tr>";
-  webpage += "</table>";
-  webpage += "<br><br>";
+//   webpage += "<td>" + ConvBytesUnits(FHS_total, 1,UNIT_KIRO) + "</td>";
+//   webpage += "<td>" + ConvBytesUnits(FHS_psram, 1,UNIT_KIRO) + "</td>";
+//   webpage += "<td>" + ConvBytesUnits(FHS_other, 1,UNIT_KIRO) + "</td>";
+//   webpage += "<td>" + ConvBytesUnits(FHS_maxDMA, 1,UNIT_KIRO) + "</td>";
+//   webpage += "</tr></table>";
 
-  // - 6.Network Info
-  webpage += "<h4>Network Information</h4>";
-  webpage += "<table class='center'>";
-  webpage += "<tr><th>Parameter</th><th>Value</th></tr>";
-  webpage += "<tr><td>LAN IP Address</td><td>" + String(WiFi.localIP().toString()) + "</td></tr>";
-  webpage += "<tr><td>Network Adapter MAC Address</td><td>" + String(WiFi.BSSIDstr()) + "</td></tr>";
-  webpage += "<tr><td>WiFi SSID</td><td>" + String(WiFi.SSID()) + "</td></tr>";
-  webpage += "<tr><td>WiFi RSSI</td><td>" + String(WiFi.RSSI()) + " dB</td></tr>";
-  webpage += "<tr><td>WiFi Channel</td><td>" + String(WiFi.channel()) + "</td></tr>";
-  webpage += "<tr><td>WiFi Encryption Type</td><td>" + String(EncryptionType(WiFi.encryptionType(0))) + "</td></tr>";
-  webpage += "</table> ";
-  webpage += "<br><br>";
-  // ------------------------------------------------------
+//   webpage += "<br><br>";
+//   webpage += "<h4>Free Heap RAM Space2</h4>";
+//   webpage += "<table class='center'>";
+//   webpage += "<tr><th>Parameter</th><th>Value</th></tr>";
+//   webpage += "<tr><td>Heap Size</td><td>" + ConvBytesUnits(ESP.getHeapSize(), 1) + "</td></tr>";
+//   webpage += "<tr><td>Free Heap</td><td>" + ConvBytesUnits(ESP.getFreeHeap(), 1) + "</td></tr>";
+//   webpage += "<tr><td>Min Free Heap</td><td>" + ConvBytesUnits(ESP.getMinFreeHeap(), 1) + "</td></tr>";
+//   webpage += "<tr><td>Max Allocate Heap</td><td>" + ConvBytesUnits(ESP.getMaxAllocHeap(), 1) + "</td></tr>";
+//   webpage += "</table>";
+//   webpage += "<br><br>";
 
-  // ------------------------------------------------------
-  webpage += HTML_Footer();
-}
+//   // - 5.CPU Info
+//   webpage += "<h4>CPU Information</h4>";
+//   webpage += "<table class='center'>";
+//   webpage += "<tr><th>Parameter</th><th>Value</th></tr>";
+//   webpage += "<tr><td>Number of Cores</td><td>" + String(chip_info.cores) + "</td></tr>";
+//   webpage += "<tr><td>Chip revision</td><td>" + String(chip_info.revision) + "</td></tr>";
+//   webpage += "<tr><td>Internal or External Flash Memory</td><td>" + String(((chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "Embedded" : "External")) + "</td></tr>";
+//   webpage += "<tr><td>Flash Memory Size</td><td>" + String((spi_flash_get_chip_size() / (1024 * 1024))) + " MB</td></tr>";
+//   webpage += "<tr><td>Current Free RAM</td><td>" + ConvBytesUnits(ESP.getFreeHeap(), 1) + "</td></tr>";
+//   webpage += "</table>";
+//   webpage += "<br><br>";
+
+//   // - 6.Network Info
+//   webpage += "<h4>Network Information</h4>";
+//   webpage += "<table class='center'>";
+//   webpage += "<tr><th>Parameter</th><th>Value</th></tr>";
+//   webpage += "<tr><td>LAN IP Address</td><td>" + String(WiFi.localIP().toString()) + "</td></tr>";
+//   webpage += "<tr><td>Network Adapter MAC Address</td><td>" + String(WiFi.BSSIDstr()) + "</td></tr>";
+//   webpage += "<tr><td>WiFi SSID</td><td>" + String(WiFi.SSID()) + "</td></tr>";
+//   webpage += "<tr><td>WiFi RSSI</td><td>" + String(WiFi.RSSI()) + " dB</td></tr>";
+//   webpage += "<tr><td>WiFi Channel</td><td>" + String(WiFi.channel()) + "</td></tr>";
+//   webpage += "<tr><td>WiFi Encryption Type</td><td>" + String(EncryptionType(WiFi.encryptionType(0))) + "</td></tr>";
+//   webpage += "</table> ";
+//   webpage += "<br><br>";
+//   // ------------------------------------------------------
+
+//   // ------------------------------------------------------
+//   webpage += HTML_Footer();
+// }
 
 String HTML_Header()
 {
@@ -627,7 +803,6 @@ String ConvBytesUnits(uint64_t bytes, int dp, int unit)
   // UNIT_BYTE
   return (String(bytes) + " B");
 }
-
 
 String EncryptionType(wifi_auth_mode_t encryptionType)
 {
