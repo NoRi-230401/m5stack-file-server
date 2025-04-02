@@ -3,40 +3,22 @@
 // -------------------------------------------------------
 // fileServer.cpp
 // *******************************************************
-#include <Arduino.h>
-#include <M5Unified.h>
-#include <SPIFFS.h>
-#include <WiFi.h>
-#include <ESPmDNS.h>
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-#include <algorithm>
-#include <vector>
-#include "esp_system.h"
-#include "esp_spi_flash.h"
-#include "esp_wifi_types.h"
-#include "esp_bt.h"
 #include "fileServer.h"
 
-bool compareFileinfo(const fileinfo &a, const fileinfo &b);
-bool wifiStart();
-bool mdnsStart(void);
+void Display_System_Info();
 bool fileServerStart();
 void notFound(AsyncWebServerRequest *request);
 void Page_Not_Found();
 void Home();
-void Display_System_Info();
 String HTML_Header();
 String HTML_Footer();
-// String ConvBytesUnits(uint64_t bytes, int dp);
-String ConvBytesUnits(uint64_t bytes, int dp, int unit);
 String EncryptionType(wifi_auth_mode_t encryptionType);
 String getContentType(String filenametype);
+bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 // -------------------------------------------------------
 extern bool SPIFFS_notFound(AsyncWebServerRequest *request);
 extern void SPIFFS_flServerSetup();
 extern void SPIFFS_Directory();
-extern bool SPIFFS_isExists(const String filename);
 extern uint32_t SPIFFS_startTime, SPIFFS_downloadTime, SPIFFS_uploadTime;
 extern uint64_t SPIFFS_downloadSize, SPIFFS_uploadSize;
 extern uint32_t SPIFFS_numfiles;
@@ -44,7 +26,6 @@ extern uint32_t SPIFFS_numfiles;
 extern bool SD_notFound(AsyncWebServerRequest *request);
 extern void SD_flServerSetup();
 extern void SD_Directory();
-extern bool SD_isExists(const String filename);
 extern uint32_t SD_start, SD_downloadTime, SD_uploadTime;
 extern uint64_t SD_downloadSize, SD_uploadSize;
 extern uint32_t SD_numfiles;
@@ -72,7 +53,7 @@ void Display_System_Info()
 
   if (SPIFFS_ENABLE)
   {
-    // - 1.SPIFFS trx Statistics
+    // - SPIFFS trx Statistics
     webpage += "<h4>SPIFFS:　Transfer Statistics</h4>";
     webpage += "<table class='center'>";
     webpage += "<tr><th>last upload</th><th>last download/stream</th><th>units</th></tr>";
@@ -82,7 +63,7 @@ void Display_System_Info()
     webpage += "</table>";
     webpage += "<br>";
 
-    // - 2.SPIFFS Filing-Sys
+    // - SPIFFS Filing-Sys
     webpage += "<h4>SPIFFS:　Filing System</h4>";
     webpage += "<table class='center'>";
     webpage += "<tr><th>total space</th><th>used space</th><th>free space</th><th>number of files</th></tr>";
@@ -91,9 +72,9 @@ void Display_System_Info()
     uint64_t SPIFFS_total = (uint64_t)SPIFFS.totalBytes();
     uint64_t SPIFFS_used = (uint64_t)SPIFFS.usedBytes();
     uint64_t SPIFFS_free = SPIFFS_total - SPIFFS_used;
-    webpage += "<td>" + ConvBytesUnits(SPIFFS_total, 1) + "</td>";
-    webpage += "<td>" + ConvBytesUnits(SPIFFS_used, 1) + "</td>";
-    webpage += "<td>" + ConvBytesUnits(SPIFFS_free, 1) + "</td>";
+    webpage += "<td>" + ConvBytesUnits(SPIFFS_total, 1 ,UNIT_KIRO) + "</td>";
+    webpage += "<td>" + ConvBytesUnits(SPIFFS_used, 1,UNIT_KIRO) + "</td>";
+    webpage += "<td>" + ConvBytesUnits(SPIFFS_free, 1,UNIT_KIRO) + "</td>";
 
     webpage += "<td>" + (SPIFFS_numfiles == 0 ? "Pending Dir or Empty" : String(SPIFFS_numfiles)) + "</td>";
     //-----------------------------------
@@ -139,15 +120,15 @@ void Display_System_Info()
   // - program size
   webpage += "<h4>Program size in FLASH</h4>";
   webpage += "<table class='center'>";
-  webpage += "<tr><th>max space</th><th>used program size</th><th>free space</th></tr>";
+  webpage += "<tr><th>total space</th><th>used program size</th><th>free space</th></tr>";
   webpage += "<tr>";
   //-----------------------------------
   uint64_t prog_max = (uint64_t)ESP.getFreeSketchSpace();
   uint64_t prog_used = (uint64_t)ESP.getSketchSize();
   uint64_t prog_available = prog_max - prog_used;
-  webpage += "<td>" + ConvBytesUnits(prog_max, 1, UNIT_AUTO) + "</td>";
-  webpage += "<td>" + ConvBytesUnits(prog_used, 1, UNIT_AUTO) + "</td>";
-  webpage += "<td>" + ConvBytesUnits(prog_available, 1, UNIT_AUTO) + "</td>";
+  webpage += "<td>" + ConvBytesUnits(prog_max, 1, UNIT_KIRO) + "</td>";
+  webpage += "<td>" + ConvBytesUnits(prog_used, 1, UNIT_KIRO) + "</td>";
+  webpage += "<td>" + ConvBytesUnits(prog_available, 1, UNIT_KIRO) + "</td>";
   //-----------------------------------
   webpage += "</tr>";
   webpage += "</table>";
@@ -176,26 +157,26 @@ void Display_System_Info()
   webpage += "<br><br>";
   //-------------------
 
-// - NVS
-nvs_stats_t nvsStats;
-if (ESP_OK == nvs_get_stats("nvs", &nvsStats))
-{
-  webpage += "<h4>NVS : Non-Volatile Storage</h4>";
-  webpage += "<table class='center'>";
-  webpage += "<tr><th>available entries</th><th>used entries</th><th>free entries</th><th>name space</th></tr><tr>";
+  // - NVS
+  nvs_stats_t nvsStats;
+  if (ESP_OK == nvs_get_stats("nvs", &nvsStats))
+  {
+    webpage += "<h4>NVS : Non-Volatile Storage</h4>";
+    webpage += "<table class='center'>";
+    webpage += "<tr><th>available entries</th><th>used entries</th><th>free entries</th><th>name space</th></tr><tr>";
 
-  size_t total_ent = nvsStats.total_entries;
-  size_t used_ent = nvsStats.used_entries;
-  size_t free_ent = nvsStats.free_entries;
-  size_t namespace_cnt = nvsStats.namespace_count;
-  webpage += "<td>" + String(total_ent) + "</td>";
-  webpage += "<td>" + String(used_ent) + "</td>";
-  webpage += "<td>" + String(free_ent) + "</td>";
-  webpage += "<td>" + String(namespace_cnt) + "</td>";
+    size_t total_ent = nvsStats.total_entries;
+    size_t used_ent = nvsStats.used_entries;
+    size_t free_ent = nvsStats.free_entries;
+    size_t namespace_cnt = nvsStats.namespace_count;
+    webpage += "<td>" + String(total_ent) + "</td>";
+    webpage += "<td>" + String(used_ent) + "</td>";
+    webpage += "<td>" + String(free_ent) + "</td>";
+    webpage += "<td>" + String(namespace_cnt) + "</td>";
 
-  webpage += "</tr></table>";
-  webpage += "<br><br>";
-}
+    webpage += "</tr></table>";
+    webpage += "<br><br>";
+  }
 
   // - CPU information
   webpage += "<h4>CPU Information</h4><table class='center'>";
@@ -216,7 +197,6 @@ if (ESP_OK == nvs_get_stats("nvs", &nvsStats))
   webpage += "</table>";
   webpage += "<br><br>";
 
-  
   // - MAC Address
   webpage += "<h4>MAC Address</h4>";
   webpage += "<table class='center'>";
@@ -241,13 +221,14 @@ if (ESP_OK == nvs_get_stats("nvs", &nvsStats))
   webpage += "</table>";
   webpage += "<br><br>";
 
-  // - 6.Network Info
+  // - Network Info
   webpage += "<h4>Network Information</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>parameter</th><th>value</th></tr>";
-  webpage += "<tr><td>LAN IP Address</td><td>" + String(WiFi.localIP().toString()) + "</td></tr>";
-  webpage += "<tr><td>Network Adapter MAC Address</td><td>" + String(WiFi.BSSIDstr()) + "</td></tr>";
+  webpage += "<tr><td>IP Address</td><td>" + String(WiFi.localIP().toString()) + "</td></tr>";
+  webpage += "<tr><td>Server Name (hostName)</td><td>" + SERVER_NAME + "</td></tr>";
   webpage += "<tr><td>WiFi SSID</td><td>" + String(WiFi.SSID()) + "</td></tr>";
+  webpage += "<tr><td>WiFi BSSID</td><td>" + String(WiFi.BSSIDstr()) + "</td></tr>";
   webpage += "<tr><td>WiFi RSSI</td><td>" + String(WiFi.RSSI()) + " dB</td></tr>";
   webpage += "<tr><td>WiFi Channel</td><td>" + String(WiFi.channel()) + "</td></tr>";
   webpage += "<tr><td>WiFi Encryption Type</td><td>" + String(EncryptionType(WiFi.encryptionType(0))) + "</td></tr>";
@@ -273,52 +254,6 @@ bool compareFileinfo(const fileinfo &a, const fileinfo &b)
   return a.filename < b.filename;
 }
 
-bool wifiStart()
-{
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(SSID, SSID_PASS);
-
-  int count = 1;
-  const int COUNT_MAX = 10;
-  while (WiFi.waitForConnectResult() != WL_CONNECTED)
-  {
-    count++;
-    M5.Display.printf(".");
-    Serial.printf(".");
-    // Serial.printf("STA: Failed!\n");
-    WiFi.disconnect(false);
-    delay(500);
-    WiFi.begin(SSID, SSID_PASS);
-    if (count >= COUNT_MAX)
-    {
-      Serial.printf("\nSTA: Failed!\n");
-      return false;
-    }
-  }
-
-  IP_ADDR = WiFi.localIP().toString();
-  Serial.println("\nIP Address: " + IP_ADDR);
-  if (WiFi.scanComplete() == -2)
-    WiFi.scanNetworks(true);
-  // Complete an initial scan for WiFi networks,
-  //  otherwise = 0 on first display!
-
-  return true;
-}
-
-bool mdnsStart(void)
-{
-  if (!MDNS.begin(SERVER_NAME.c_str()))
-  {
-    Serial.println("ERR: MDNS cannot start");
-    Serial.println("ERR: ServerName = " + SERVER_NAME);
-    return false;
-  }
-
-  Serial.println("mDNS ServerName = " + SERVER_NAME);
-  return true;
-}
-
 bool fileServerStart()
 {
   Serial.println(__FILE__);
@@ -335,12 +270,31 @@ bool fileServerStart()
   request->send(200, "text/html", webpage); });
 
   if (SPIFFS_ENABLE)
+  {
     SPIFFS_flServerSetup();
+    server.on("/SPIFFS_icon", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SPIFFS, ICON_FILE, "image/gif"); });
+  }
 
   if (SD_ENABLE)
   {
     SD_flServerSetup();
     SDdir_flserverSetup();
+
+    server.on("/SD_icon", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SD, ICON_FILE, "image/gif"); });
+  }
+
+  // favicon.ico
+  if (SD_ENABLE && SD.exists("/favicon.ico"))
+  {
+    server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SD, "/favicon.ico", "image/x-icon"); });
+  }
+  else if (SPIFFS_ENABLE && SPIFFS.exists("/favicon.ico"))
+  {
+    server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SPIFFS, "/favicon.ico", "image/x-icon"); });
   }
 
   server.onNotFound(notFound);
@@ -409,7 +363,6 @@ String getContentType(String filenametype)
   {
     return "application/x-gzip";
   }
-  // ----- Add by NoRi 2025-03-27 ------------
   else if (filenametype.endsWith(".csv"))
   {
     return "text/csv;charset=UTF-8";
@@ -479,11 +432,13 @@ void Home()
   webpage = HTML_Header();
   webpage += "<br>";
 
-  if (SD_ENABLE && SD_isExists(ICON_FILE))
+  // if (SD_ENABLE && SD_isExists(ICON_FILE))
+  if (SD_ENABLE && SD.exists(ICON_FILE))
   {
     webpage += "<img src = 'SD_icon' alt='icon'>";
   }
-  else if (SPIFFS_ENABLE && SPIFFS_isExists(ICON_FILE))
+  // else if (SPIFFS_ENABLE && SPIFFS_isExists(ICON_FILE))
+  else if (SPIFFS_ENABLE && SPIFFS.exists(ICON_FILE))
   {
     webpage += "<img src = 'SPIFFS_icon' alt='icon'>";
   }
@@ -491,140 +446,6 @@ void Home()
   webpage += "<h3>[&nbsp;Home&nbsp;]　" + SERVER_NAME + "　IP=" + IP_ADDR + "</h3>";
   webpage += HTML_Footer();
 }
-
-// void Display_System_Info()
-// {
-//   esp_chip_info_t chip_info;
-//   esp_chip_info(&chip_info);
-//   if (WiFi.scanComplete() == -2)
-//     WiFi.scanNetworks(true, false);
-//   // Scan parameters are (async, show_hidden)
-//   // if async = true, don't wait for the result
-//   webpage = HTML_Header();
-//   webpage += "<h3>System Information</h3>";
-//   webpage += "<br><br>";
-
-//   if (SPIFFS_ENABLE)
-//   {
-//     // - 1.SPIFFS trx Statistics
-//     webpage += "<h4>SPIFFS:　Transfer Statistics</h4>";
-//     webpage += "<table class='center'>";
-//     webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
-//     webpage += "<tr><td>" + ConvBytesUnits(SPIFFS_uploadSize, 1) + "</td><td>" + ConvBytesUnits(SPIFFS_downloadSize, 1) + "</td><td>File Size</td></tr> ";
-//     webpage += "<tr><td>" + ConvBytesUnits((float)SPIFFS_uploadSize / SPIFFS_uploadTime * 1024.0, 1) + "/Sec</td>";
-//     webpage += "<td>" + ConvBytesUnits((float)SPIFFS_downloadSize / SPIFFS_downloadTime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
-//     webpage += "</table>";
-
-//     // - 2.SPIFFS Filing-Sys
-//     webpage += "<h4>SPIFFS:　Filing System</h4>";
-//     webpage += "<table class='center'>";
-//     webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Number of Files</th></tr>";
-//     webpage += "<tr>";
-//     //-----------------------------------
-//     uint64_t SPIFFS_total = (uint64_t)SPIFFS.totalBytes();
-//     uint64_t SPIFFS_used = (uint64_t)SPIFFS.usedBytes();
-//     uint64_t SPIFFS_free = SPIFFS_total -SPIFFS_used;
-//     webpage += "<td>" + ConvBytesUnits(SPIFFS_total,1) + "</td>";
-//     webpage += "<td>" + ConvBytesUnits(SPIFFS_used,1) + "</td>";
-//     webpage += "<td>" + ConvBytesUnits(SPIFFS_free,1) + "</td>";
-
-//     webpage += "<td>" + (SPIFFS_numfiles == 0 ? "Pending Dir or Empty" : String(SPIFFS_numfiles)) + "</td>";
-//     //-----------------------------------
-//     webpage += "</tr>";
-//     webpage += "</table>";
-//     webpage += "<br><br>";
-//   }
-
-//   if (SD_ENABLE)
-//   {
-//     // - 3.SD trx Statistics
-//     webpage += "<h4>SD:　Transfer Statistics</h4>";
-//     webpage += "<table class='center'>";
-//     webpage += "<tr><th>Last Upload</th><th>Last Download/Stream</th><th>Units</th></tr>";
-//     webpage += "<tr><td>" + ConvBytesUnits(SD_uploadSize, 1) + "</td><td>" + ConvBytesUnits(SD_downloadSize, 1) + "</td><td>File Size</td></tr> ";
-//     webpage += "<tr><td>" + ConvBytesUnits((float)SD_uploadSize / SD_uploadTime * 1024.0, 1) + "/Sec</td>";
-//     webpage += "<td>" + ConvBytesUnits((float)SD_downloadSize / SD_downloadTime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
-//     webpage += "</table>";
-
-//     // - 4.SD Filing-Sys
-//     webpage += "<h4>SD:　Filing System</h4>";
-//     webpage += "<table class='center'>";
-//     webpage += "<tr><th>Total Space</th><th>Used Space</th><th>Free Space</th><th>Card Type</th></tr>";
-//     webpage += "<tr>";
-//     //-----------------------------------
-//     uint64_t SD_total=(uint64_t)SD.totalBytes();
-//     uint64_t SD_used=(uint64_t)SD.usedBytes();
-//     uint64_t SD_free= SD_total - SD_used;
-//     webpage += "<td>" + ConvBytesUnits(SD_total, 1) + "</td>";
-//     webpage += "<td>" + ConvBytesUnits(SD_used, 1) + "</td>";
-//     webpage += "<td>" + ConvBytesUnits(SD_free, 1) + "</td>";
-
-//     sdcard_type_t cardType = SD.cardType();
-//     const String cType[] = {"NONE", "MMC", "SD", "SDHC", "UNKNOWN"};
-//     webpage += "<td>" + cType[cardType] + "</td>";
-//     //-----------------------------------
-//     webpage += "</tr>";
-//     webpage += "</table>";
-//     webpage += "<br><br>";
-//   }
-
-//   // - 5.Heap
-//   webpage += "<h4>Free Heap Space</h4>";
-//   webpage += "<table class='center'>";
-//   webpage += "<tr><th>Total</th><th>PSRAM</th><th>SRAM</th><th>MaxAllocate DMA</th></tr><tr>";
-
-//   size_t FHS_total,FHS_psram,FHS_other,FHS_maxDMA;
-//   FHS_total = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
-//   FHS_psram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
-//   FHS_other = FHS_total - FHS_psram ;
-//   FHS_maxDMA = heap_caps_get_largest_free_block(MALLOC_CAP_DMA);
-
-//   webpage += "<td>" + ConvBytesUnits(FHS_total, 1,UNIT_KIRO) + "</td>";
-//   webpage += "<td>" + ConvBytesUnits(FHS_psram, 1,UNIT_KIRO) + "</td>";
-//   webpage += "<td>" + ConvBytesUnits(FHS_other, 1,UNIT_KIRO) + "</td>";
-//   webpage += "<td>" + ConvBytesUnits(FHS_maxDMA, 1,UNIT_KIRO) + "</td>";
-//   webpage += "</tr></table>";
-
-//   webpage += "<br><br>";
-//   webpage += "<h4>Free Heap RAM Space2</h4>";
-//   webpage += "<table class='center'>";
-//   webpage += "<tr><th>Parameter</th><th>Value</th></tr>";
-//   webpage += "<tr><td>Heap Size</td><td>" + ConvBytesUnits(ESP.getHeapSize(), 1) + "</td></tr>";
-//   webpage += "<tr><td>Free Heap</td><td>" + ConvBytesUnits(ESP.getFreeHeap(), 1) + "</td></tr>";
-//   webpage += "<tr><td>Min Free Heap</td><td>" + ConvBytesUnits(ESP.getMinFreeHeap(), 1) + "</td></tr>";
-//   webpage += "<tr><td>Max Allocate Heap</td><td>" + ConvBytesUnits(ESP.getMaxAllocHeap(), 1) + "</td></tr>";
-//   webpage += "</table>";
-//   webpage += "<br><br>";
-
-//   // - 5.CPU Info
-//   webpage += "<h4>CPU Information</h4>";
-//   webpage += "<table class='center'>";
-//   webpage += "<tr><th>Parameter</th><th>Value</th></tr>";
-//   webpage += "<tr><td>Number of Cores</td><td>" + String(chip_info.cores) + "</td></tr>";
-//   webpage += "<tr><td>Chip revision</td><td>" + String(chip_info.revision) + "</td></tr>";
-//   webpage += "<tr><td>Internal or External Flash Memory</td><td>" + String(((chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "Embedded" : "External")) + "</td></tr>";
-//   webpage += "<tr><td>Flash Memory Size</td><td>" + String((spi_flash_get_chip_size() / (1024 * 1024))) + " MB</td></tr>";
-//   webpage += "<tr><td>Current Free RAM</td><td>" + ConvBytesUnits(ESP.getFreeHeap(), 1) + "</td></tr>";
-//   webpage += "</table>";
-//   webpage += "<br><br>";
-
-//   // - 6.Network Info
-//   webpage += "<h4>Network Information</h4>";
-//   webpage += "<table class='center'>";
-//   webpage += "<tr><th>Parameter</th><th>Value</th></tr>";
-//   webpage += "<tr><td>LAN IP Address</td><td>" + String(WiFi.localIP().toString()) + "</td></tr>";
-//   webpage += "<tr><td>Network Adapter MAC Address</td><td>" + String(WiFi.BSSIDstr()) + "</td></tr>";
-//   webpage += "<tr><td>WiFi SSID</td><td>" + String(WiFi.SSID()) + "</td></tr>";
-//   webpage += "<tr><td>WiFi RSSI</td><td>" + String(WiFi.RSSI()) + " dB</td></tr>";
-//   webpage += "<tr><td>WiFi Channel</td><td>" + String(WiFi.channel()) + "</td></tr>";
-//   webpage += "<tr><td>WiFi Encryption Type</td><td>" + String(EncryptionType(WiFi.encryptionType(0))) + "</td></tr>";
-//   webpage += "</table> ";
-//   webpage += "<br><br>";
-//   // ------------------------------------------------------
-
-//   // ------------------------------------------------------
-//   webpage += HTML_Footer();
-// }
 
 String HTML_Header()
 {
@@ -645,7 +466,8 @@ String HTML_Header()
   page += "table.center {margin-left:auto;margin-right:auto;}";
   page += "td, th {border:1px solid #dddddd;text-align:left;padding:0.8rem;}";
   page += "tr:nth-child(even) {background-color:#dddddd;}";
-  page += "h3 {color:#6ecf12;font-size:1.8rem;font-style:normal;text-align:center;}";
+  // page += "h3 {color:#6ecf12;font-size:1.8rem;font-style:normal;text-align:center;}";
+  page += "h3 {color:#6ecf12;font-size:1.7rem;font-style:normal;text-align:center;}";
   page += "h4 {color:slateblue;font-size:1.5rem;text-align:left;font-style:oblique;text-align:center;}";
   page += ".center {margin-left:auto;margin-right:auto;}";
 
@@ -673,6 +495,10 @@ String HTML_Header()
   page += "<a href='/'>Home</a>";
   page += "　　";
   page += "<a href='/system'>Status</a>";
+  page += "　　";
+  // page += "<a href='/reboot'>Reboot</a>";
+  // page += "<a href='/shutdown'>Shutdown</a>";
+
   page += "</div>";
 
   // --------------- SPIFFS ------------------------
@@ -726,7 +552,7 @@ String HTML_Header()
 String HTML_Footer()
 {
   String page;
-  page += "<br>";
+  page += "<br><br><br>";
   page += "<footer>";
   page += "<p class='ps'><i> " + PROG_NAME + "　" + VERSION + "</i></p>";
   page += "</footer>";
@@ -734,98 +560,6 @@ String HTML_Footer()
   page += "</body>";
   page += "</html>";
   return page;
-}
-
-// String ConvBytesUnits(uint64_t bytes, int dp)
-// { // int dp : 小数点以下の桁数、decimal places
-//   const uint64_t KILO = 1024ULL;
-//   const uint64_t MEGA = KILO * KILO;
-//   const uint64_t GIGA = MEGA * KILO;
-//   const uint64_t TERA = GIGA * KILO;
-
-//   if (bytes < KILO)
-//   {
-//     return (String(bytes) + " B");
-//   }
-//   else if (bytes < MEGA)
-//   {
-//     float kb = (float)bytes / (float)KILO;
-//     return String(kb, dp) + " KB";
-//   }
-//   else if (bytes < GIGA)
-//   {
-//     float mb = (float)bytes / (float)MEGA;
-//     return (String(mb, dp) + " MB");
-//   }
-//   else if (bytes < TERA)
-//   {
-//     float gb = (float)bytes / (float)GIGA;
-//     return (String(gb, dp) + " GB");
-//   }
-//   else
-//   {
-//     float tb = (float)bytes / (float)TERA;
-//     return (String(tb, dp) + " TB");
-//   }
-// }
-
-String ConvBytesUnits(uint64_t bytes, int dp, int unit)
-{ // int dp : 小数点以下の桁数、decimal places
-  const uint64_t KILO = 1024ULL;
-  const uint64_t MEGA = KILO * KILO;
-  const uint64_t GIGA = MEGA * KILO;
-  const uint64_t TERA = GIGA * KILO;
-
-  if (unit == UNIT_AUTO)
-  {
-    if (bytes < KILO)
-    {
-      return (String(bytes) + " B");
-    }
-    else if (bytes < MEGA)
-    {
-      float kb = (float)bytes / (float)KILO;
-      return String(kb, dp) + " KB";
-    }
-    else if (bytes < GIGA)
-    {
-      float mb = (float)bytes / (float)MEGA;
-      return (String(mb, dp) + " MB");
-    }
-    else if (bytes < TERA)
-    {
-      float gb = (float)bytes / (float)GIGA;
-      return (String(gb, dp) + " GB");
-    }
-    else
-    {
-      float tb = (float)bytes / (float)TERA;
-      return (String(tb, dp) + " TB");
-    }
-  }
-  else if (unit == UNIT_KIRO)
-  {
-    float kb = (float)bytes / (float)KILO;
-    return String(kb, dp) + " KB";
-  }
-  else if (unit == UNIT_MEGA)
-  {
-    float mb = (float)bytes / (float)MEGA;
-    return (String(mb, dp) + " MB");
-  }
-  else if (unit == UNIT_GIGA)
-  {
-    float gb = (float)bytes / (float)GIGA;
-    return (String(gb, dp) + " GB");
-  }
-  else if (unit == UNIT_TERA)
-  {
-    float tb = (float)bytes / (float)TERA;
-    return (String(tb, dp) + " TB");
-  }
-
-  // UNIT_BYTE
-  return (String(bytes) + " B");
 }
 
 String EncryptionType(wifi_auth_mode_t encryptionType)
@@ -850,82 +584,3 @@ String EncryptionType(wifi_auth_mode_t encryptionType)
     return "";
   }
 }
-
-/*
-void EPS32_system_info(void)
-{
-  Serial.println("\r\n-----------------------------");
-  uint64_t chipid;
-
-  // The chip ID is essentially its MAC address(length: 6 bytes).
-  chipid = ESP.getEfuseMac();
-  // print High 2 bytes
-  Serial.printf("ESP32 Chip ID = %04X\r\n", (uint16_t)(chipid >> 32));
-  Serial.printf("Chip Revision %d\r\n", ESP.getChipRevision());
-
-  esp_chip_info_t chip_info;
-  esp_chip_info(&chip_info);
-  Serial.printf("Number of Core: %d\r\n", chip_info.cores);
-  Serial.printf("CPU Frequency: %d MHz\r\n", ESP.getCpuFreqMHz());
-  Serial.printf("Flash Chip Size = %d byte\r\n", ESP.getFlashChipSize());
-  Serial.printf("Flash Frequency = %d Hz\r\n", ESP.getFlashChipSpeed());
-  Serial.printf("ESP-IDF version = %s\r\n", esp_get_idf_version());
-
-  // 利用可能なヒープのサイズを取得
-  Serial.printf("Available Heap Size= %d\r\n", esp_get_free_heap_size());
-
-  // 利用可能な内部ヒープのサイズを取得
-  Serial.printf("Available Internal Heap Size = %d\r\n", esp_get_free_internal_heap_size());
-
-  // これまでに利用可能だった最小ヒープを取得します
-  Serial.printf("Minimum Free Heap Ever Available Size = %d\r\n", esp_get_minimum_free_heap_size());
-  Serial.println();
-
-  uint8_t mac0[6];
-  esp_efuse_mac_get_default(mac0);
-  Serial.printf("Default Mac Address = %02X:%02X:%02X:%02X:%02X:%02X\r\n", mac0[0], mac0[1], mac0[2], mac0[3], mac0[4], mac0[5]);
-
-  uint8_t mac3[6];
-  esp_read_mac(mac3, ESP_MAC_WIFI_STA);
-  Serial.printf("[Wi-Fi Station] Mac Address = %02X:%02X:%02X:%02X:%02X:%02X\r\n", mac3[0], mac3[1], mac3[2], mac3[3], mac3[4], mac3[5]);
-
-  uint8_t mac4[7];
-  esp_read_mac(mac4, ESP_MAC_WIFI_SOFTAP);
-  Serial.printf("[Wi-Fi SoftAP] Mac Address = %02X:%02X:%02X:%02X:%02X:%02X\r\n", mac4[0], mac4[1], mac4[2], mac4[3], mac4[4], mac4[5]);
-
-  uint8_t mac5[6];
-  esp_read_mac(mac5, ESP_MAC_BT);
-  Serial.printf("[Bluetooth] Mac Address = %02X:%02X:%02X:%02X:%02X:%02X\r\n", mac5[0], mac5[1], mac5[2], mac5[3], mac5[4], mac5[5]);
-
-  uint8_t mac6[6];
-  esp_read_mac(mac6, ESP_MAC_ETH);
-  Serial.printf("[Ethernet] Mac Address = %02X:%02X:%02X:%02X:%02X:%02X\r\n", mac6[0], mac6[1], mac6[2], mac6[3], mac6[4], mac6[5]);
-}
-
-void info_spiffs()
-{
-  float total_mb = SPIFFS.totalBytes() / (1024.0 * 1024.0);
-  float used_mb = SPIFFS.usedBytes() / (1024.0 * 1024.0);
-  float free_mb = total_mb - used_mb;
-
-  char s[200];
-  sprintf(s, "Total Space = %.3f MB", total_mb);
-  Serial.println(s);
-
-  sprintf(s, "Used Space = %.3f MB", used_mb);
-  Serial.println(s);
-
-  sprintf(s, "Free Space = %.3f MB", free_mb);
-  Serial.println(s);
-}
-
-// 空きメモリをシリアル出力
-void log_free_size(const char *text)
-{
-  M5.Log.printf("%s ** free size of Memory(kB): %4d-%4d-%3d  [def-ps-dma] **\n", text,
-                heap_caps_get_free_size(MALLOC_CAP_DEFAULT) / 1024,
-                heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024,
-                heap_caps_get_free_size(MALLOC_CAP_DMA) / 1024);
-}
-
-*/

@@ -14,12 +14,9 @@ void SD_Handle_File_Delete(String filename);
 void SD_File_Rename();
 void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args);
 bool SD_notFound(AsyncWebServerRequest *request);
-void SD_Handle_File_Download();
 void SD_Select_File_For_Function(String title, String function);
 uint64_t SD_GetFileSize(String filename);
 // -------------------------------------------------------
-// String SD_StatusReport(int reportNo, int dp);
-bool SD_isExists(const String filename);
 bool SD_Start();
 bool SD_cardInfo(void);
 bool SD_SettingRd(const String filename);
@@ -68,7 +65,7 @@ void SD_flServerSetup()
   server.on("/SD_download", HTTP_GET, [](AsyncWebServerRequest *request)
             {
     Serial.println("SD_Downloading file...");
-    SD_Select_File_For_Function("[DOWNLOAD]", "SD_downloadhandler"); // Build webpage ready for display
+    SD_Select_File_For_Function("[DOWNLOAD] for PC", "SD_downloadhandler"); // Build webpage ready for display
     request->send(200, "text/html", webpage); });
 
   server.on("/SD_upload", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -103,9 +100,6 @@ void SD_flServerSetup()
     Serial.println("SD_Deleting file...");
     SD_Select_File_For_Function("[DELETE]", "SD_deletehandler");
     request->send(200, "text/html", webpage); });
-
-  server.on("/SD_icon", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SD, ICON_FILE, "image/gif"); });
 }
 
 void SD_Dir(AsyncWebServerRequest *request)
@@ -132,7 +126,17 @@ void SD_Dir(AsyncWebServerRequest *request)
       {
         webpage += "<td style = 'width:5%'>" + SD_Filenames[index + 1].ftype + "</td><td style = 'width:25%'>" + Fname2 + "</td><td style = 'width:10%'>" + SD_Filenames[index + 1].fsize + "</td>";
       }
-      webpage += "</tr>";
+
+      // webpage += "</tr>";
+      // 奇数の場合の最後のテーブル処理
+      if ((index < SD_numfiles - 1) || (SD_numfiles % 2 == 0))
+        webpage += "</tr>";
+      else if ((SD_numfiles % 2) != 0)
+      {
+        webpage += "<td style = 'width:5%'></td><td style = 'width:25%'></td><td style = 'width:10%'></td>";
+        webpage += "</tr>";
+      }
+
       index = index + 2;
     }
     webpage += "</table>";
@@ -267,7 +271,7 @@ void SD_File_Rename()
 {
   SD_Directory();
   webpage = HTML_Header();
-  webpage += "<h3>SD:　Select a Dir/File to [RENAME] on this device</h3>";
+  webpage += "<h3>SD:　Select a Dir/File to [RENAME]</h3>";
   webpage += "<FORM action='/SD_renamehandler'>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>File name</th><th>New Filename</th><th>Select</th></tr>";
@@ -367,9 +371,10 @@ bool SD_notFound(AsyncWebServerRequest *request)
       Serial.println("filename = " + filename_tmp);
       File file = SD.open(filename_tmp, "r");
       String contentType = getContentType("download");
-      
+
       AsyncWebServerResponse *response = request->beginResponse(contentType, file.size(),
-         [file](uint8_t *buffer, size_t maxLen, size_t total) mutable -> size_t { return file.read(buffer, maxLen); });
+                                                                [file](uint8_t *buffer, size_t maxLen, size_t total) mutable -> size_t
+                                                                { return file.read(buffer, maxLen); });
 
       response->addHeader("Server", "ESP Async Web Server");
       request->send(response);
@@ -393,7 +398,7 @@ bool SD_notFound(AsyncWebServerRequest *request)
       SD_downloadSize = SD_GetFileSize(filename);
       SD_downloadTime = millis() - SD_start;
     }
-    
+
     if (request->url().startsWith("/SD_deletehandler"))
     {
       Serial.println("SD_Delete handler started...");
@@ -401,7 +406,7 @@ bool SD_notFound(AsyncWebServerRequest *request)
       SD_Handle_File_Delete(filename);
       request->send(200, "text/html", webpage);
     }
-    
+
     if (request->url().startsWith("/SD_renamehandler"))
     {
       Serial.println("SD Rename handler started...");
@@ -413,32 +418,13 @@ bool SD_notFound(AsyncWebServerRequest *request)
   return false;
 }
 
-void SD_Handle_File_Download()
-{
-  String filename = "";
-  int index = 0;
-  SDdir_FilesList();
-
-  webpage = HTML_Header();
-  webpage += "<h3>SD:　Select a File to Download</h3>";
-  webpage += "<table>";
-  webpage += "<tr><th>File Name</th><th>File Size</th></tr>";
-  while (index < SD_numfiles)
-  {
-    webpage += "<tr><td><a href='" + SD_Filenames[index].filename + "'></a><td>" + SD_Filenames[index].fsize + "</td></tr>";
-    index++;
-  }
-  webpage += "</table>";
-  webpage += HTML_Footer();
-}
-
 void SD_Select_File_For_Function(String title, String function)
 {
   String Fname1, Fname2;
   int index = 0;
   SDdir_FilesList();
   webpage = HTML_Header();
-  webpage += "<h3>SD:　Select a File to " + title + " from this device</h3>";
+  webpage += "<h3>SD:　Select a File to " + title + "　</h3>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>File Name</th><th>File Size</th><th class='sp'></th><th>File Name</th><th>File Size</th></tr>";
   while (index < SD_numfiles)
@@ -460,7 +446,16 @@ void SD_Select_File_For_Function(String title, String function)
     {
       webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td><td style = 'width:10%'>" + SD_Filenames[index + 1].fsize + "</td>";
     }
-    webpage += "</tr>";
+    // webpage += "</tr>";
+    // 奇数の場合の最後のテーブル処理
+    if ((index < SD_numfiles - 1) || (SD_numfiles % 2 == 0))
+      webpage += "</tr>";
+    else if ((SD_numfiles % 2) != 0)
+    {
+      webpage += "<td style='width:25%'></td><td style = 'width:10%'></td>";
+      webpage += "</tr>";
+    }
+
     index = index + 2;
   }
   webpage += "</table>";
@@ -483,7 +478,7 @@ void SDdir_flserverSetup()
   server.on("/SDdir_chdir", HTTP_GET, [](AsyncWebServerRequest *request)
             {
     Serial.println("SDdir_chdir...");
-    SDdir_Select_Dir_For_Function("[CHDIR]", "SDdir_chdirhandler");
+    SDdir_Select_Dir_For_Function("[CHDIR:change directory]", "SDdir_chdirhandler");
     request->send(200, "text/html", webpage); });
 
   server.on("/SDdir_mkdir", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -495,7 +490,7 @@ void SDdir_flserverSetup()
   server.on("/SDdir_rmdir", HTTP_GET, [](AsyncWebServerRequest *request)
             {
     Serial.println("SDdir_rmdir...");
-    SDdir_Select_Dir_For_Function("[RMDIR]", "SDdir_rmdirhandler");
+    SDdir_Select_Dir_For_Function("[RMDIR:remove directory]", "SDdir_rmdirhandler");
     request->send(200, "text/html", webpage); });
 
   server.on("/SDdir_chTop", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -624,32 +619,42 @@ void SDdir_DirMake()
 
 void SDdir_Select_Dir_For_Function(String title, String function)
 {
-  String Fname1, Fname2;
+  String Dname1, Dname2;
   int index = 0;
   SDdir_DirList();
   webpage = HTML_Header();
-  webpage += "<h3>[SD] Select a Directory to " + title + " from this device</h3>";
+  webpage += "<h3>SD:　Select a Directory to " + title + "　</h3>";
   webpage += "<table class='center'>";
-  webpage += "<tr> <th>Directory Name</th> <th>Directory Name</th> </tr>";
-
+  webpage += "<tr> <th>Directory Name</th><th class='sp'><th>Directory Name</th> </tr>";
+  
   while (index < SD_numfiles)
   {
-    Fname1 = SD_Filenames[index].filename;
-    Fname2 = (index + 1 < SD_numfiles) ? SD_Filenames[index + 1].filename : "";
-    if (Fname1.startsWith("/"))
-      Fname1 = Fname1.substring(1);
+    Dname1 = SD_Filenames[index].filename;
+    Dname2 = (index + 1 < SD_numfiles) ? SD_Filenames[index + 1].filename : "";
+    if (Dname1.startsWith("/"))
+      Dname1 = Dname1.substring(1);
 
-    if (Fname2.startsWith("/"))
-      Fname2 = Fname2.substring(1);
+    if (Dname2.startsWith("/"))
+      Dname2 = Dname2.substring(1);
 
     webpage += "<tr>";
-    webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td>";
+    webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Dname1 + "'>" + Dname1 + "</a></button></td>";
+    webpage += "<td class='sp'></td>";
 
     if (index < SD_numfiles - 1)
     {
-      webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td>";
+      webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Dname2 + "'>" + Dname2 + "</a></button></td>";
     }
-    webpage += "</tr>";
+    // webpage += "</tr>";
+    // 奇数の場合の最後のテーブル処理
+    if ((index < SD_numfiles - 1) || (SD_numfiles % 2 == 0))
+      webpage += "</tr>";
+    else if ((SD_numfiles % 2) != 0)
+    {
+      webpage += "<td style='width:25%'></td>";
+      webpage += "</tr>";
+    }
+
     index = index + 2;
   }
   webpage += "</table>";
@@ -692,7 +697,7 @@ void SDdir_DirList()
 }
 
 void SDdir_FilesList()
-{// 'File' type only , not involve 'Dir'
+{ // 'File' type only , not involve 'Dir'
   SD_numfiles = 0;
   SD_Filenames.clear();
   if (SdPath == "")
@@ -788,13 +793,8 @@ bool SD_cardInfo(void)
   return true;
 }
 
-bool SD_isExists(const String filename)
-{
-  return (SD.exists(filename));
-}
-
 bool SD_SettingRd(const String filename)
-{// SSID, SSID_PASS, SERVER_NAME read from file
+{ // SSID, SSID_PASS, SERVER_NAME read from file
   if (!SD.exists(filename))
     return false;
 
@@ -841,7 +841,6 @@ bool SD_SettingRd(const String filename)
 
   return true;
 }
-
 
 void SDdir_InputNewDirName(String Heading, String Command, String Arg_name)
 {

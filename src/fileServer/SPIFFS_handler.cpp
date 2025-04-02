@@ -14,12 +14,9 @@ void SPIFFS_Handle_File_Delete(String filename);
 void SPIFFS_File_Rename();
 void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args);
 bool SPIFFS_notFound(AsyncWebServerRequest *request);
-void SPIFFS_Handle_File_Download();
 void SPIFFS_Select_File_For_Function(String title, String function);
 uint64_t SPIFFS_GetFileSize(String filename);
 // -------------------------------------------------------
-// String SPIFFS_StatusReport(int reportNo, int decimalPlaces);
-bool SPIFFS_isExists(const String filename);
 bool SPIFFS_Start();
 bool SPIFFS_SettingRd(const String filename);
 // -------------------------------------------------------
@@ -47,7 +44,7 @@ void SPIFFS_flServerSetup()
   server.on("/SPIFFS_download", HTTP_GET, [](AsyncWebServerRequest *request)
             {
     Serial.println("SPIFFS Downloading file...");
-    SPIFFS_Select_File_For_Function("[DOWNLOAD]", "SPIFFS_downloadhandler");
+    SPIFFS_Select_File_For_Function("[DOWNLOAD] for PC", "SPIFFS_downloadhandler");
     request->send(200, "text/html", webpage); });
 
   server.on("/SPIFFS_upload", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -82,9 +79,6 @@ void SPIFFS_flServerSetup()
     Serial.println("SPIFFS Deleting file...");
     SPIFFS_Select_File_For_Function("[DELETE]", "SPIFFS_deletehandler");
     request->send(200, "text/html", webpage); });
-
-  server.on("/SPIFFS_icon", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, ICON_FILE, "image/gif"); });
 }
 
 void SPIFFS_Directory()
@@ -139,7 +133,15 @@ void SPIFFS_Dir(AsyncWebServerRequest *request)
       {
         webpage += "<td style = 'width:5%'>" + SPIFFS_Filenames[index + 1].ftype + "</td><td style = 'width:25%'>" + Fname2 + "</td><td style = 'width:10%'>" + SPIFFS_Filenames[index + 1].fsize + "</td>";
       }
-      webpage += "</tr>";
+      // 奇数の場合の最後のテーブル処理
+      if ((index < SPIFFS_numfiles - 1) || (SPIFFS_numfiles % 2 == 0))
+        webpage += "</tr>";
+      else if ((SPIFFS_numfiles % 2) != 0)
+      {
+        webpage += "<td style = 'width:5%'></td><td style = 'width:25%'></td><td style = 'width:10%'></td>";
+        webpage += "</tr>";
+      }
+
       index = index + 2;
     }
     webpage += "</table>";
@@ -225,7 +227,7 @@ void SPIFFS_File_Rename()
 {
   SPIFFS_Directory();
   webpage = HTML_Header();
-  webpage += "<h3>SPIFFS:　Select a File to [RENAME] on this device</h3>";
+  webpage += "<h3>SPIFFS:　Select a File to [RENAME]</h3>";
   webpage += "<FORM action='/SPIFFS_renamehandler'>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>File name</th><th>New Filename</th><th>Select</th></tr>";
@@ -350,31 +352,13 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
   return false;
 }
 
-void SPIFFS_Handle_File_Download()
-{
-  String filename = "";
-  int index = 0;
-  SPIFFS_Directory();
-  webpage = HTML_Header();
-  webpage += "<h3>SPIFFS:　Select a File to Download</h3>";
-  webpage += "<table>";
-  webpage += "<tr><th>File Name</th><th>File Size</th></tr>";
-  while (index < SPIFFS_numfiles)
-  {
-    webpage += "<tr><td><a href='" + SPIFFS_Filenames[index].filename + "'></a><td>" + SPIFFS_Filenames[index].fsize + "</td></tr>";
-    index++;
-  }
-  webpage += "</table>";
-  webpage += HTML_Footer();
-}
-
 void SPIFFS_Select_File_For_Function(String title, String function)
 {
   String Fname1, Fname2;
   int index = 0;
   SPIFFS_Directory();
   webpage = HTML_Header();
-  webpage += "<h3>SPIFFS:　Select a File to " + title + " from this device</h3>";
+  webpage += "<h3>SPIFFS:　Select a File to " + title + "　</h3>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>File Name</th><th>File Size</th><th class='sp'></th><th>File Name</th><th>File Size</th></tr>";
   while (index < SPIFFS_numfiles)
@@ -396,7 +380,17 @@ void SPIFFS_Select_File_For_Function(String title, String function)
     {
       webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td><td style = 'width:10%'>" + SPIFFS_Filenames[index + 1].fsize + "</td>";
     }
-    webpage += "</tr>";
+
+    // webpage += "</tr>";
+    // 奇数の場合の最後のテーブル処理
+    if ((index < SPIFFS_numfiles - 1) || (SPIFFS_numfiles % 2 == 0))
+      webpage += "</tr>";
+    else if ((SPIFFS_numfiles % 2) != 0)
+    {
+      webpage += "<td style='width:25%'></td><td style = 'width:10%'></td>";
+      webpage += "</tr>";
+    }
+
     index = index + 2;
   }
   webpage += "</table>";
@@ -410,11 +404,6 @@ uint64_t SPIFFS_GetFileSize(String filename)
   filesize = (uint64_t)CheckFile.size();
   CheckFile.close();
   return filesize;
-}
-
-bool SPIFFS_isExists(const String filename)
-{
-  return (SPIFFS.exists(filename));
 }
 
 bool SPIFFS_SettingRd(const String filename)

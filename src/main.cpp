@@ -9,14 +9,9 @@
 #include "SDUpdater.h"
 #endif
 
-void setup();
-void loop();
-bool setupFileServer();
-void prt(String message);
-void error_stop();
+bool setupServer();
 const String PROG_NAME = "m5stack-fileServer";
-const String VERSION = "v1.05a-250401a";
-
+const String VERSION = "v1.05a-250402b";
 //---------------------------------------------------------------------------
 // **  SETTINGS  **
 //---------------------------------------------------------------------------
@@ -34,6 +29,8 @@ const String YOUR_SERVER_NAME = "m5fileServer";
 
 void setup()
 {
+  getHeapInf();
+
   auto cfg = M5.config();
   cfg.serial_baudrate = 115200;
   M5.begin(cfg);
@@ -47,12 +44,17 @@ void setup()
   Serial.println(__FILE__);
   prt("-   " + PROG_NAME + "   -\n");
 
-  if (!setupFileServer())
+  if (!setupServer())
     error_stop();
 
   prt("SUCCESS: System started");
   prt("\nIP Addr: " + IP_ADDR);
   prt("\nServerName: " + SERVER_NAME);
+
+  // ---- Heap Information -----
+  prtHeapInf("-- SetupStart HeapInf --");
+  getHeapInf();
+  prtHeapInf("-- SetupDone  HeapInf --");
 }
 
 void loop()
@@ -60,9 +62,9 @@ void loop()
   delay(1);
 }
 
-bool setupFileServer()
+bool setupServer()
 {
-  // --- SD and SPIFFS start ------
+  // --- SD and SPIFFS start ---
   SD_ENABLE = false;
   if (SD_USE)
   {
@@ -115,7 +117,7 @@ bool setupFileServer()
     return false;
   }
 
-  // --- wifi and Server Start --------------
+  // --- wifi and Server Start -------
   if (!wifiStart())
   {
     prt("WiFi    .....  NG");
@@ -138,21 +140,4 @@ bool setupFileServer()
   prt("fileServer ..  OK");
 
   return true;
-}
-
-void prt(String message)
-{
-  Serial.println(message);
-
-  if (DISP_ON)
-    M5.Display.println(message);
-}
-
-void error_stop()
-{
-  prt("\nERR: fail to start server");
-  delay(10000);
-
-  while (true)
-    ;
 }
