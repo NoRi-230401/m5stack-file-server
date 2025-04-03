@@ -43,8 +43,8 @@ void Display_System_Info()
 {
   esp_chip_info_t chip_info;
   esp_chip_info(&chip_info);
-  if (WiFi.scanComplete() == -2)
-    WiFi.scanNetworks(true, false);
+  // if (WiFi.scanComplete() == -2)
+  //   WiFi.scanNetworks(true, false);
   // Scan parameters are (async, show_hidden)
   // if async = true, don't wait for the result
   webpage = HTML_Header();
@@ -61,7 +61,7 @@ void Display_System_Info()
     webpage += "<tr><td>" + ConvBytesUnits((float)SPIFFS_uploadSize / SPIFFS_uploadTime * 1024.0, 1) + "/Sec</td>";
     webpage += "<td>" + ConvBytesUnits((float)SPIFFS_downloadSize / SPIFFS_downloadTime * 1024.0, 1) + "/Sec</td><td>Transfer Rate</td></tr>";
     webpage += "</table>";
-    webpage += "<br>";
+    webpage += "<br><br>";
 
     // - SPIFFS Filing-Sys
     webpage += "<h4>SPIFFS:　Filing System</h4>";
@@ -72,9 +72,9 @@ void Display_System_Info()
     uint64_t SPIFFS_total = (uint64_t)SPIFFS.totalBytes();
     uint64_t SPIFFS_used = (uint64_t)SPIFFS.usedBytes();
     uint64_t SPIFFS_free = SPIFFS_total - SPIFFS_used;
-    webpage += "<td>" + ConvBytesUnits(SPIFFS_total, 1 ,UNIT_KIRO) + "</td>";
-    webpage += "<td>" + ConvBytesUnits(SPIFFS_used, 1,UNIT_KIRO) + "</td>";
-    webpage += "<td>" + ConvBytesUnits(SPIFFS_free, 1,UNIT_KIRO) + "</td>";
+    webpage += "<td>" + ConvBytesUnits(SPIFFS_total, 1, UNIT_KIRO) + "</td>";
+    webpage += "<td>" + ConvBytesUnits(SPIFFS_used, 1, UNIT_KIRO) + "</td>";
+    webpage += "<td>" + ConvBytesUnits(SPIFFS_free, 1, UNIT_KIRO) + "</td>";
 
     webpage += "<td>" + (SPIFFS_numfiles == 0 ? "Pending Dir or Empty" : String(SPIFFS_numfiles)) + "</td>";
     //-----------------------------------
@@ -98,7 +98,7 @@ void Display_System_Info()
     // - SD Filing-Sys
     webpage += "<h4>SD:　Filing System</h4>";
     webpage += "<table class='center'>";
-    webpage += "<tr><th>total space</th><th>used Space</th><th>free space</th><th>card type</th></tr>";
+    webpage += "<tr><th>total space</th><th>used space</th><th>free space</th><th>card type</th></tr>";
     webpage += "<tr>";
     //-----------------------------------
     uint64_t SD_total = (uint64_t)SD.totalBytes();
@@ -229,9 +229,18 @@ void Display_System_Info()
   webpage += "<tr><td>Server Name (hostName)</td><td>" + SERVER_NAME + "</td></tr>";
   webpage += "<tr><td>WiFi SSID</td><td>" + String(WiFi.SSID()) + "</td></tr>";
   webpage += "<tr><td>WiFi BSSID</td><td>" + String(WiFi.BSSIDstr()) + "</td></tr>";
-  webpage += "<tr><td>WiFi RSSI</td><td>" + String(WiFi.RSSI()) + " dB</td></tr>";
-  webpage += "<tr><td>WiFi Channel</td><td>" + String(WiFi.channel()) + "</td></tr>";
+  // webpage += "<tr><td>WiFi RSSI</td><td>" + String(WiFi.RSSI()) + " dB</td></tr>";
+  // webpage += "<tr><td>WiFi Channel</td><td>" + String(WiFi.channel()) + "</td></tr>";
   webpage += "<tr><td>WiFi Encryption Type</td><td>" + String(EncryptionType(WiFi.encryptionType(0))) + "</td></tr>";
+  webpage += "</table> ";
+  webpage += "<br><br>";
+
+  // - clock
+  webpage += "<h4>clock</h4>";
+  webpage += "<table class='center'>";
+  webpage += "<tr><th>parameter</th><th>value</th></tr>";
+  webpage += "<tr><td>RTC</td><td>" + getTmRTC() + "</td></tr>";
+  webpage += "<tr><td>NTP</td><td>" + getTmNTP() + "</td></tr>";
   webpage += "</table> ";
   webpage += "<br><br>";
 

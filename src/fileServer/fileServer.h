@@ -23,6 +23,7 @@
 #include "esp_spi_flash.h"
 #include "esp_wifi_types.h"
 #include "esp_bt.h"
+#include <time.h> // 時刻制御用ライブラリ
 
 typedef struct
 {
@@ -51,18 +52,26 @@ extern bool SD_ENABLE, SPIFFS_ENABLE;
 extern String HTML_Header();
 extern String HTML_Footer();
 extern String getContentType(String filenametype);
-extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 
+
+extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 extern void prt(String message);
 extern void error_stop();
 extern void getHeapInf();
 extern void prtHeapInf(String message);
 extern String ConvBytesUnits(uint64_t bytes, int dp, int unit=UNIT_AUTO);
+
+extern bool timeSyncNTP(long gmt_offset, int daylight_offset, const String ntpsrv1, const String ntpsrv2="");
+extern void setRTC();
+extern String getTmRTC();
+extern String getTmNTP();
+
 extern const String VERSION;
 extern const String PROG_NAME;
 extern const String YOUR_SSID;
 extern const String YOUR_SSID_PASS;
 extern const String YOUR_SERVER_NAME;
 extern const bool DISP_ON;
+
 // -------------------------------------------------------
 #endif  // _M5STACK_FILE_SERVER_H

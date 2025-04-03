@@ -26,6 +26,12 @@ const String YOUR_SSID = "YOUR_SSID";
 const String YOUR_SSID_PASS = "YOUR_SSID_PASSWORD";
 const String YOUR_SERVER_NAME = "m5fileServer";
 //---------------------------------------------------------------------------
+// NTP connection information.
+#define NTP_JST 9 * 3600L              // JST=GMT+9h
+#define NTP_GMT_OFFSET NTP_JST         // GMT_OFFSET
+#define NTP_DAYLIGHT_OFFSET 0          // daylight_offset
+#define NTP_SVR1 "ntp.nict.jp"         // NTP server
+#define NTP_SVR2 "ntp.jst.mfeed.ad.jp" // NTP server
 
 void setup()
 {
@@ -46,6 +52,18 @@ void setup()
 
   if (!setupServer())
     error_stop();
+
+  if (timeSyncNTP(NTP_GMT_OFFSET, NTP_DAYLIGHT_OFFSET, NTP_SVR1, NTP_SVR2))
+  {
+    Serial.println("Success : NTP time sync");
+    Serial.println("NTP: " + getTmNTP());
+    setRTC();
+  }
+  else
+  {
+    prt("ERROR: NTP time sync");
+  }
+  Serial.println("RTC: " + getTmRTC());
 
   prt("SUCCESS: System started");
   prt("\nIP Addr: " + IP_ADDR);

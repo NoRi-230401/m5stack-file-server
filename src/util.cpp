@@ -12,7 +12,15 @@ void error_stop();
 bool wifiStart();
 bool mdnsStart(void);
 String ConvBytesUnits(uint64_t bytes, int dp, int unit);
+String strTmInfo(struct tm &timeInfo);
+bool timeSyncNTP(long gmt_offset, int daylight_offset, const String ntpsrv1, const String ntpsrv2);
+String getTmNTP();
+void setRTC();
+String getTmRTC();
+
 static uint32_t HEAP_INF[8];
+// const String NTP_SVR1 = "ntp.nict.jp";         // NTP server1 address.
+// const String NTP_SVR2 = "ntp.jst.mfeed.ad.jp"; // NTP server2 address.
 
 void getHeapInf()
 {
@@ -110,41 +118,36 @@ String ConvBytesUnits(uint64_t bytes, int dp, int unit)
     float tb = (float)bytes / (float)TERA;
     return (String(tb, dp) + " TB");
   }
-
   // UNIT_BYTE
   return (String(bytes) + " B");
 }
 
 bool wifiStart()
 {
+  WiFi.disconnect();
+  delay(500);
+
   WiFi.mode(WIFI_STA);
   WiFi.begin(SSID, SSID_PASS);
-  // M5.Display.printf(".");
   Serial.printf(".");
   int count = 1;
-  const int COUNT_MAX = 10;
-  while (WiFi.waitForConnectResult() != WL_CONNECTED)
+  const int COUNT_MAX = 20;
+  delay(500);
+
+  while (WiFi.status() != WL_CONNECTED)
   {
     count++;
-    // M5.Display.printf(".");
     Serial.printf(".");
-    WiFi.disconnect(false);
-    // delay(500);
-    WiFi.begin(SSID, SSID_PASS);
+    delay(500);
     if (count >= COUNT_MAX)
     {
-      Serial.printf("\ncannot connect ,Wifi faile!");
+      Serial.println("\ncannot connect ,Wifi faile!");
       return false;
     }
   }
 
   IP_ADDR = WiFi.localIP().toString();
   Serial.println("\nIP Address: " + IP_ADDR);
-  if (WiFi.scanComplete() == -2)
-    WiFi.scanNetworks(true);
-  // Complete an initial scan for WiFi networks,
-  //  otherwise = 0 on first display!
-
   return true;
 }
 
@@ -159,4 +162,75 @@ bool mdnsStart(void)
 
   Serial.println("mDNS ServerName = " + SERVER_NAME);
   return true;
+}
+
+
+
+String strTmInfo(struct tm &timeInfo)
+{
+  char buf[60];
+  static constexpr const char *const wd[7] = {"Sun", "Mon", "Tue", "Wed", "Thr", "Fri", "Sat"};
+
+  sprintf(buf, "%04d/%02d/%02d(%s) %02d:%02d:%02d",
+          timeInfo.tm_year + 1900, timeInfo.tm_mon + 1, timeInfo.tm_mday,
+          wd[timeInfo.tm_wday], timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec);
+
+  return String(buf);
+}
+
+bool timeSyncNTP(long gmt_offset, int daylight_offset, const String ntpsrv1, const String ntpsrv2)
+{
+  struct tm tmInfo;
+
+  if (ntpsrv2 == "")
+    configTime(gmt_offset, daylight_offset, ntpsrv1.c_str());
+  else
+    configTime(gmt_offset, daylight_offset, ntpsrv1.c_str(), ntpsrv2.c_str());
+
+  delay(1000);
+  delay(1000);
+  delay(1000);
+  delay(1000);
+  delay(1000);
+
+  for (int i = 0; i < 10; i++)
+  {
+    delay(100);
+    if (getLocalTime(&tmInfo, 1000U))
+    {
+      Serial.println("i = " + String(i) + "\n" + strTmInfo(tmInfo));
+      return true;
+    }
+  }
+
+  return false;
+}
+
+void setRTC()
+{
+  struct tm tmInfo;
+
+  while (!getLocalTime(&tmInfo))
+    delay(10);
+
+  M5.Rtc.setDateTime(tmInfo);
+}
+
+String getTmRTC()
+{
+  char buf[60];
+  static constexpr const char *const wd[7] = {"Sun", "Mon", "Tue", "Wed", "Thr", "Fri", "Sat"};
+  auto dt = M5.Rtc.getDateTime();
+  sprintf(buf, "%04d/%02d/%02d(%s) %02d:%02d:%02d", dt.date.year, dt.date.month, dt.date.date, wd[dt.date.weekDay], dt.time.hours, dt.time.minutes, dt.time.seconds);
+
+  return String(buf);
+}
+
+String getTmNTP()
+{
+  struct tm Ldt;
+  while (!getLocalTime(&Ldt))
+    delay(10);
+
+  return String(strTmInfo(Ldt));
 }
