@@ -13,14 +13,10 @@ bool wifiStart();
 bool mdnsStart(void);
 String ConvBytesUnits(uint64_t bytes, int dp, int unit);
 String strTmInfo(struct tm &timeInfo);
-bool timeSyncNTP(long gmt_offset, int daylight_offset, const String ntpsrv1, const String ntpsrv2);
 String getTmNTP();
-void setRTC();
+void adjustRTC();
 String getTmRTC();
-
 static uint32_t HEAP_INF[8];
-// const String NTP_SVR1 = "ntp.nict.jp";         // NTP server1 address.
-// const String NTP_SVR2 = "ntp.jst.mfeed.ad.jp"; // NTP server2 address.
 
 void getHeapInf()
 {
@@ -164,56 +160,15 @@ bool mdnsStart(void)
   return true;
 }
 
-
-
-String strTmInfo(struct tm &timeInfo)
-{
-  char buf[60];
-  static constexpr const char *const wd[7] = {"Sun", "Mon", "Tue", "Wed", "Thr", "Fri", "Sat"};
-
-  sprintf(buf, "%04d/%02d/%02d(%s) %02d:%02d:%02d",
-          timeInfo.tm_year + 1900, timeInfo.tm_mon + 1, timeInfo.tm_mday,
-          wd[timeInfo.tm_wday], timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec);
-
-  return String(buf);
-}
-
-bool timeSyncNTP(long gmt_offset, int daylight_offset, const String ntpsrv1, const String ntpsrv2)
+void adjustRTC()
 {
   struct tm tmInfo;
 
-  if (ntpsrv2 == "")
-    configTime(gmt_offset, daylight_offset, ntpsrv1.c_str());
-  else
-    configTime(gmt_offset, daylight_offset, ntpsrv1.c_str(), ntpsrv2.c_str());
-
-  delay(1000);
-  delay(1000);
-  delay(1000);
-  delay(1000);
-  delay(1000);
-
-  for (int i = 0; i < 10; i++)
-  {
-    delay(100);
-    if (getLocalTime(&tmInfo, 1000U))
-    {
-      Serial.println("i = " + String(i) + "\n" + strTmInfo(tmInfo));
-      return true;
-    }
-  }
-
-  return false;
-}
-
-void setRTC()
-{
-  struct tm tmInfo;
-
-  while (!getLocalTime(&tmInfo))
+  while (!getLocalTime(&tmInfo, 1000U))
     delay(10);
 
   M5.Rtc.setDateTime(tmInfo);
+  Serial.println("RTC adjusted .... " + strTmInfo(tmInfo));
 }
 
 String getTmRTC()
@@ -229,8 +184,26 @@ String getTmRTC()
 String getTmNTP()
 {
   struct tm Ldt;
-  while (!getLocalTime(&Ldt))
-    delay(10);
+  for (int i = 0; i < 5; i++)
+  {
+    if (getLocalTime(&Ldt, 1000U))
+      return strTmInfo(Ldt);
 
-  return String(strTmInfo(Ldt));
+    delay(10);
+  }
+  
+  String errStr = "2025/01/01(Wed) 00:00:00";
+  return errStr;
+}
+
+String strTmInfo(struct tm &timeInfo)
+{
+  char buf[60];
+  static constexpr const char *const wd[7] = {"Sun", "Mon", "Tue", "Wed", "Thr", "Fri", "Sat"};
+
+  sprintf(buf, "%04d/%02d/%02d(%s) %02d:%02d:%02d",
+          timeInfo.tm_year + 1900, timeInfo.tm_mon + 1, timeInfo.tm_mday,
+          wd[timeInfo.tm_wday], timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec);
+
+  return String(buf);
 }

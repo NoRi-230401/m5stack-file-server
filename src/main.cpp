@@ -10,32 +10,38 @@
 #endif
 
 bool setupServer();
-const String PROG_NAME = "m5stack-fileServer";
-const String VERSION = "v1.05a-250402b";
+const String PROG_NAME = "m5fileServer";
+const String VERSION = "v1.05a-250404";
 //---------------------------------------------------------------------------
 // **  SETTINGS  **
 //---------------------------------------------------------------------------
 const bool SD_USE = true;     // 'false' if not use SD
 const bool SPIFFS_USE = true; // 'false' if not use SPIFFS
 const bool DISP_ON = true;    // 'false' if not print message on the display
+bool RTC_ADJUST_REQ = true;   //  'false' if not adjust RTC
 //---------------------------------------------------------------------------
 const String NETWORK_SETTING_FILE = "/wifi.txt";
 // Write the network settings in the above file(SD or SPIFFS).
 // If those are no present, use in the 3-lines below.
-const String YOUR_SSID = "YOUR_SSID";
-const String YOUR_SSID_PASS = "YOUR_SSID_PASSWORD";
+const String YOUR_SSID = "YOUR_WIFI_SSID_NAME";
+const String YOUR_SSID_PASS = "YOUR_WIFI_SSID_PASSWORD";
 const String YOUR_SERVER_NAME = "m5fileServer";
 //---------------------------------------------------------------------------
 // NTP connection information.
-#define NTP_JST 9 * 3600L              // JST=GMT+9h
-#define NTP_GMT_OFFSET NTP_JST         // GMT_OFFSET
+#define NTP_GMT_OFFSET 9 * 3600L       // GMT_OFFSET
 #define NTP_DAYLIGHT_OFFSET 0          // daylight_offset
 #define NTP_SVR1 "ntp.nict.jp"         // NTP server
 #define NTP_SVR2 "ntp.jst.mfeed.ad.jp" // NTP server
+#define TM_RTC_ADJUST 10 * 1000L       // mSEC - adjust RTC after setup()
+unsigned long TM_SETUP_DONE = 0;
+bool RTC_ENABLE = false;
+// #define HEAP_INF
 
 void setup()
 {
+#ifdef HEAP_INF
   getHeapInf();
+#endif
 
   auto cfg = M5.config();
   cfg.serial_baudrate = 115200;
@@ -53,30 +59,28 @@ void setup()
   if (!setupServer())
     error_stop();
 
-  if (timeSyncNTP(NTP_GMT_OFFSET, NTP_DAYLIGHT_OFFSET, NTP_SVR1, NTP_SVR2))
-  {
-    Serial.println("Success : NTP time sync");
-    Serial.println("NTP: " + getTmNTP());
-    setRTC();
-  }
-  else
-  {
-    prt("ERROR: NTP time sync");
-  }
-  Serial.println("RTC: " + getTmRTC());
-
   prt("SUCCESS: System started");
   prt("\nIP Addr: " + IP_ADDR);
   prt("\nServerName: " + SERVER_NAME);
 
+#ifdef HEAP_INF
   // ---- Heap Information -----
   prtHeapInf("-- SetupStart HeapInf --");
   getHeapInf();
   prtHeapInf("-- SetupDone  HeapInf --");
+#endif
+
+  TM_SETUP_DONE = millis();
 }
 
 void loop()
 {
+  if (RTC_ADJUST_REQ && RTC_ENABLE && (millis() - TM_SETUP_DONE > TM_RTC_ADJUST))
+  {
+    adjustRTC();
+    RTC_ADJUST_REQ = false;
+  }
+
   delay(1);
 }
 
@@ -149,6 +153,20 @@ bool setupServer()
     return false;
   }
   prt("mDNS    .....  OK");
+
+  // NTP Server config
+  configTime(NTP_GMT_OFFSET, NTP_DAYLIGHT_OFFSET, NTP_SVR1, NTP_SVR2);
+
+  // check RTC enable
+  if (RTC_ENABLE = M5.Rtc.isEnabled())
+  {
+    Serial.println("RTC is enable");
+  }
+  else
+  {
+    Serial.println("RTC is disable");
+    RTC_ADJUST_REQ = false;
+  }
 
   if (!fileServerStart())
   {

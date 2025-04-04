@@ -239,8 +239,13 @@ void Display_System_Info()
   webpage += "<h4>clock</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>parameter</th><th>value</th></tr>";
-  webpage += "<tr><td>RTC</td><td>" + getTmRTC() + "</td></tr>";
-  webpage += "<tr><td>NTP</td><td>" + getTmNTP() + "</td></tr>";
+  
+  if(RTC_ENABLE)
+    webpage += "<tr><td>Real Time Clock (RTC)</td><td>" + getTmRTC() + "</td></tr>";
+  else
+    webpage += "<tr><td>Real Time Clock (RTC)</td><td>　**　disable　**　</td></tr>";
+  
+  webpage += "<tr><td>Sync with NTP server</td><td>" + getTmNTP() + "</td></tr>";
   webpage += "</table> ";
   webpage += "<br><br>";
 
@@ -563,7 +568,7 @@ String HTML_Footer()
   String page;
   page += "<br><br><br>";
   page += "<footer>";
-  page += "<p class='ps'><i> " + PROG_NAME + "　" + VERSION + "</i></p>";
+  page += "<p class='ps'><i>" + getTmNTP() + "　　" + PROG_NAME + "　" + VERSION + "</i></p>";
   page += "</footer>";
   page += "<br>";
   page += "</body>";
