@@ -35,7 +35,6 @@ extern void SDdir_flserverSetup();
 String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
 bool SD_ENABLE, SPIFFS_ENABLE;
 const String ICON_FILE = "/icon.gif";
-extern String SdPath;
 AsyncWebServer server(80);
 String webpage;
 
@@ -43,10 +42,6 @@ void Display_System_Info()
 {
   esp_chip_info_t chip_info;
   esp_chip_info(&chip_info);
-  // if (WiFi.scanComplete() == -2)
-  //   WiFi.scanNetworks(true, false);
-  // Scan parameters are (async, show_hidden)
-  // if async = true, don't wait for the result
   webpage = HTML_Header();
   webpage += "<h3>Status and System Information</h3>";
   webpage += "<br>";
@@ -191,8 +186,7 @@ void Display_System_Info()
 
   webpage += "<tr><td>CPU Freq</td><td>" + String(ESP.getCpuFreqMHz()) + " MHz" + "</td></tr>";
   webpage += "<tr><td>Flash Memory Size</td><td>" + ConvBytesUnits(ESP.getFlashChipSize(), 0, UNIT_AUTO) + "</td></tr>";
-  webpage += "<tr><td>Flash Freq</td><td>" + String(ESP.getFlashChipSpeed() / 1000000) + " MHz" + "</td></tr>";
-  // webpage += "<tr><td>Flash Chip Mode</td><td>" + String(ESP.getFlashChipMode()) + "</td></tr>";
+  webpage += "<tr><td>Flash Freq</td><td>" + String(ESP.getFlashChipSpeed() / 1000000UL) + " MHz" + "</td></tr>";
   //-------------------
   webpage += "</table>";
   webpage += "<br><br>";
@@ -229,8 +223,6 @@ void Display_System_Info()
   webpage += "<tr><td>Server Name (hostName)</td><td>" + SERVER_NAME + "</td></tr>";
   webpage += "<tr><td>WiFi SSID</td><td>" + String(WiFi.SSID()) + "</td></tr>";
   webpage += "<tr><td>WiFi BSSID</td><td>" + String(WiFi.BSSIDstr()) + "</td></tr>";
-  // webpage += "<tr><td>WiFi RSSI</td><td>" + String(WiFi.RSSI()) + " dB</td></tr>";
-  // webpage += "<tr><td>WiFi Channel</td><td>" + String(WiFi.channel()) + "</td></tr>";
   webpage += "<tr><td>WiFi Encryption Type</td><td>" + String(EncryptionType(WiFi.encryptionType(0))) + "</td></tr>";
   webpage += "</table> ";
   webpage += "<br><br>";
@@ -239,12 +231,12 @@ void Display_System_Info()
   webpage += "<h4>Clock</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>parameter</th><th>value</th></tr>";
-  
-  if(RTC_ENABLE)
+
+  if (RTC_ENABLE)
     webpage += "<tr><td>Real Time Clock (RTC)</td><td>" + getTmRTC() + "</td></tr>";
   else
     webpage += "<tr><td>Real Time Clock (RTC)</td><td>　**　disable　**　</td></tr>";
-  
+
   webpage += "<tr><td>Sync with NTP server</td><td>" + getTmNTP() + "</td></tr>";
   webpage += "</table> ";
   webpage += "<br><br>";
@@ -312,7 +304,10 @@ bool fileServerStart()
   }
 
   server.onNotFound(notFound);
+
+  // *** BEGIN SERVER ***
   server.begin();
+
   if (SPIFFS_ENABLE)
     SPIFFS_Directory();
 
@@ -446,12 +441,10 @@ void Home()
   webpage = HTML_Header();
   webpage += "<br>";
 
-  // if (SD_ENABLE && SD_isExists(ICON_FILE))
   if (SD_ENABLE && SD.exists(ICON_FILE))
   {
     webpage += "<img src = 'SD_icon' alt='icon'>";
   }
-  // else if (SPIFFS_ENABLE && SPIFFS_isExists(ICON_FILE))
   else if (SPIFFS_ENABLE && SPIFFS.exists(ICON_FILE))
   {
     webpage += "<img src = 'SPIFFS_icon' alt='icon'>";
@@ -480,7 +473,6 @@ String HTML_Header()
   page += "table.center {margin-left:auto;margin-right:auto;}";
   page += "td, th {border:1px solid #dddddd;text-align:left;padding:0.8rem;}";
   page += "tr:nth-child(even) {background-color:#dddddd;}";
-  // page += "h3 {color:#6ecf12;font-size:1.8rem;font-style:normal;text-align:center;}";
   page += "h3 {color:#6ecf12;font-size:1.7rem;font-style:normal;text-align:center;}";
   page += "h4 {color:slateblue;font-size:1.5rem;text-align:left;font-style:oblique;text-align:center;}";
   page += ".center {margin-left:auto;margin-right:auto;}";
@@ -510,9 +502,6 @@ String HTML_Header()
   page += "　　";
   page += "<a href='/system'>Status</a>";
   page += "　　";
-  // page += "<a href='/reboot'>Reboot</a>";
-  // page += "<a href='/shutdown'>Shutdown</a>";
-
   page += "</div>";
 
   // --------------- SPIFFS ------------------------
