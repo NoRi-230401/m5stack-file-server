@@ -40,10 +40,6 @@ typedef struct
 #define UNIT_GIGA 5
 #define UNIT_TERA 6
 
-extern bool SD_Start();
-extern bool SPIFFS_Start();
-extern bool SD_SettingRd(const String filename);
-extern bool SPIFFS_SettingRd(const String filename);
 extern bool wifiStart();
 extern bool mdnsStart(void);
 extern bool fileServerStart();
@@ -62,6 +58,12 @@ extern void adjustRTC();
 extern String getTmRTC();
 extern String getTmNTP();
 
+#define FS_SPIFFS 1
+#define FS_SD 2
+extern bool getSetting(int flType, const String filename);
+extern bool FS_start(int flType);
+extern uint64_t getFileSize(int flType, String filename);
+
 extern const String VERSION;
 extern const String PROG_NAME;
 extern const String YOUR_SSID;
@@ -69,6 +71,7 @@ extern const String YOUR_SSID_PASS;
 extern const String YOUR_SERVER_NAME;
 extern const bool DISP_ON;
 extern bool RTC_ENABLE;
+extern String SdPath;
 
 // -------------------------------------------------------
 #endif  // _M5STACK_FILE_SERVER_H

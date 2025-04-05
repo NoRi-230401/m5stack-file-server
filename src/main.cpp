@@ -11,28 +11,30 @@
 
 bool setupServer();
 const String PROG_NAME = "m5fileServer";
-const String VERSION = "v1.05a-250404";
+const String VERSION = "v1.05a-250405";
 //---------------------------------------------------------------------------
 // **  SETTINGS  **
 //---------------------------------------------------------------------------
-const bool SD_USE = true;     // 'false' if not use SD
-const bool SPIFFS_USE = true; // 'false' if not use SPIFFS
-const bool DISP_ON = true;    // 'false' if not print message on the display
-bool RTC_ADJUST_REQ = true;   //  'false' if not adjust RTC
+const bool SD_USE = true;     // 'false' if don't use SD
+const bool SPIFFS_USE = true; // 'false' if don't use SPIFFS
+const bool DISP_ON = true;    // 'false' if don't disp message on the display
+bool RTC_ADJUST_REQ = true;   // 'false' if don't adjust RTC
 //---------------------------------------------------------------------------
-const String NETWORK_SETTING_FILE = "/wifi.txt";
-// Write the network settings in the above file(SD or SPIFFS).
-// If those are no present, use in the 3-lines below.
+const String WIFI_TXT = "/wifi.txt";
+// ---- write the network settings in the above file(SD or SPIFFS)  ---------
+//           if those are no present, use in the 3-lines below.
 const String YOUR_SSID = "YOUR_WIFI_SSID_NAME";
 const String YOUR_SSID_PASS = "YOUR_WIFI_SSID_PASSWORD";
 const String YOUR_SERVER_NAME = "m5fileServer";
 //---------------------------------------------------------------------------
+
 // NTP connection information.
-#define NTP_GMT_OFFSET 9 * 3600L       // GMT_OFFSET
-#define NTP_DAYLIGHT_OFFSET 0          // daylight_offset
-#define NTP_SVR1 "ntp.nict.jp"         // NTP server
-#define NTP_SVR2 "ntp.jst.mfeed.ad.jp" // NTP server
-#define TM_RTC_ADJUST 10 * 1000L       // mSEC - adjust RTC after setup()
+#define NTP_SVR1 "ntp.nict.jp"         // NTP server1
+#define NTP_SVR2 "ntp.jst.mfeed.ad.jp" // NTP server2
+#define NTP_GMT_OFFSET 9 * 3600L       // Sec  : GMT offset
+#define NTP_DAYLIGHT_OFFSET 0          // Sec  : daylight offset
+// RTC adjust
+#define TM_RTC_ADJUST 10 * 1000L // mSec : adjust after setup()
 unsigned long TM_SETUP_DONE = 0;
 bool RTC_ENABLE = false;
 // #define HEAP_INF
@@ -90,7 +92,7 @@ bool setupServer()
   SD_ENABLE = false;
   if (SD_USE)
   {
-    SD_ENABLE = SD_Start();
+    SD_ENABLE = FS_start(FS_SD);
     if (SD_ENABLE)
       prt("SD      .....  OK");
     else
@@ -100,7 +102,7 @@ bool setupServer()
   SPIFFS_ENABLE = false;
   if (SPIFFS_USE)
   {
-    SPIFFS_ENABLE = SPIFFS_Start();
+    SPIFFS_ENABLE = FS_start(FS_SPIFFS);
     if (SPIFFS_ENABLE)
       prt("SPIFFS  .....  OK");
     else
@@ -118,9 +120,9 @@ bool setupServer()
   SSID_PASS = "";
   SERVER_NAME = "";
 
-  if (SD_ENABLE && SD_SettingRd(NETWORK_SETTING_FILE))
+  if (SD_ENABLE && getSetting(FS_SD, WIFI_TXT))
     prt(" Settings read from SD");
-  else if (SPIFFS_ENABLE && SPIFFS_SettingRd(NETWORK_SETTING_FILE))
+  else if (SPIFFS_ENABLE && getSetting(FS_SPIFFS, WIFI_TXT))
     prt(" Settings read from SPIFFS");
 
   if (SSID == "")

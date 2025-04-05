@@ -15,11 +15,6 @@ void SD_File_Rename();
 void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args);
 bool SD_notFound(AsyncWebServerRequest *request);
 void SD_Select_File_For_Function(String title, String function);
-uint64_t SD_GetFileSize(String filename);
-// -------------------------------------------------------
-bool SD_Start();
-bool SD_cardInfo(void);
-bool SD_SettingRd(const String filename);
 // -------------------------------------------------------
 void SDdir_flserverSetup();
 void SDdir_handle_chTop();
@@ -37,26 +32,10 @@ void SDdir_InputNewDirName(String Heading, String Command, String Arg_name);
 extern AsyncWebServer server;
 extern String webpage;
 std::vector<fileinfo> SD_Filenames;
-uint32_t SD_start, SD_downloadTime = 1, SD_uploadTime = 1;
+uint32_t SD_startTime, SD_downloadTime = 1, SD_uploadTime = 1;
 uint64_t SD_downloadSize, SD_uploadSize;
 uint32_t SD_numfiles;
 String SdPath = "/";
-
-bool SD_Start()
-{
-  if (!SD.begin())
-  {
-    Serial.println("ERR: SD_Start...");
-    return false;
-  }
-
-  if (!SD_cardInfo())
-  {
-    return false;
-  }
-
-  return true;
-}
 
 void SD_flServerSetup()
 {
@@ -217,7 +196,7 @@ void SD_handleFileUpload(AsyncWebServerRequest *request, const String &filename,
       Serial.println("Error creating file for upload...");
 
     SD_uploadSize = 0;
-    SD_start = millis();
+    SD_startTime = millis();
   }
 
   if (request->_tempFile)
@@ -232,7 +211,7 @@ void SD_handleFileUpload(AsyncWebServerRequest *request, const String &filename,
     if (final)
     {
       request->_tempFile.close();
-      SD_uploadTime = millis() - SD_start;
+      SD_uploadTime = millis() - SD_startTime;
       Serial.println("FileName = " + file);
       Serial.println("SD_uploadSize = " + String(SD_uploadSize) + " Bytes");
       Serial.println("SD_uploadTime = " + String(SD_uploadTime) + " mSEC");
@@ -358,7 +337,7 @@ bool SD_notFound(AsyncWebServerRequest *request)
     if (!request->url().startsWith("/SD_renamehandler"))
       filename = request->url().substring(request->url().indexOf("~/") + 1);
 
-    SD_start = millis();
+    SD_startTime = millis();
 
     if (request->url().startsWith("/SD_downloadhandler"))
     {
@@ -379,8 +358,8 @@ bool SD_notFound(AsyncWebServerRequest *request)
       response->addHeader("Server", "ESP Async Web Server");
       request->send(response);
 
-      SD_downloadTime = millis() - SD_start;
-      SD_downloadSize = SD_GetFileSize(filename);
+      SD_downloadTime = millis() - SD_startTime;
+      SD_downloadSize = getFileSize(FS_SD, filename);
       Serial.println("SD download handler done...");
     }
 
@@ -395,8 +374,8 @@ bool SD_notFound(AsyncWebServerRequest *request)
       String ContentType = getContentType(filename);
       AsyncWebServerResponse *response = request->beginResponse(SD, filename_tmp, ContentType);
       request->send(response);
-      SD_downloadSize = SD_GetFileSize(filename);
-      SD_downloadTime = millis() - SD_start;
+      SD_downloadSize = getFileSize(FS_SD, filename);
+      SD_downloadTime = millis() - SD_startTime;
     }
 
     if (request->url().startsWith("/SD_deletehandler"))
@@ -460,17 +439,6 @@ void SD_Select_File_For_Function(String title, String function)
   }
   webpage += "</table>";
   webpage += HTML_Footer();
-}
-
-uint64_t SD_GetFileSize(String filename)
-{
-  uint64_t filesize;
-  if (SdPath != "/")
-    filename = SdPath + filename;
-  File CheckFile = SD.open(filename, "r");
-  filesize = (uint64_t)CheckFile.size();
-  CheckFile.close();
-  return filesize;
 }
 
 void SDdir_flserverSetup()
@@ -626,7 +594,7 @@ void SDdir_Select_Dir_For_Function(String title, String function)
   webpage += "<h3>SD:　Select a Directory to " + title + "　</h3>";
   webpage += "<table class='center'>";
   webpage += "<tr> <th>Directory Name</th><th class='sp'><th>Directory Name</th> </tr>";
-  
+
   while (index < SD_numfiles)
   {
     Dname1 = SD_Filenames[index].filename;
@@ -763,83 +731,6 @@ bool SDdir_notFound(AsyncWebServerRequest *request)
     }
   }
   return false;
-}
-
-bool SD_cardInfo(void)
-{
-  sdcard_type_t cardType = SD.cardType();
-  switch (cardType)
-  {
-  case CARD_MMC:
-    Serial.println("MMC detected");
-    break;
-  case CARD_SD:
-    Serial.println("SD detected");
-    break;
-  case CARD_SDHC:
-    Serial.println("SDHC detected");
-    break;
-  case CARD_NONE:
-    Serial.println("ERR: No SD card attached");
-    return false;
-  case CARD_UNKNOWN:
-    Serial.println("ERR: SD card unknown Type");
-    return false;
-  default:
-    Serial.println("ERR: SD cardType is default Type");
-    return false;
-  }
-
-  return true;
-}
-
-bool SD_SettingRd(const String filename)
-{ // SSID, SSID_PASS, SERVER_NAME read from file
-  if (!SD.exists(filename))
-    return false;
-
-  File fs = SD.open(filename, FILE_READ);
-  if (!fs)
-    return false;
-
-  size_t length = fs.size();
-  if (length <= 3) // at least 3bytes size
-    return false;
-
-  char buf[length + 1];
-  fs.read((uint8_t *)buf, length);
-  buf[length] = 0;
-  fs.close();
-
-  int x;
-  int y = 0;
-  int z = 0;
-  for (x = 0; x < length; x++)
-  {
-    if (buf[x] == 0x0a || buf[x] == 0x0d)
-      buf[x] = 0;
-    else if (!y && x > 0 && !buf[x - 1] && buf[x])
-      y = x;
-    else if (!z && x > 0 && !buf[x - 1] && buf[x])
-      z = x;
-  }
-
-  if (y == 0)
-    return false;
-  SSID = String(buf);
-  SSID_PASS = String(&buf[y]);
-  Serial.println("SSID        = " + SSID);
-  Serial.println("SSID_PASS   = " + SSID_PASS);
-
-  if (z == 0)
-    return false;
-  SERVER_NAME = String(&buf[z]);
-  Serial.println("SERVER_NAME = " + SERVER_NAME);
-
-  if (SSID == "" || SSID_PASS == "" || SERVER_NAME == "")
-    return false;
-
-  return true;
 }
 
 void SDdir_InputNewDirName(String Heading, String Command, String Arg_name)

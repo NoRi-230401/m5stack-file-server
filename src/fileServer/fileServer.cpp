@@ -26,7 +26,7 @@ extern uint32_t SPIFFS_numfiles;
 extern bool SD_notFound(AsyncWebServerRequest *request);
 extern void SD_flServerSetup();
 extern void SD_Directory();
-extern uint32_t SD_start, SD_downloadTime, SD_uploadTime;
+extern uint32_t SD_startTime, SD_downloadTime, SD_uploadTime;
 extern uint64_t SD_downloadSize, SD_uploadSize;
 extern uint32_t SD_numfiles;
 extern bool SDdir_notFound(AsyncWebServerRequest *request);
@@ -236,7 +236,7 @@ void Display_System_Info()
   webpage += "<br><br>";
 
   // - clock
-  webpage += "<h4>clock</h4>";
+  webpage += "<h4>Clock</h4>";
   webpage += "<table class='center'>";
   webpage += "<tr><th>parameter</th><th>value</th></tr>";
   

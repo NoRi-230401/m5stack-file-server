@@ -15,10 +15,6 @@ void SPIFFS_File_Rename();
 void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args);
 bool SPIFFS_notFound(AsyncWebServerRequest *request);
 void SPIFFS_Select_File_For_Function(String title, String function);
-uint64_t SPIFFS_GetFileSize(String filename);
-// -------------------------------------------------------
-bool SPIFFS_Start();
-bool SPIFFS_SettingRd(const String filename);
 // -------------------------------------------------------
 extern AsyncWebServer server;
 extern String webpage;
@@ -26,16 +22,6 @@ std::vector<fileinfo> SPIFFS_Filenames;
 uint32_t SPIFFS_startTime, SPIFFS_downloadTime = 1, SPIFFS_uploadTime = 1;
 uint64_t SPIFFS_downloadSize, SPIFFS_uploadSize;
 uint32_t SPIFFS_numfiles;
-
-bool SPIFFS_Start()
-{
-  if (!SPIFFS.begin(true))
-  {
-    Serial.println("ERR: SPIFFS begin erro...");
-    return false;
-  }
-  return true;
-}
 
 void SPIFFS_flServerSetup()
 {
@@ -133,7 +119,7 @@ void SPIFFS_Dir(AsyncWebServerRequest *request)
       {
         webpage += "<td style = 'width:5%'>" + SPIFFS_Filenames[index + 1].ftype + "</td><td style = 'width:25%'>" + Fname2 + "</td><td style = 'width:10%'>" + SPIFFS_Filenames[index + 1].fsize + "</td>";
       }
-      // 奇数の場合の最後のテーブル処理
+      // numfiles奇数の場合の最後のテーブル処理
       if ((index < SPIFFS_numfiles - 1) || (SPIFFS_numfiles % 2 == 0))
         webpage += "</tr>";
       else if ((SPIFFS_numfiles % 2) != 0)
@@ -297,8 +283,8 @@ void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, 
 }
 
 bool SPIFFS_notFound(AsyncWebServerRequest *request)
-{ // Serial.println("SPIFFS_notFund func ... : " + request->url());
-
+{
+  // Serial.println("SPIFFS_notFund func ... : " + request->url());
   String filename;
   if (request->url().startsWith("/SPIFFS_downloadhandler") ||
       request->url().startsWith("/SPIFFS_streamhandler") ||
@@ -320,7 +306,7 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
       response->addHeader("Server", "ESP Async Web Server");
       request->send(response);
       SPIFFS_downloadTime = millis() - SPIFFS_startTime;
-      SPIFFS_downloadSize = SPIFFS_GetFileSize(filename);
+      SPIFFS_downloadSize = getFileSize(FS_SPIFFS, filename);
       Serial.println("SPIFFS download handler done...");
     }
 
@@ -330,7 +316,7 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
       String ContentType = getContentType(filename);
       AsyncWebServerResponse *response = request->beginResponse(SPIFFS, filename, ContentType);
       request->send(response);
-      SPIFFS_downloadSize = SPIFFS_GetFileSize(filename);
+      SPIFFS_downloadSize = getFileSize(FS_SPIFFS, filename);
       SPIFFS_downloadTime = millis() - SPIFFS_startTime;
     }
 
@@ -395,62 +381,4 @@ void SPIFFS_Select_File_For_Function(String title, String function)
   }
   webpage += "</table>";
   webpage += HTML_Footer();
-}
-
-uint64_t SPIFFS_GetFileSize(String filename)
-{
-  uint64_t filesize;
-  File CheckFile = SPIFFS.open(filename, "r");
-  filesize = (uint64_t)CheckFile.size();
-  CheckFile.close();
-  return filesize;
-}
-
-bool SPIFFS_SettingRd(const String filename)
-{
-  if (!SPIFFS.exists(filename))
-    return false;
-
-  File fs = SPIFFS.open(filename, FILE_READ);
-  if (!fs)
-    return false;
-
-  size_t length = fs.size();
-  if (length <= 3) // at least 3bytes size
-    return false;
-
-  char buf[length + 1];
-  fs.read((uint8_t *)buf, length);
-  buf[length] = 0;
-  fs.close();
-
-  int x;
-  int y = 0;
-  int z = 0;
-  for (x = 0; x < length; x++)
-  {
-    if (buf[x] == 0x0a || buf[x] == 0x0d)
-      buf[x] = 0;
-    else if (!y && x > 0 && !buf[x - 1] && buf[x])
-      y = x;
-    else if (!z && x > 0 && !buf[x - 1] && buf[x])
-      z = x;
-  }
-
-  if (y == 0)
-    return false;
-  SSID = String(buf);
-  SSID_PASS = String(&buf[y]);
-  Serial.println("SSID        = " + SSID);
-  Serial.println("SSID_PASS   = " + SSID_PASS);
-
-  if (z == 0)
-    return false;
-  SERVER_NAME = String(&buf[z]);
-  Serial.println("SERVER_NAME = " + SERVER_NAME);
-
-  if (SSID == "" || SSID_PASS == "" || SERVER_NAME == "")
-    return false;
-
-  return true;
 }
