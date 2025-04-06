@@ -454,11 +454,11 @@ void Home()
 
   if (SD_ENABLE && SD.exists(HOME_IMG))
   {
-    webpage += "<img src = 'SD_homeImg' alt='hoemImg'>";
+    webpage += "<img src = 'SD_homeImg' alt='homeImg'>";
   }
   else if (SPIFFS_ENABLE && SPIFFS.exists(HOME_IMG))
   {
-    webpage += "<img src = 'SPIFFS_hoemeImg' alt='HomeImg'>";
+    webpage += "<img src = 'SPIFFS_homeImg' alt='homeImg'>";
   }
 
   webpage += "<h3>[&nbsp;Home&nbsp;]　" + SERVER_NAME + "　IP=" + IP_ADDR + "</h3>";
@@ -659,7 +659,8 @@ bool FS_start(int flType)
   }
   else if (flType == FS_SD)
   {
-    if (!SD.begin())
+    // if (!SD.begin())
+    if (!SD.begin(GPIO_NUM_4, SPI, 25000000))
     {
       Serial.println("ERR: SD begin erro...");
       return false;

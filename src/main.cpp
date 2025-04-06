@@ -23,9 +23,11 @@ bool RTC_ADJUST_REQ = true;   // 'false' if don't adjust RTC
 const String WIFI_TXT = "/wifi.txt";
 // ---- write the network settings in the above file(SD or SPIFFS)  ---------
 //           if those are no present, use in the 3-lines below.
-const String YOUR_SSID = "YOUR_WIFI_SSID";
-const String YOUR_SSID_PASS = "YOUR_WIFI_SSID_PASSWORD";
+// const String YOUR_SSID = "YOUR_WIFI_SSID";
+// const String YOUR_SSID_PASS = "YOUR_WIFI_SSID_PASSWORD";
 // const String YOUR_SERVER_NAME = "m5fileServer";  //change these if you need
+const String YOUR_SSID = "aterm-d5c4c3-g";
+const String YOUR_SSID_PASS = "86c71a78ea6e1";
 const String YOUR_SERVER_NAME = "stackchan";
 //---------------------------------------------------------------------------
 
@@ -49,6 +51,8 @@ void setup()
   auto cfg = M5.config();
   cfg.serial_baudrate = 115200;
   M5.begin(cfg);
+  while (!Serial);
+  delay(1000);
 
 #if defined(ENABLE_SD_UPDATER)
   SDU_lobby(PROG_NAME);

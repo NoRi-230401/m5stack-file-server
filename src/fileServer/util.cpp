@@ -144,7 +144,7 @@ bool wifiStart()
   }
 
   IP_ADDR = WiFi.localIP().toString();
-  Serial.println("\nIP Address: " + IP_ADDR);
+  // Serial.println("\nIP Address: " + IP_ADDR);
   return true;
 }
 
@@ -169,7 +169,7 @@ void adjustRTC()
     delay(10);
 
   M5.Rtc.setDateTime(tmInfo);
-  Serial.println("RTC adjusted .... " + strTmInfo(tmInfo));
+  Serial.println("\nRTC adjusted .... " + strTmInfo(tmInfo));
 }
 
 String getTmRTC()
