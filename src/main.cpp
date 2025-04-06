@@ -11,7 +11,7 @@
 
 bool setupServer();
 const String PROG_NAME = "m5fileServer";
-const String VERSION = "v1.05a-250405";
+const String VERSION = "v1.05b";
 //---------------------------------------------------------------------------
 // **  SETTINGS  **
 //---------------------------------------------------------------------------
@@ -23,9 +23,10 @@ bool RTC_ADJUST_REQ = true;   // 'false' if don't adjust RTC
 const String WIFI_TXT = "/wifi.txt";
 // ---- write the network settings in the above file(SD or SPIFFS)  ---------
 //           if those are no present, use in the 3-lines below.
-const String YOUR_SSID = "YOUR_WIFI_SSID_NAME";
+const String YOUR_SSID = "YOUR_WIFI_SSID";
 const String YOUR_SSID_PASS = "YOUR_WIFI_SSID_PASSWORD";
-const String YOUR_SERVER_NAME = "m5fileServer";
+// const String YOUR_SERVER_NAME = "m5fileServer";  //change these if you need
+const String YOUR_SERVER_NAME = "stackchan";
 //---------------------------------------------------------------------------
 
 // NTP connection information.

@@ -5,16 +5,19 @@
 // *******************************************************
 #include "fileServer.h"
 
+String HTML_Header();
 void Display_System_Info();
 bool fileServerStart();
 void notFound(AsyncWebServerRequest *request);
 void Page_Not_Found();
 void Home();
-String HTML_Header();
 String HTML_Footer();
-String EncryptionType(wifi_auth_mode_t encryptionType);
 String getContentType(String filenametype);
+String EncryptionType(wifi_auth_mode_t encryptionType);
 bool compareFileinfo(const fileinfo &a, const fileinfo &b);
+uint64_t getFileSize(int flType, String filename);
+bool FS_start(int flType);
+bool SD_cardInfo(void);
 // -------------------------------------------------------
 extern bool SPIFFS_notFound(AsyncWebServerRequest *request);
 extern void SPIFFS_flServerSetup();
@@ -34,14 +37,123 @@ extern void SDdir_flserverSetup();
 // -------------------------------------------------------
 String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
 bool SD_ENABLE, SPIFFS_ENABLE;
-const String ICON_FILE = "/icon.gif";
+const String HOME_IMG = "/homeImg.gif";
+
 AsyncWebServer server(80);
 String webpage;
 
+String HTML_Header()
+{
+  String page;
+  page = "<!DOCTYPE html>";
+  page += "<html lang = 'ja'>";
+  page += "<head>";
+  page += "<title>" + SERVER_NAME + "</title>";
+  page += "<base target='_self'>";
+  page += "<meta charset='UTF-8'>";
+  // favicon 
+  page += "<link rel='icon' href='/favicon.ico'>";
+  page += "<meta name='viewport' content='width=device-width,initial-scale=1.0'>";
+  // ------------
+  page += "<style>";
+  // for smartPhone style define
+  page += "@media screen and (max-width: 480px) {";
+  page += "img {width:100%;height:auto;} body {font-size: 1.4rem;} div {font-size: 1.4rem;}";
+  page += "p {font-size: 1.4rem;} h5 {font-size: 1.4rem;}";
+  page += "}";
+  // -----
+  page += "html {font-size: 62.5%;}";
+  page += "body {width:100%;margin-left:auto;margin-right:auto;font-family:Arial,Helvetica,sans-serif;font-size:1.4rem;color:#2f4f4f;background-color:#fffacd;text-align:center;}";
+  page += "footer {padding:1.0rem;background-color:cyan;font-size:1.4rem;}";
+  page += "table {font-family:arial,sans-serif;border-collapse:collapse;width:80%;}";
+  page += "table.center {margin-left:auto;margin-right:auto;}";
+  page += "td, th {border:1px solid #dddddd;text-align:left;padding:0.8rem;}";
+  page += "tr:nth-child(even) {background-color:#dddddd;}";
+  page += "h3 {color:#6ecf12;font-size:1.7rem;font-style:normal;text-align:center;}";
+  page += "h4 {color:slateblue;font-size:1.5rem;text-align:left;font-style:oblique;text-align:center;}";
+  page += ".center {margin-left:auto;margin-right:auto;}";
+
+  // TOPNAV
+  page += ".topnav {overflow: visible;background-color:cyan;}";
+  page += ".topnav a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.6rem;}";
+  page += ".topnav a:hover {background-color:deepskyblue;color:white;}";
+  page += ".topnav a.active {background-color:lightblue;color:blue;}";
+
+  // TOPNAV2
+  page += ".topnav2 {overflow: visible;background-color:lightcyan;}";
+  // page += ".topnav2 a {float:center;color:blue;text-align:center;padding:1.2rem 1.2rem;text-decoration:none;font-size:1.5rem;}";
+  page += ".topnav2 a {float:center;color:blue;text-align:center;padding:1.2rem 1.2rem;text-decoration:none;font-size:1.5rem;line-height:2;}";
+  page += ".topnav2 a:hover {background-color:deepskyblue;color:white;}";
+  page += ".topnav2 a.active {background-color:lightblue;color:blue;}";
+  
+  // other style
+  page += ".notfound {padding:0.8rem;text-align:center;font-size:1.3rem;}";
+  page += ".left {text-align:left;}";
+  page += ".medium {font-size:1.9rem;padding:0;margin:0}";
+  page += ".ps {font-size:1.4rem;padding:0;margin:0}";
+  page += ".sp {background-color:silver;white-space:nowrap;width:2%;}";
+  // --- end of style ---
+  page += "</style></head><body>";
+
+  // -- 1 --
+  page += "<div class = 'topnav'>";
+  page += "<a href='/'>Home</a>";
+  page += "　　";
+  page += "<a href='/system'>Status</a>";
+  page += "　　";
+  page += "</div>";
+
+  // --------------- SPIFFS ------------------------
+  if (SPIFFS_ENABLE)
+  {
+    // -- 2 SPIFFS --
+    page += "<br>";
+    page += "<div class = 'topnav2'>";
+    page += "SPIFFS:<a href='/SPIFFS_dir'>Dir</a>";
+    page += "<a href='/SPIFFS_upload'>Upload</a> ";
+    page += "<a href='/SPIFFS_download'>Download</a>";
+    page += "<a href='/SPIFFS_stream'>Stream</a>";
+    page += "<a href='/SPIFFS_delete'>Delete</a>";
+    page += "<a href='/SPIFFS_rename'>Rename</a>";
+    page += "</div>";
+  }
+  page += "<br>";
+
+  // ------------------ SD -------------------------
+  if (SD_ENABLE)
+  {
+    // -- 3 SD --
+    page += "<div class = 'topnav2'>";
+    page += "SD:<a href='/SD_dir'>Dir</a>";
+    page += "<a href='/SD_upload'>Upload</a> ";
+    page += "<a href='/SD_download'>Download</a>";
+    page += "<a href='/SD_stream'>Stream</a>";
+    page += "<a href='/SD_delete'>Delete</a>";
+    page += "<a href='/SD_rename'>Rename</a>";
+    // page += "</div>";
+
+    page += "<br>";
+    
+    // -- 4 SD path --
+    // page += "<div class = 'topnav2'>";
+    page += "path:&nbsp;" + SdPath;
+    page += "<a href='/SDdir_chTop'>Top</a>";
+    page += "<a href='/SDdir_chUp'>Up</a>";
+    // page += "</div>";
+    // -- 5 SD dir --
+    // page += "<div class = 'topnav2'>";
+    page += "<a href='/SDdir_chdir'>Chdir</a>";
+    page += "<a href='/SDdir_mkdir'>Mkdir</a>";
+    page += "<a href='/SDdir_rmdir'>Rmdir</a>";
+    page += "</div>";
+  }
+
+  // page += "<br>";
+  return page;
+}
+
 void Display_System_Info()
 {
-  esp_chip_info_t chip_info;
-  esp_chip_info(&chip_info);
   webpage = HTML_Header();
   webpage += "<h3>Status and System Information</h3>";
   webpage += "<br>";
@@ -245,21 +357,6 @@ void Display_System_Info()
   webpage += HTML_Footer();
 }
 
-bool compareFileinfo(const fileinfo &a, const fileinfo &b)
-{ // ファイル情報を比較するための関数
-  // ディレクトリをファイルより前に配置
-  if (a.ftype == "Dir" && b.ftype != "Dir")
-  {
-    return true;
-  }
-  if (a.ftype != "Dir" && b.ftype == "Dir")
-  {
-    return false;
-  }
-  // 同じタイプの場合はファイル名でソート
-  return a.filename < b.filename;
-}
-
 bool fileServerStart()
 {
   Serial.println(__FILE__);
@@ -278,8 +375,8 @@ bool fileServerStart()
   if (SPIFFS_ENABLE)
   {
     SPIFFS_flServerSetup();
-    server.on("/SPIFFS_icon", HTTP_GET, [](AsyncWebServerRequest *request)
-              { request->send(SPIFFS, ICON_FILE, "image/gif"); });
+    server.on("/SPIFFS_homeImg", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SPIFFS, HOME_IMG, "image/gif"); });
   }
 
   if (SD_ENABLE)
@@ -287,8 +384,8 @@ bool fileServerStart()
     SD_flServerSetup();
     SDdir_flserverSetup();
 
-    server.on("/SD_icon", HTTP_GET, [](AsyncWebServerRequest *request)
-              { request->send(SD, ICON_FILE, "image/gif"); });
+    server.on("/SD_homeImg", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SD, HOME_IMG, "image/gif"); });
   }
 
   // favicon.ico
@@ -312,6 +409,73 @@ bool fileServerStart()
     SPIFFS_Directory();
 
   return true;
+}
+
+void notFound(AsyncWebServerRequest *request)
+{
+  Serial.println("notFound func : " + request->url());
+
+  if (SPIFFS_ENABLE)
+  {
+    if (SPIFFS_notFound(request))
+      return;
+  }
+
+  if (SD_ENABLE)
+  {
+    if (SD_notFound(request))
+      return;
+
+    if (SDdir_notFound(request))
+      return;
+  }
+
+  Page_Not_Found();
+  request->send(200, "text/html", webpage);
+}
+
+void Page_Not_Found()
+{
+  webpage = HTML_Header();
+  webpage += "<div class='notfound'>";
+  webpage += "<h1>Sorry</h1>";
+  webpage += "<p>Error 404 - Page Not Found</p>";
+  webpage += "</div><div class='left'>";
+  webpage += "<p>The page you were looking for was not found, it may have been moved or is currently unavailable.</p>";
+  webpage += "<p>Please check the address is spelt correctly and try again.</p>";
+  webpage += "<p>Or click <b><a href='/'>[Here]</a></b> for the home page.</p></div>";
+  webpage += HTML_Footer();
+}
+
+void Home()
+{
+  webpage = HTML_Header();
+  webpage += "<br>";
+
+  if (SD_ENABLE && SD.exists(HOME_IMG))
+  {
+    webpage += "<img src = 'SD_homeImg' alt='hoemImg'>";
+  }
+  else if (SPIFFS_ENABLE && SPIFFS.exists(HOME_IMG))
+  {
+    webpage += "<img src = 'SPIFFS_hoemeImg' alt='HomeImg'>";
+  }
+
+  webpage += "<h3>[&nbsp;Home&nbsp;]　" + SERVER_NAME + "　IP=" + IP_ADDR + "</h3>";
+  webpage += HTML_Footer();
+}
+
+String HTML_Footer()
+{
+  String page;
+  page += "<br><br>";
+  page += "<footer>";
+  page += "<p class='ps'><i>" + getTmNTP() + "　　" + PROG_NAME + "　" + VERSION + "</i></p>";
+  page += "</footer>";
+  page += "<br>";
+  page += "</body>";
+  page += "</html>";
+  return page;
 }
 
 String getContentType(String filenametype)
@@ -400,171 +564,6 @@ String getContentType(String filenametype)
   return "text/plain;charset=UTF-8";
 }
 
-void notFound(AsyncWebServerRequest *request)
-{
-  Serial.println("notFound func : " + request->url());
-
-  if (SPIFFS_ENABLE)
-  {
-    if (SPIFFS_notFound(request))
-      return;
-  }
-
-  if (SD_ENABLE)
-  {
-    if (SD_notFound(request))
-      return;
-
-    if (SDdir_notFound(request))
-      return;
-  }
-
-  Page_Not_Found();
-  request->send(200, "text/html", webpage);
-}
-
-void Page_Not_Found()
-{
-  webpage = HTML_Header();
-  webpage += "<div class='notfound'>";
-  webpage += "<h1>Sorry</h1>";
-  webpage += "<p>Error 404 - Page Not Found</p>";
-  webpage += "</div><div class='left'>";
-  webpage += "<p>The page you were looking for was not found, it may have been moved or is currently unavailable.</p>";
-  webpage += "<p>Please check the address is spelt correctly and try again.</p>";
-  webpage += "<p>Or click <b><a href='/'>[Here]</a></b> for the home page.</p></div>";
-  webpage += HTML_Footer();
-}
-
-void Home()
-{
-  webpage = HTML_Header();
-  webpage += "<br>";
-
-  if (SD_ENABLE && SD.exists(ICON_FILE))
-  {
-    webpage += "<img src = 'SD_icon' alt='icon'>";
-  }
-  else if (SPIFFS_ENABLE && SPIFFS.exists(ICON_FILE))
-  {
-    webpage += "<img src = 'SPIFFS_icon' alt='icon'>";
-  }
-
-  webpage += "<h3>[&nbsp;Home&nbsp;]　" + SERVER_NAME + "　IP=" + IP_ADDR + "</h3>";
-  webpage += HTML_Footer();
-}
-
-String HTML_Header()
-{
-  String page;
-  page = "<!DOCTYPE html>";
-  page += "<html lang = 'ja'>";
-  page += "<head>";
-  page += "<title>Home</title>";
-  page += "<base target='_self'>";
-  page += "<meta charset='UTF-8'>";
-  page += "<meta name='viewport' content='width=device-width,initial-scale=1.0'>";
-  page += "<style>";
-  page += "@media screen and (max-width: 480px) {img{width:100%;height:auto;}}";
-  page += "html {font-size: 62.5%;}";
-  page += "body {width:100%;margin-left:auto;margin-right:auto;font-family:Arial,Helvetica,sans-serif;font-size:1.4rem;color:#2f4f4f;background-color:#fffacd;text-align:center;}";
-  page += "footer {padding:1.0rem;background-color:cyan;font-size:1.4rem;}";
-  page += "table {font-family:arial,sans-serif;border-collapse:collapse;width:80%;}";
-  page += "table.center {margin-left:auto;margin-right:auto;}";
-  page += "td, th {border:1px solid #dddddd;text-align:left;padding:0.8rem;}";
-  page += "tr:nth-child(even) {background-color:#dddddd;}";
-  page += "h3 {color:#6ecf12;font-size:1.7rem;font-style:normal;text-align:center;}";
-  page += "h4 {color:slateblue;font-size:1.5rem;text-align:left;font-style:oblique;text-align:center;}";
-  page += ".center {margin-left:auto;margin-right:auto;}";
-
-  // TOPNAV
-  page += ".topnav {overflow: visible;background-color:cyan;}";
-  page += ".topnav a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.6rem;}";
-  page += ".topnav a:hover {background-color:deepskyblue;color:white;}";
-  page += ".topnav a.active {background-color:lightblue;color:blue;}";
-
-  // TOPNAV2
-  page += ".topnav2 {overflow: visible;background-color:lightcyan;}";
-  page += ".topnav2 a {float:center;color:blue;text-align:center;padding:1.2rem 1.2rem;text-decoration:none;font-size:1.5rem;}";
-  page += ".topnav2 a:hover {background-color:deepskyblue;color:white;}";
-  page += ".topnav2 a.active {background-color:lightblue;color:blue;}";
-  page += ".notfound {padding:0.8rem;text-align:center;font-size:1.3rem;}";
-  page += ".left {text-align:left;}";
-  page += ".medium {font-size:1.9rem;padding:0;margin:0}";
-  page += ".ps {font-size:1.4rem;padding:0;margin:0}";
-  page += ".sp {background-color:silver;white-space:nowrap;width:2%;}";
-  // --- end of style ---
-  page += "</style></head><body>";
-
-  // -- 1 --
-  page += "<div class = 'topnav'>";
-  page += "<a href='/'>Home</a>";
-  page += "　　";
-  page += "<a href='/system'>Status</a>";
-  page += "　　";
-  page += "</div>";
-
-  // --------------- SPIFFS ------------------------
-  if (SPIFFS_ENABLE)
-  {
-    // -- 2 SPIFFS --
-    page += "<br>";
-    page += "<div class = 'topnav2'>";
-    page += "SPIFFS:<a href='/SPIFFS_dir'>Dir</a>";
-    page += "<a href='/SPIFFS_upload'>Upload</a> ";
-    page += "<a href='/SPIFFS_download'>Download</a>";
-    page += "<a href='/SPIFFS_stream'>Stream</a>";
-    page += "<a href='/SPIFFS_delete'>Delete</a>";
-    page += "<a href='/SPIFFS_rename'>Rename</a>";
-    page += "</div>";
-  }
-
-  // ------------------ SD -------------------------
-  if (SD_ENABLE)
-  {
-    // -- 3 SD --
-    page += "<br>";
-    page += "<div class = 'topnav2'>";
-    page += "SD:<a href='/SD_dir'>Dir</a>";
-    page += "<a href='/SD_upload'>Upload</a> ";
-    page += "<a href='/SD_download'>Download</a>";
-    page += "<a href='/SD_stream'>Stream</a>";
-    page += "<a href='/SD_delete'>Delete</a>";
-    page += "<a href='/SD_rename'>Rename</a>";
-    page += "</div>";
-
-    // -- 4 SD path --
-    page += "<div class = 'topnav2'>";
-    page += "path:　" + SdPath;
-    page += "<a href='/SDdir_chTop'>　Top　</a>";
-    page += "<a href='/SDdir_chUp'>　Up　</a>";
-    page += "</div>";
-
-    // -- 5 SD dir --
-    page += "<div class = 'topnav2'>";
-    page += "<a href='/SDdir_chdir'>Chdir</a>";
-    page += "<a href='/SDdir_mkdir'>Mkdir</a>";
-    page += "<a href='/SDdir_rmdir'>Rmdir</a>";
-    page += "</div>";
-  }
-
-  page += "<br>";
-  return page;
-}
-
-String HTML_Footer()
-{
-  String page;
-  page += "<br><br><br>";
-  page += "<footer>";
-  page += "<p class='ps'><i>" + getTmNTP() + "　　" + PROG_NAME + "　" + VERSION + "</i></p>";
-  page += "</footer>";
-  page += "<br>";
-  page += "</body>";
-  page += "</html>";
-  return page;
-}
-
 String EncryptionType(wifi_auth_mode_t encryptionType)
 {
   switch (encryptionType)
@@ -586,4 +585,122 @@ String EncryptionType(wifi_auth_mode_t encryptionType)
   default:
     return "";
   }
+}
+
+bool compareFileinfo(const fileinfo &a, const fileinfo &b)
+{ // ファイル情報を比較するための関数
+  // ディレクトリをファイルより前に配置
+  if (a.ftype == "Dir" && b.ftype != "Dir")
+  {
+    return true;
+  }
+  if (a.ftype != "Dir" && b.ftype == "Dir")
+  {
+    return false;
+  }
+  // 同じタイプの場合はファイル名でソート
+  return a.filename < b.filename;
+}
+
+uint64_t getFileSize(int flType, String filename)
+{
+  uint64_t filesize;
+  File CheckFile;
+
+  if (flType == FS_SPIFFS)
+  {
+    if (!SPIFFS.exists(filename))
+    {
+      Serial.println("getFileSize: SPIFFS file not exists");
+      return 0;
+    }
+
+    CheckFile = SPIFFS.open(filename, "r");
+    filesize = (uint64_t)CheckFile.size();
+    CheckFile.close();
+    return filesize;
+  }
+  else if (flType == FS_SD)
+  {
+    String filename_tmp;
+    if (SdPath != "/")
+      filename_tmp = SdPath + filename;
+    else
+      filename_tmp = filename;
+
+    if (!SD.exists(filename_tmp))
+    {
+      Serial.println("getFileSize: SD file not exists");
+      return 0;
+    }
+
+    CheckFile = SD.open(filename_tmp, "r");
+    filesize = (uint64_t)CheckFile.size();
+    CheckFile.close();
+    return filesize;
+  }
+  else
+  {
+    Serial.println("getFileSize Err: invalid flType");
+    return 0;
+  }
+}
+
+bool FS_start(int flType)
+{
+  if (flType == FS_SPIFFS)
+  {
+    if (!SPIFFS.begin(true))
+    {
+      Serial.println("ERR: SPIFFS begin erro...");
+      return false;
+    }
+    return true;
+  }
+  else if (flType == FS_SD)
+  {
+    if (!SD.begin())
+    {
+      Serial.println("ERR: SD begin erro...");
+      return false;
+    }
+
+    if (!SD_cardInfo())
+      return false;
+
+    return true;
+  }
+  else
+  {
+    Serial.println("FS_start Err: invalid flType");
+    return false;
+  }
+}
+
+bool SD_cardInfo(void)
+{
+  sdcard_type_t cardType = SD.cardType();
+  switch (cardType)
+  {
+  case CARD_MMC:
+    Serial.println("MMC detected");
+    break;
+  case CARD_SD:
+    Serial.println("SD detected");
+    break;
+  case CARD_SDHC:
+    Serial.println("SDHC detected");
+    break;
+  case CARD_NONE:
+    Serial.println("ERR: No SD card attached");
+    return false;
+  case CARD_UNKNOWN:
+    Serial.println("ERR: SD card unknown Type");
+    return false;
+  default:
+    Serial.println("ERR: SD cardType is default Type");
+    return false;
+  }
+
+  return true;
 }

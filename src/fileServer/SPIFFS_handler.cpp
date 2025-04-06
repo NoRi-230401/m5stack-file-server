@@ -190,7 +190,7 @@ void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filen
 }
 
 void SPIFFS_Handle_File_Delete(String filename)
-{ // Delete the file
+{
   webpage = HTML_Header();
   if (!filename.startsWith("/"))
     filename = "/" + filename;
@@ -366,8 +366,6 @@ void SPIFFS_Select_File_For_Function(String title, String function)
     {
       webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td><td style = 'width:10%'>" + SPIFFS_Filenames[index + 1].fsize + "</td>";
     }
-
-    // webpage += "</tr>";
     // 奇数の場合の最後のテーブル処理
     if ((index < SPIFFS_numfiles - 1) || (SPIFFS_numfiles % 2 == 0))
       webpage += "</tr>";

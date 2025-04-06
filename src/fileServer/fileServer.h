@@ -15,14 +15,8 @@
 #include <algorithm>
 #include <vector>
 #include <SPIFFS.h>
-#include "FS.h"
-#include "SD.h"
-#include "SPI.h"
+#include <SD.h>
 #include <nvs.h>
-#include "esp_system.h"
-#include "esp_spi_flash.h"
-#include "esp_wifi_types.h"
-#include "esp_bt.h"
 #include <time.h>
 
 typedef struct

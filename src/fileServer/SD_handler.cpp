@@ -105,8 +105,6 @@ void SD_Dir(AsyncWebServerRequest *request)
       {
         webpage += "<td style = 'width:5%'>" + SD_Filenames[index + 1].ftype + "</td><td style = 'width:25%'>" + Fname2 + "</td><td style = 'width:10%'>" + SD_Filenames[index + 1].fsize + "</td>";
       }
-
-      // webpage += "</tr>";
       // 奇数の場合の最後のテーブル処理
       if ((index < SD_numfiles - 1) || (SD_numfiles % 2 == 0))
         webpage += "</tr>";
@@ -221,7 +219,7 @@ void SD_handleFileUpload(AsyncWebServerRequest *request, const String &filename,
 }
 
 void SD_Handle_File_Delete(String filename)
-{ // Delete the file
+{
   webpage = HTML_Header();
   if (!filename.startsWith("/"))
     filename = "/" + filename;
@@ -381,7 +379,6 @@ bool SD_notFound(AsyncWebServerRequest *request)
     if (request->url().startsWith("/SD_deletehandler"))
     {
       Serial.println("SD_Delete handler started...");
-      // Serial.println("filename = " + filename);
       SD_Handle_File_Delete(filename);
       request->send(200, "text/html", webpage);
     }
@@ -425,7 +422,6 @@ void SD_Select_File_For_Function(String title, String function)
     {
       webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td><td style = 'width:10%'>" + SD_Filenames[index + 1].fsize + "</td>";
     }
-    // webpage += "</tr>";
     // 奇数の場合の最後のテーブル処理
     if ((index < SD_numfiles - 1) || (SD_numfiles % 2 == 0))
       webpage += "</tr>";
@@ -504,9 +500,7 @@ void SDdir_handle_chUp()
 }
 
 void SDdir_Handle_chdir(String filename)
-{ // chdri
-  // Serial.println("filename = " + filename);
-
+{
   webpage = HTML_Header();
   if (!filename.startsWith("/"))
     filename = "/" + filename;
@@ -531,7 +525,7 @@ void SDdir_Handle_chdir(String filename)
 }
 
 void SDdir_Handle_rmdir(String filename)
-{ // rmdir
+{
   webpage = HTML_Header();
   if (!filename.startsWith("/"))
     filename = "/" + filename;
@@ -541,7 +535,7 @@ void SDdir_Handle_rmdir(String filename)
   // Serial.println("filename = " + filename);
 
   if (SD.rmdir(filename))
-  { // success
+  {
     Serial.println("removed dir = " + filename);
     webpage += "<h3>Directory '" + filename.substring(1) + "' has been removed</h3>";
     webpage += "<a href='/SD_dir'>[Enter]</a><br><br>";
@@ -555,7 +549,7 @@ void SDdir_Handle_rmdir(String filename)
 }
 
 void SDdir_Handle_mkdir(AsyncWebServerRequest *request)
-{ // Dir Make
+{
   webpage = HTML_Header();
   String filename = request->arg("filename");
 
@@ -567,7 +561,7 @@ void SDdir_Handle_mkdir(AsyncWebServerRequest *request)
   // Serial.println("filename = " + filename);
 
   if (SD.mkdir(filename))
-  { // success
+  {
     Serial.println("created new dir = " + filename);
     webpage += "<h3>Directory '" + filename + "' has been created</h3>";
     webpage += "<a href='/SD_dir'>[Enter]</a><br><br>";
@@ -613,7 +607,6 @@ void SDdir_Select_Dir_For_Function(String title, String function)
     {
       webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Dname2 + "'>" + Dname2 + "</a></button></td>";
     }
-    // webpage += "</tr>";
     // 奇数の場合の最後のテーブル処理
     if ((index < SD_numfiles - 1) || (SD_numfiles % 2 == 0))
       webpage += "</tr>";

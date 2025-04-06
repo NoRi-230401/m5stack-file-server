@@ -17,9 +17,6 @@ String getTmNTP();
 void adjustRTC();
 String getTmRTC();
 bool getSetting(int flType, const String filename);
-bool FS_start(int flType);
-uint64_t getFileSize(int flType, String filename);
-bool SD_cardInfo(void);
 
 static uint32_t HEAP_INF[8];
 void getHeapInf()
@@ -196,7 +193,7 @@ String getTmNTP()
     delay(10);
   }
 
-  String errStr = "2025/01/01(Wed) 00:00:00";
+  String errStr = "2025/04/01(Tue) 00:00:00";
   return errStr;
 }
 
@@ -210,82 +207,6 @@ String strTmInfo(struct tm &timeInfo)
           wd[timeInfo.tm_wday], timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec);
 
   return String(buf);
-}
-
-bool FS_start(int flType)
-{
-  if (flType == FS_SPIFFS)
-  {
-    if (!SPIFFS.begin(true))
-    {
-      Serial.println("ERR: SPIFFS begin erro...");
-      return false;
-    }
-    return true;
-  }
-  else if (flType == FS_SD)
-  {
-    if (!SD.begin())
-    {
-      Serial.println("ERR: SD begin erro...");
-      return false;
-    }
-
-    if (!SD_cardInfo())
-      return false;
-
-    return true;
-  }
-  else
-  {
-    Serial.println("FS_start Err: invalid flType");
-    return false;
-  }
-}
-
-uint64_t getFileSize(int flType, String filename)
-{
-  uint64_t filesize;
-  File CheckFile;
-  
-
-  if (flType == FS_SPIFFS)
-  {
-    if (!SPIFFS.exists(filename))
-    {
-      Serial.println("getFileSize: SPIFFS file not exists");
-      return 0;
-    }
-
-    CheckFile = SPIFFS.open(filename, "r");
-    filesize = (uint64_t)CheckFile.size();
-    CheckFile.close();
-    return filesize;
-  }
-  else if (flType == FS_SD)
-  {
-    String filename_tmp;
-    if (SdPath != "/")
-      filename_tmp = SdPath + filename;
-    else
-      filename_tmp = filename;
-
-    if (!SD.exists(filename_tmp))
-    {
-      Serial.println("getFileSize: SD file not exists");
-      return 0;
-    }
-
-    CheckFile = SD.open(filename_tmp, "r");
-    filesize = (uint64_t)CheckFile.size();
-    CheckFile.close();
-    return filesize;
-  }
-  else
-  {
-    Serial.println("getFileSize Err: invalid flType");
-    return 0;
-  }
 }
 
 bool getSetting(int flType, const String filename)
@@ -352,34 +273,6 @@ bool getSetting(int flType, const String filename)
 
   if (SSID == "" || SSID_PASS == "" || SERVER_NAME == "")
     return false;
-
-  return true;
-}
-
-bool SD_cardInfo(void)
-{
-  sdcard_type_t cardType = SD.cardType();
-  switch (cardType)
-  {
-  case CARD_MMC:
-    Serial.println("MMC detected");
-    break;
-  case CARD_SD:
-    Serial.println("SD detected");
-    break;
-  case CARD_SDHC:
-    Serial.println("SDHC detected");
-    break;
-  case CARD_NONE:
-    Serial.println("ERR: No SD card attached");
-    return false;
-  case CARD_UNKNOWN:
-    Serial.println("ERR: SD card unknown Type");
-    return false;
-  default:
-    Serial.println("ERR: SD cardType is default Type");
-    return false;
-  }
 
   return true;
 }
