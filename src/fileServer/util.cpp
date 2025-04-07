@@ -52,14 +52,14 @@ void prt(String message)
     M5.Display.println(message);
 }
 
-void error_stop()
-{
-  prt("\nERR: fail to start server");
-  delay(10000);
+// void error_stop()
+// {
+//   prt("\nERR: fail to start server");
+//   delay(10000);
 
-  while (true)
-    ;
-}
+//   while (true)
+//     ;
+// }
 
 String ConvBytesUnits(uint64_t bytes, int dp, int unit)
 { // int dp : 小数点以下の桁数、decimal places
@@ -276,3 +276,4 @@ bool getSetting(int flType, const String filename)
 
   return true;
 }
+ 

@@ -55,8 +55,7 @@ void setup()
 #if defined(ENABLE_SD_UPDATER)
   SDU_lobby(PROG_NAME);
 #else
-  // while (!Serial);
-  delay(1000);  // wait for serial setting end 
+  delay(1000); // wait for serial setting end
 #endif
 
   M5.Display.setBrightness(120);
@@ -65,7 +64,7 @@ void setup()
   prt("-   " + PROG_NAME + "   -\n");
 
   if (!setupServer())
-    error_stop();
+    errSTOP();
 
   prt("SUCCESS: System started");
   prt("\nIP Addr: " + IP_ADDR);
@@ -83,6 +82,8 @@ void setup()
 
 void loop()
 {
+  requestManage();
+
   if (RTC_ADJUST_REQ && RTC_ENABLE && (millis() - TM_SETUP_DONE > TM_RTC_ADJUST))
   {
     adjustRTC();

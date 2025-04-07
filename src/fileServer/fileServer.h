@@ -44,7 +44,7 @@ extern String HTML_Footer();
 extern String getContentType(String filenametype);
 extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 extern void prt(String message);
-extern void error_stop();
+// extern void error_stop();
 extern void getHeapInf();
 extern void prtHeapInf(String message);
 extern String ConvBytesUnits(uint64_t bytes, int dp, int unit=UNIT_AUTO);
@@ -67,5 +67,8 @@ extern const bool DISP_ON;
 extern bool RTC_ENABLE;
 extern String SdPath;
 
+extern void errSTOP();
+extern void webApiSetup();
+extern void requestManage();
 // -------------------------------------------------------
 #endif  // _M5STACK_FILE_SERVER_H

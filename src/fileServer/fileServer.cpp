@@ -75,7 +75,7 @@ String HTML_Header()
 
   // TOPNAV
   page += ".topnav {overflow: visible;background-color:cyan;}";
-  page += ".topnav a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.6rem;}";
+  page += ".topnav a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.4rem;}";
   page += ".topnav a:hover {background-color:deepskyblue;color:white;}";
   page += ".topnav a.active {background-color:lightblue;color:blue;}";
 
@@ -98,9 +98,10 @@ String HTML_Header()
   // -- 1 --
   page += "<div class = 'topnav'>";
   page += "<a href='/'>Home</a>";
-  page += "　　";
-  page += "<a href='/system'>Status</a>";
-  page += "　　";
+  page += "&nbsp;";
+  page += "<a href='/system'>status</a>";
+    page += "<a href='/shutdown?reboot=on'>reboot</a>";
+  page += "<a href='/shutdown'>powOff</a>";
   page += "</div>";
 
   // --------------- SPIFFS ------------------------
@@ -399,6 +400,8 @@ bool fileServerStart()
     server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request)
               { request->send(SPIFFS, "/favicon.ico", "image/x-icon"); });
   }
+
+  webApiSetup();    // shutdown API use 
 
   server.onNotFound(notFound);
 
