@@ -51,11 +51,12 @@ void setup()
   auto cfg = M5.config();
   cfg.serial_baudrate = 115200;
   M5.begin(cfg);
-  while (!Serial);
-  delay(1000);
 
 #if defined(ENABLE_SD_UPDATER)
   SDU_lobby(PROG_NAME);
+#else
+  // while (!Serial);
+  delay(1000);  // wait for serial setting end 
 #endif
 
   M5.Display.setBrightness(120);
