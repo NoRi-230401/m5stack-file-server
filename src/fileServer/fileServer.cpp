@@ -51,10 +51,15 @@ String HTML_Header()
   page += "<title>" + SERVER_NAME + "</title>";
   page += "<base target='_self'>";
   page += "<meta charset='UTF-8'>";
-  // favicon 
+  // favicon
   page += "<link rel='icon' href='/favicon.ico'>";
   page += "<meta name='viewport' content='width=device-width,initial-scale=1.0'>";
-  // ------------
+  // ---javaScript ---------------------------
+  page += "<script>";
+  page += "function confirmP() {if (confirm('Can I turn off?')){window.open('/shutdown', '_blank');} else {alert('stopped');}}";
+  page += "function confirmR() {if (confirm('Can I reboot?')){window.open('/shutdown?reboot=on', '_blank');} else {alert('stopped');}}";
+  page += "</script>";
+  // ------------------------------------------
   page += "<style>";
   // for smartPhone style define
   page += "@media screen and (max-width: 480px) {";
@@ -74,7 +79,8 @@ String HTML_Header()
   page += ".center {margin-left:auto;margin-right:auto;}";
 
   // TOPNAV
-  page += ".topnav {overflow: visible;background-color:cyan;}";
+  page += ".topnav {overflow: visible;background-color:lightPink;}";
+  // page += ".topnav {overflow: visible;background-color:cyan;}";
   page += ".topnav a {float:center;color:blue;text-align:center;padding:1.0rem 1.0rem;text-decoration:none;font-size:1.4rem;}";
   page += ".topnav a:hover {background-color:deepskyblue;color:white;}";
   page += ".topnav a.active {background-color:lightblue;color:blue;}";
@@ -85,7 +91,7 @@ String HTML_Header()
   page += ".topnav2 a {float:center;color:blue;text-align:center;padding:1.2rem 1.2rem;text-decoration:none;font-size:1.5rem;line-height:2;}";
   page += ".topnav2 a:hover {background-color:deepskyblue;color:white;}";
   page += ".topnav2 a.active {background-color:lightblue;color:blue;}";
-  
+
   // other style
   page += ".notfound {padding:0.8rem;text-align:center;font-size:1.3rem;}";
   page += ".left {text-align:left;}";
@@ -98,10 +104,16 @@ String HTML_Header()
   // -- 1 --
   page += "<div class = 'topnav'>";
   page += "<a href='/'>Home</a>";
+  // page += "&nbsp;";
+  page += "<a href='/system'>Status</a>";
   page += "&nbsp;";
-  page += "<a href='/system'>status</a>";
-    page += "<a href='/shutdown?reboot=on'>reboot</a>";
-  page += "<a href='/shutdown'>powOff</a>";
+  page += "　";
+  // page += "<a href='/shutdown?reboot=on' target='_blank'>reboot</a>";
+  // page += "<a href='/shutdown' target='_blank'>powOff</a>";
+  page += "<input type='button' value='Reboot' onclick='confirmR();'>";
+  page += "　";
+  page += "<input type='button' value='PowOff' onclick='confirmP();'>";
+
   page += "</div>";
 
   // --------------- SPIFFS ------------------------
@@ -134,7 +146,7 @@ String HTML_Header()
     // page += "</div>";
 
     page += "<br>";
-    
+
     // -- 4 SD path --
     // page += "<div class = 'topnav2'>";
     page += "path:&nbsp;" + SdPath;
@@ -401,7 +413,7 @@ bool fileServerStart()
               { request->send(SPIFFS, "/favicon.ico", "image/x-icon"); });
   }
 
-  webApiSetup();    // shutdown API use 
+  webApiSetup(); // shutdown API use
 
   server.onNotFound(notFound);
 

@@ -8,7 +8,7 @@
 void webApiSetup();
 void handle_shutdown(AsyncWebServerRequest *request);
 void wsHandleShutdown(String reboot_get_str, String time_get_str);
-void errSTOP();
+void STOP();
 void REBOOT();
 void POWER_OFF();
 void serverSend(AsyncWebServerRequest *request);
@@ -17,23 +17,25 @@ String HTML_Footer2();
 String HTML_Header2Ng();
 void requestManage();
 void sendReq(int reqNo);
+void handle_test(AsyncWebServerRequest *request);
+void wsHandleTest(String okGetStr);
 
 extern AsyncWebServer server;
 extern String webpage;
-
 
 #define REQ_REBOOT 98
 #define REQ_SHUTDOWN 99
 #define SHUTDOWN_MIN_TM 3
 uint16_t SHUTDOWN_TM_SEC;
-int REQUEST_NO = 0;       // 0 : no request
-
+int REQUEST_NO = 0; // 0 : no request
 
 void webApiSetup()
 {
-  // ##################### shutdown ############################
   server.on("/shutdown", HTTP_GET, [](AsyncWebServerRequest *request)
             { handle_shutdown(request);  serverSend(request); });
+
+  server.on("/test", HTTP_GET, [](AsyncWebServerRequest *request)
+            { handle_test(request);  serverSend(request); });
 }
 
 void handle_shutdown(AsyncWebServerRequest *request)
@@ -43,7 +45,6 @@ void handle_shutdown(AsyncWebServerRequest *request)
   String time_get_str = request->arg("time");
   wsHandleShutdown(reboot_get_str, time_get_str);
 }
-
 
 void wsHandleShutdown(String reboot_get_str, String time_get_str)
 {
@@ -64,7 +65,7 @@ void wsHandleShutdown(String reboot_get_str, String time_get_str)
   {
     SHUTDOWN_TM_SEC = time_sec;
     sendReq(REQ_REBOOT);
-    
+
     webpage = "reboot : after " + String(time_sec, DEC) + "sec";
     Serial.println(webpage);
     return;
@@ -78,9 +79,9 @@ void wsHandleShutdown(String reboot_get_str, String time_get_str)
   return;
 }
 
-void errSTOP()
+void STOP()
 {
-  Serial.println("Stop : Fatal Error Occurred!");
+  Serial.println(" *** Stop *** fatal error");
   SD.end();
   SPIFFS.end();
   delay(5000);
@@ -122,21 +123,19 @@ void POWER_OFF()
 
 void serverSend(AsyncWebServerRequest *request)
 {
-  if (webpage=="NG")
+  if (webpage.equalsIgnoreCase("NG"))
   {
     webpage = HTML_Header2Ng() + webpage + HTML_Footer2();
     request->send(400, "text/html", webpage);
   }
-  else if (webpage=="OK")
+  else if (webpage.equalsIgnoreCase("OK"))
   {
     Serial.println("send -> OK");
     request->send(200, "text/plain", String("OK"));
   }
   else
   {
-    String tmpPage;
-    tmpPage = HTML_Header2() + webpage + HTML_Footer2();
-    webpage = tmpPage;
+    webpage = HTML_Header2() + webpage + HTML_Footer2();
     request->send(200, "text/html", webpage);
   }
 }
@@ -174,7 +173,7 @@ String HTML_Footer2()
 String HTML_Header2Ng()
 {
   String page;
-  page = "<!DOCTYPE html>"; 
+  page = "<!DOCTYPE html>";
   page += "<html lang = 'ja'>";
   page += "<head>";
   page += "<meta charset='UTF-8'>";
@@ -198,26 +197,49 @@ void requestManage()
     return;
 
   int req = REQUEST_NO;
-
   switch (req)
   {
-    case REQ_REBOOT:
+  case REQ_REBOOT:
+    REQUEST_NO = 0;
     REBOOT();
     return;
 
   case REQ_SHUTDOWN:
+    REQUEST_NO = 0;
     POWER_OFF();
     return;
-  
+
   default:
+    REQUEST_NO = 0;
     Serial.println("requeestManage : invalid request get ");
   }
-
-  REQUEST_NO = 0;
   return;
 }
 
 void sendReq(int reqNo)
 {
   REQUEST_NO = reqNo;
+}
+
+// ---- test for webApi -----
+void handle_test(AsyncWebServerRequest *request)
+{
+  webpage = "NG";
+  String ok_str = request->arg("ok");
+  wsHandleTest(ok_str);
+}
+
+void wsHandleTest(String okGetStr)
+{
+  // API TEST -> "/test?OK=true"
+  //     return OK=true  else return NG   
+  
+  if (okGetStr.equalsIgnoreCase("true"))
+  {
+    webpage = "OK = true";
+    Serial.println(webpage);
+    return;
+  }
+  Serial.println(webpage);
+  return;
 }

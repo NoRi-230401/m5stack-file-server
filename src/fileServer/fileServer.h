@@ -67,7 +67,7 @@ extern const bool DISP_ON;
 extern bool RTC_ENABLE;
 extern String SdPath;
 
-extern void errSTOP();
+extern void STOP();
 extern void webApiSetup();
 extern void requestManage();
 // -------------------------------------------------------
