@@ -302,9 +302,15 @@ void SPIFFS_File_Rename()
   webpage += "<h3>SPIFFS: Select a File to [RENAME]</h3>";
   webpage += "<FORM action='/SPIFFS_renamehandler'>";
 
-  // file-list-table クラスに加え、rename-table クラスを追加
-  webpage += "<table class='file-list-table rename-table'>"; // <--- クラス 'rename-table' を追加
-  webpage += "<tbody>";                                      // thead は省略
+  webpage += "<table class='file-list-table rename-table'>";
+  webpage += "<thead>";
+  webpage += "<tr>";
+  webpage += "<th>File name</th>";    // 見出し1
+  webpage += "<th>New Filename</th>"; // 見出し2
+  webpage += "<th>Select</th>";       // 見出し3
+  webpage += "</tr>";
+  webpage += "</thead>";
+  webpage += "<tbody>";
 
   if (SPIFFS_numfiles > 0)
   {

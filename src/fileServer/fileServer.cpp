@@ -64,7 +64,6 @@ String HTML_Header()
 
   // --- ファイル一覧テーブル用の基本スタイル(スマホで使用される)
   page += ".file-list-table { width: 95%; border-collapse: collapse; margin-left:auto; margin-right:auto; border: 1px solid #ccc; }";
-  // theadはPC表示でのみ使用する想定だが、念のためスタイル定義
   page += ".file-list-table thead th { border: 1px solid #ddd; text-align: left; padding: 8px; box-sizing: border-box; background-color: #e9e9e9; font-weight: bold; }";
   page += ".file-list-table tbody td { border: 1px solid #ddd; text-align: left; padding: 8px; box-sizing: border-box; vertical-align: top; }";
   // 列幅指定 (クラスセレクタ使用)
@@ -77,13 +76,17 @@ String HTML_Header()
 
   // --- PC向けスタイル (画面幅が 769px 以上の場合) ---
   page += "@media screen and (min-width: 769px) {";
-  page += "  .file-list-table { width: 80%; border: none; }"; // PCではテーブル全体のボーダーを消す
-  page += "  .file-list-table thead { display: none; }";      // PC表示ではtheadは表示しない (tbody内で完結させるため)
+  page += "  .file-list-table { width: 80%; border: none; }";
+  // ↓↓↓ 変更: rename-table 以外で thead を非表示にする ↓↓↓
+  page += "  .file-list-table:not(.rename-table) thead { display: none; }";
+  // ↑↑↑ 変更ここまで ↑↑↑
+  // page += "  .file-list-table thead { display: none; }";
   page += "  .file-list-table > tbody { ";
   page += "    display: flex; ";
   page += "    flex-wrap: wrap; ";
-  page += "    border: none; "; // tbodyのボーダーも消す
+  page += "    border: none; ";
   page += "  }";
+
   page += "  .file-list-table > tbody > tr.file-entry { ";
   page += "    display: flex; ";
   page += "    width: 50%; "; // 2列表示
@@ -134,7 +137,18 @@ String HTML_Header()
   page += "    background-color: #ffffff !important; ";                    // 白
   page += "  }";
 
-  // --- ここから追加 ---
+// --- rename-table 専用のPC向けスタイル ---
+  page += "  .rename-table thead {";
+  page += "      display: table-header-group; /* thead を表示 */";
+  page += "  }";
+  page += "  .rename-table thead th {";
+  page += "      /* 基本スタイルは .file-list-table thead th から継承されるはず */";
+  page += "      /* 必要なら上書き */";
+  page += "  }";
+  page += "  .rename-table thead th:nth-child(1) { width: 45%; } /* File name 列 */";
+  page += "  .rename-table thead th:nth-child(2) { width: 40%; } /* New Filename 列 */";
+  page += "  .rename-table thead th:nth-child(3) { width: 15%; text-align: center; } /* Select 列 */";
+  
   /* --- SD_rename画面専用のPC向けスタイル (1行表示に戻す) --- */
   page += "  .rename-table > tbody {";
   page += "    display: table-row-group; /* Flexboxを解除 */";
@@ -168,18 +182,17 @@ String HTML_Header()
   page += "  .rename-table td.rename-select { width: 15%; text-align: center; }";
   page += "  .rename-table > tbody > tr.file-entry:nth-child(even) { background-color: #f8f8f8 !important; }";
   page += "  .rename-table > tbody > tr.file-entry:nth-child(odd) { background-color: #ffffff !important; }";
-  // --- 追加ここまで ---
-  page += "}"; // PC向けメディアクエリ終了
+  page += "}";
 
   // --- スマホ向けスタイル (画面幅が 768px 以下の場合) ---
   page += "@media screen and (max-width: 768px) {";
   page += "  body {font-size: 1.4rem;} div {font-size: 1.4rem;}";
   page += "  p {font-size: 1.4rem;} h5 {font-size: 1.4rem;}";
-  page += "  img {max-width:100%;height:auto;}";                                           // 画像ははみ出さないように
-  page += "  .file-list-table { width: 95%; font-size: 1.2rem; border: 1px solid #ccc; }"; // テーブル全体のボーダー復活
+  page += "  img {max-width:100%;height:auto;}";
+  page += "  .file-list-table { width: 95%; font-size: 1.2rem; border: 1px solid #ccc; }";
   page += "  .file-list-table thead { display: none; }";
-  page += "  .file-list-table > tbody { display: table-row-group; border: none; }";                        // 通常のtbody表示に戻す
-  page += "  .file-list-table > tbody > tr.file-entry { display: table-row; width: 100%; border: none; }"; // 通常のtr表示に戻す
+  page += "  .file-list-table > tbody { display: table-row-group; border: none; }"; 
+  page += "  .file-list-table > tbody > tr.file-entry { display: table-row; width: 100%; border: none; }";
   page += "  .file-list-table > tbody > tr.file-entry > td { ";
   page += "    display: table-cell; ";                      // 通常のセル表示
   page += "    width: auto; ";                              // 幅はクラス指定に任せる

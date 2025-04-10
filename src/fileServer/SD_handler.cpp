@@ -262,9 +262,16 @@ void SD_File_Rename()
 {
   SD_Directory();
   webpage = HTML_Header();
-  webpage += "<h3>SD: Select a Dir/File to [RENAME] (" + SdPath + ")</h3>"; // パス表示を追加
+  webpage += "<h3>SD: Select a Dir/File to [RENAME] (" + SdPath + ")</h3>";
   webpage += "<FORM action='/SD_renamehandler'>";
-  webpage += "<table class='file-list-table rename-table'>"; // <--- クラス 'rename-table' を追加
+  webpage += "<table class='file-list-table rename-table'>";
+  webpage += "<thead>";
+  webpage += "<tr>";
+  webpage += "<th>File name</th>";    // 見出し1
+  webpage += "<th>New Filename</th>"; // 見出し2
+  webpage += "<th>Select</th>";       // 見出し3
+  webpage += "</tr>";
+  webpage += "</thead>";
   webpage += "<tbody>";
 
   if (SD_numfiles > 0)
@@ -283,7 +290,7 @@ void SD_File_Rename()
   }
   else
   {
-      webpage += "<tr><td colspan='3' style='text-align: center; padding: 20px;'>No files or directories found in " + SdPath + " to rename.</td></tr>";
+    webpage += "<tr><td colspan='3' style='text-align: center; padding: 20px;'>No files or directories found in " + SdPath + " to rename.</td></tr>";
   }
 
   webpage += "</tbody>";
@@ -292,7 +299,6 @@ void SD_File_Rename()
   webpage += "</form>";
   webpage += HTML_Footer();
 }
-
 
 void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args)
 {
@@ -459,7 +465,7 @@ bool SD_notFound(AsyncWebServerRequest *request)
             return bytesRead;
           });
       // ファイルが閉じられるようにコールバックを設定 (レスポンス送信完了後)
-      response->setContentLength(file.size());                                                        // ファイルサイズを明示的に設定
+      response->setContentLength(file.size());                                                 // ファイルサイズを明示的に設定
       response->addHeader("Content-Disposition", "attachment; filename=\"" + filename + "\""); // ダウンロードファイル名を指定
       response->addHeader("Server", "ESP Async Web Server");
       request->send(response);
