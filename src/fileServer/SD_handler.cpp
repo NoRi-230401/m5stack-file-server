@@ -83,48 +83,91 @@ void SD_flServerSetup()
 
 void SD_Dir(AsyncWebServerRequest *request)
 {
-  String Fname1, Fname2;
-  int index = 0;
-  SD_Directory();
+  SD_Directory(); // ファイルリストを取得・ソート
 
-  webpage = HTML_Header();
-  webpage += "<h3>SD:　Filing System Content</h3><br>";
+  webpage = HTML_Header(); // ヘッダー生成 (CSS含む)
+  webpage += "<h3>SD: Filing System Content (" + SdPath + ")</h3>"; // パス表示を追加
+
   if (SD_numfiles > 0)
   {
-    webpage += "<table class='center'>";
-    webpage += "<tr><th>Type</th><th>File Name</th><th>File Size</th><th class='sp'></th><th>Type</th><th>File Name</th><th>File Size</th></tr>";
-    while (index < SD_numfiles)
-    {
-      Fname1 = SD_Filenames[index].filename;
-      // Fname2 = SD_Filenames[index + 1].filename;
-      Fname2 = (index + 1 < SD_numfiles) ? SD_Filenames[index + 1].filename : "";
-      webpage += "<tr>";
-      webpage += "<td style = 'width:5%'>" + SD_Filenames[index].ftype + "</td><td style = 'width:25%'>" + Fname1 + "</td><td style = 'width:10%'>" + SD_Filenames[index].fsize + "</td>";
-      webpage += "<td class='sp'></td>";
-      if (index < SD_numfiles - 1)
-      {
-        webpage += "<td style = 'width:5%'>" + SD_Filenames[index + 1].ftype + "</td><td style = 'width:25%'>" + Fname2 + "</td><td style = 'width:10%'>" + SD_Filenames[index + 1].fsize + "</td>";
-      }
-      // 奇数の場合の最後のテーブル処理
-      if ((index < SD_numfiles - 1) || (SD_numfiles % 2 == 0))
-        webpage += "</tr>";
-      else if ((SD_numfiles % 2) != 0)
-      {
-        webpage += "<td style = 'width:5%'></td><td style = 'width:25%'></td><td style = 'width:10%'></td>";
-        webpage += "</tr>";
-      }
+    // テーブル開始 (クラス file-list-table を追加)
+    webpage += "<table class='file-list-table'>";
 
-      index = index + 2;
+    // thead はCSSで非表示にするので、ここでは省略しても良い
+    // webpage += "<thead><tr><th>Type</th><th>Name</th><th>Size</th></tr></thead>";
+
+    // tbody 開始
+    webpage += "<tbody>";
+
+    // ファイル情報をループで出力
+    for (int index = 0; index < SD_numfiles; index++)
+    {
+      // 各ファイルエントリの行 (クラス file-entry を追加)
+      webpage += "<tr class='file-entry'>";
+      // 各セルにクラスを追加
+      webpage += "<td class='file-type'>" + SD_Filenames[index].ftype + "</td>";
+      webpage += "<td class='file-name'>" + SD_Filenames[index].filename + "</td>";
+      webpage += "<td class='file-size'>" + SD_Filenames[index].fsize + "</td>";
+      webpage += "</tr>";
     }
+
+    // tbody 終了
+    webpage += "</tbody>";
+    // テーブル終了
     webpage += "</table>";
   }
   else
   {
-    webpage += "<h2>No Files Found</h2>";
+    webpage += "<p style='text-align: center; margin-top: 20px;'>No files or directories found in " + SdPath + "</p>"; // メッセージ変更
   }
-  webpage += HTML_Footer();
-  request->send(200, "text/html", webpage);
+  webpage += HTML_Footer(); // フッター生成
 }
+
+// void SD_Dir(AsyncWebServerRequest *request)
+// {
+//   String Fname1, Fname2;
+//   int index = 0;
+//   SD_Directory();
+
+//   webpage = HTML_Header();
+//   webpage += "<h3>SD:　Filing System Content</h3><br>";
+//   if (SD_numfiles > 0)
+//   {
+//     webpage += "<table class='center'>";
+
+//     webpage += "<tr><th>Type</th><th>File Name</th><th>File Size</th><th class='sp'></th><th>Type</th><th>File Name</th><th>File Size</th></tr>";
+    
+//     while (index < SD_numfiles)
+//     {
+//       Fname1 = SD_Filenames[index].filename;
+//       // Fname2 = SD_Filenames[index + 1].filename;
+//       Fname2 = (index + 1 < SD_numfiles) ? SD_Filenames[index + 1].filename : "";
+//       webpage += "<tr>";
+//       webpage += "<td style = 'width:5%'>" + SD_Filenames[index].ftype + "</td><td style = 'width:25%'>" + Fname1 + "</td><td style = 'width:10%'>" + SD_Filenames[index].fsize + "</td>";
+//       webpage += "<td class='sp'></td>";
+//       if (index < SD_numfiles - 1)
+//       {
+//         webpage += "<td style = 'width:5%'>" + SD_Filenames[index + 1].ftype + "</td><td style = 'width:25%'>" + Fname2 + "</td><td style = 'width:10%'>" + SD_Filenames[index + 1].fsize + "</td>";
+//       }
+//       // 奇数の場合の最後のテーブル処理
+//       if ((index < SD_numfiles - 1) || (SD_numfiles % 2 == 0))
+//         webpage += "</tr>";
+//       else if ((SD_numfiles % 2) != 0)
+//       {
+//         webpage += "<td style = 'width:5%'></td><td style = 'width:25%'></td><td style = 'width:10%'></td>";
+//         webpage += "</tr>";
+//       }
+
+//       index = index + 2;
+//     }
+//     webpage += "</table>";
+//   }
+//   else
+//   {
+//     webpage += "<h2>No Files Found</h2>";
+//   }
+//   webpage += HTML_Footer();
+// }
 
 const String SD_SYSTEM_FILE = "System Volume Information";
 void SD_Directory()
@@ -394,47 +437,110 @@ bool SD_notFound(AsyncWebServerRequest *request)
   return false;
 }
 
+// void SD_Select_File_For_Function(String title, String function)
+// {
+//   String Fname1, Fname2;
+//   int index = 0;
+//   SDdir_FilesList();
+//   webpage = HTML_Header();
+//   webpage += "<h3>SD:　Select a File to " + title + "　</h3>";
+//   webpage += "<table class='center'>";
+//   // webpage += "<tr><th>File Name</th><th>File Size</th><th class='sp'></th><th>File Name</th><th>File Size</th></tr>";
+//   while (index < SD_numfiles)
+//   {
+//     Fname1 = SD_Filenames[index].filename;
+//     Fname2 = (index + 1 < SD_numfiles) ? SD_Filenames[index + 1].filename : "";
+
+//     if (Fname1.startsWith("/"))
+//       Fname1 = Fname1.substring(1);
+
+//     if (!Fname2.isEmpty() && Fname2.startsWith("/"))
+//       Fname2 = Fname2.substring(1);
+
+//     webpage += "<tr>";
+//     webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td><td style = 'width:10%'>" + SD_Filenames[index].fsize + "</td>";
+//     webpage += "<td class='sp'></td>";
+
+//     if (index < SD_numfiles - 1)
+//     {
+//       webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td><td style = 'width:10%'>" + SD_Filenames[index + 1].fsize + "</td>";
+//     }
+//     // 奇数の場合の最後のテーブル処理
+//     if ((index < SD_numfiles - 1) || (SD_numfiles % 2 == 0))
+//       webpage += "</tr>";
+//     else if ((SD_numfiles % 2) != 0)
+//     {
+//       webpage += "<td style='width:25%'></td><td style = 'width:10%'></td>";
+//       webpage += "</tr>";
+//     }
+
+//     index = index + 2;
+//   }
+//   webpage += "</table>";
+//   webpage += HTML_Footer();
+// }
+
 void SD_Select_File_For_Function(String title, String function)
 {
-  String Fname1, Fname2;
-  int index = 0;
-  SDdir_FilesList();
-  webpage = HTML_Header();
-  webpage += "<h3>SD:　Select a File to " + title + "　</h3>";
-  webpage += "<table class='center'>";
-  webpage += "<tr><th>File Name</th><th>File Size</th><th class='sp'></th><th>File Name</th><th>File Size</th></tr>";
-  while (index < SD_numfiles)
+  // SDdir_FilesList(); // ファイルのみリストアップ (既存のままでOK)
+  // または SD_Directory(); // ディレクトリも含む場合 (元のコードに合わせて SDdir_FilesList を使用)
+  SDdir_FilesList(); // ファイルのみをリストアップ
+
+  webpage = HTML_Header(); // ヘッダー生成 (CSS含む)
+  webpage += "<h3>SD: Select a File to " + title + " (" + SdPath + ")</h3>"; // パス表示を追加
+
+  if (SD_numfiles > 0)
   {
-    Fname1 = SD_Filenames[index].filename;
-    Fname2 = (index + 1 < SD_numfiles) ? SD_Filenames[index + 1].filename : "";
+    // テーブル開始 (クラス file-list-table を追加)
+    // このクラスにより、PCではflexboxによる2列表示、スマホでは通常のテーブル表示になる
+    webpage += "<table class='file-list-table'>";
+    // tbody 開始
+    webpage += "<tbody>";
 
-    if (Fname1.startsWith("/"))
-      Fname1 = Fname1.substring(1);
-
-    if (!Fname2.isEmpty() && Fname2.startsWith("/"))
-      Fname2 = Fname2.substring(1);
-
-    webpage += "<tr>";
-    webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td><td style = 'width:10%'>" + SD_Filenames[index].fsize + "</td>";
-    webpage += "<td class='sp'></td>";
-
-    if (index < SD_numfiles - 1)
+    // ファイル情報をループで出力
+    for (int index = 0; index < SD_numfiles; index++)
     {
-      webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td><td style = 'width:10%'>" + SD_Filenames[index + 1].fsize + "</td>";
-    }
-    // 奇数の場合の最後のテーブル処理
-    if ((index < SD_numfiles - 1) || (SD_numfiles % 2 == 0))
-      webpage += "</tr>";
-    else if ((SD_numfiles % 2) != 0)
-    {
-      webpage += "<td style='width:25%'></td><td style = 'width:10%'></td>";
+      String Fname_orig = SD_Filenames[index].filename; // 元のファイル名 (表示用)
+      String Fname_url = Fname_orig; // URL生成用のファイル名
+
+      // ファイル名の先頭のスラッシュを削除 (URL生成用)
+      if (Fname_url.startsWith("/")) {
+        Fname_url = Fname_url.substring(1);
+      }
+
+      // 各ファイルエントリの行 (クラス file-entry を追加)
+      // このクラスにより、PCでは各エントリが幅50%になる
+      webpage += "<tr class='file-entry'>";
+
+      // ファイル名セル (ボタン付きリンク) - file-name クラスを使用
+      // PC表示(flex)では、このセルが伸縮して幅を調整する
+      webpage += "<td class='file-name'>";
+      // ボタンにスタイルを追加して、セル内で適切に表示されるように調整
+      webpage += "<button style='width: 100%; text-align: left; padding: 5px; box-sizing: border-box; white-space: normal; word-break: break-all;'>"; // 幅100%, 左寄せ, パディング, 折り返し有効
+      webpage += "<a href='" + function + "~/" + Fname_url + "' style='display: block; text-decoration: none; color: inherit;'>" + Fname_orig + "</a>"; // リンクスタイル調整
+      webpage += "</button>";
+      webpage += "</td>";
+
+      // ファイルサイズセル - file-size クラスを使用
+      // PC表示(flex)では、このセルが指定された幅(25%)を維持する
+      webpage += "<td class='file-size'>" + SD_Filenames[index].fsize + "</td>";
+
+      // ファイルタイプセルは選択画面では不要なことが多いので省略
+      // もし必要なら <td class='file-type'>...</td> を追加し、CSSのflex-basisを調整
+
       webpage += "</tr>";
     }
 
-    index = index + 2;
+    // tbody 終了
+    webpage += "</tbody>";
+    // テーブル終了
+    webpage += "</table>";
   }
-  webpage += "</table>";
-  webpage += HTML_Footer();
+  else
+  {
+    webpage += "<p style='text-align: center; margin-top: 20px;'>No files found in " + SdPath + " to " + title + "</p>"; // メッセージ変更
+  }
+  webpage += HTML_Footer(); // フッター生成
 }
 
 void SDdir_flserverSetup()

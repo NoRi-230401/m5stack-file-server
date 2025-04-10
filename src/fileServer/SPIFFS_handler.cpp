@@ -97,48 +97,88 @@ void SPIFFS_Directory()
   std::sort(SPIFFS_Filenames.begin(), SPIFFS_Filenames.end(), compareFileinfo);
 }
 
+// void SPIFFS_Dir(AsyncWebServerRequest *request)
+// {
+//   String Fname1, Fname2;
+//   int index = 0;
+//   SPIFFS_Directory();
+//   webpage = HTML_Header();
+//   webpage += "<h3>SPIFFS:　Filing System Content</h3><br>";
+//   if (SPIFFS_numfiles > 0)
+//   {
+//     webpage += "<table class='center'>";
+//     webpage += "<tr><th>Type</th><th>File Name</th><th>File Size</th><th class='sp'></th><th>Type</th><th>File Name</th><th>File Size</th></tr>";
+//     while (index < SPIFFS_numfiles)
+//     {
+//       Fname1 = SPIFFS_Filenames[index].filename;
+//       Fname2 = (index + 1 < SPIFFS_numfiles) ? SPIFFS_Filenames[index + 1].filename : "";
+//       webpage += "<tr>";
+//       webpage += "<td style = 'width:5%'>" + SPIFFS_Filenames[index].ftype + "</td><td style = 'width:25%'>" + Fname1 + "</td><td style = 'width:10%'>" + SPIFFS_Filenames[index].fsize + "</td>";
+//       webpage += "<td class='sp'></td>";
+//       if (index < SPIFFS_numfiles - 1)
+//       {
+//         webpage += "<td style = 'width:5%'>" + SPIFFS_Filenames[index + 1].ftype + "</td><td style = 'width:25%'>" + Fname2 + "</td><td style = 'width:10%'>" + SPIFFS_Filenames[index + 1].fsize + "</td>";
+//       }
+//       // numfiles奇数の場合の最後のテーブル処理
+//       if ((index < SPIFFS_numfiles - 1) || (SPIFFS_numfiles % 2 == 0))
+//         webpage += "</tr>";
+//       else if ((SPIFFS_numfiles % 2) != 0)
+//       {
+//         webpage += "<td style = 'width:5%'></td><td style = 'width:25%'></td><td style = 'width:10%'></td>";
+//         webpage += "</tr>";
+//       }
+
+//       index = index + 2;
+//     }
+//     webpage += "</table>";
+//   }
+//   else
+//   {
+//     webpage += "<h2>No Files Found</h2>";
+//   }
+//   webpage += HTML_Footer();
+// }
+
+// --- SPIFFS_Dir() を修正 ---
 void SPIFFS_Dir(AsyncWebServerRequest *request)
 {
-  String Fname1, Fname2;
-  int index = 0;
-  SPIFFS_Directory();
-  webpage = HTML_Header();
-  webpage += "<h3>SPIFFS:　Filing System Content</h3><br>";
+  SPIFFS_Directory(); // ファイルリストを取得・ソート
+
+  webpage = HTML_Header(); // ヘッダー生成 (CSS含む)
+  webpage += "<h3>SPIFFS: Filing System Content</h3>"; // タイトル
+
   if (SPIFFS_numfiles > 0)
   {
-    webpage += "<table class='center'>";
-    webpage += "<tr><th>Type</th><th>File Name</th><th>File Size</th><th class='sp'></th><th>Type</th><th>File Name</th><th>File Size</th></tr>";
-    while (index < SPIFFS_numfiles)
-    {
-      Fname1 = SPIFFS_Filenames[index].filename;
-      Fname2 = (index + 1 < SPIFFS_numfiles) ? SPIFFS_Filenames[index + 1].filename : "";
-      webpage += "<tr>";
-      webpage += "<td style = 'width:5%'>" + SPIFFS_Filenames[index].ftype + "</td><td style = 'width:25%'>" + Fname1 + "</td><td style = 'width:10%'>" + SPIFFS_Filenames[index].fsize + "</td>";
-      webpage += "<td class='sp'></td>";
-      if (index < SPIFFS_numfiles - 1)
-      {
-        webpage += "<td style = 'width:5%'>" + SPIFFS_Filenames[index + 1].ftype + "</td><td style = 'width:25%'>" + Fname2 + "</td><td style = 'width:10%'>" + SPIFFS_Filenames[index + 1].fsize + "</td>";
-      }
-      // numfiles奇数の場合の最後のテーブル処理
-      if ((index < SPIFFS_numfiles - 1) || (SPIFFS_numfiles % 2 == 0))
-        webpage += "</tr>";
-      else if ((SPIFFS_numfiles % 2) != 0)
-      {
-        webpage += "<td style = 'width:5%'></td><td style = 'width:25%'></td><td style = 'width:10%'></td>";
-        webpage += "</tr>";
-      }
+    // テーブル開始 (クラス file-list-table を追加)
+    webpage += "<table class='file-list-table'>";
+    // tbody 開始
+    webpage += "<tbody>";
 
-      index = index + 2;
+    // ファイル情報をループで出力
+    for (int index = 0; index < SPIFFS_numfiles; index++)
+    {
+      // 各ファイルエントリの行 (クラス file-entry を追加)
+      webpage += "<tr class='file-entry'>";
+      // 各セルにクラスを追加
+      // SPIFFSにはディレクトリがないので file-type は常に "File"
+      webpage += "<td class='file-type'>" + SPIFFS_Filenames[index].ftype + "</td>";
+      webpage += "<td class='file-name'>" + SPIFFS_Filenames[index].filename + "</td>";
+      webpage += "<td class='file-size'>" + SPIFFS_Filenames[index].fsize + "</td>";
+      webpage += "</tr>";
     }
+    // tbody 終了
+    webpage += "</tbody>";
+    // テーブル終了
     webpage += "</table>";
   }
   else
   {
-    webpage += "<h2>No Files Found</h2>";
+    webpage += "<p style='text-align: center; margin-top: 20px;'>No files found in SPIFFS</p>";
   }
-  webpage += HTML_Footer();
-  request->send(200, "text/html", webpage);
+  webpage += HTML_Footer(); // フッター生成
 }
+
+
 
 void SPIFFS_UploadFileSelect()
 {
@@ -338,45 +378,95 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
   return false;
 }
 
+// void SPIFFS_Select_File_For_Function(String title, String function)
+// {
+//   String Fname1, Fname2;
+//   int index = 0;
+//   SPIFFS_Directory();
+//   webpage = HTML_Header();
+//   webpage += "<h3>SPIFFS:　Select a File to " + title + "　</h3>";
+//   webpage += "<table class='center'>";
+//   webpage += "<tr><th>File Name</th><th>File Size</th><th class='sp'></th><th>File Name</th><th>File Size</th></tr>";
+//   while (index < SPIFFS_numfiles)
+//   {
+//     Fname1 = SPIFFS_Filenames[index].filename;
+//     Fname2 = (index + 1 < SPIFFS_numfiles) ? SPIFFS_Filenames[index + 1].filename : "";
+
+//     if (Fname1.startsWith("/"))
+//       Fname1 = Fname1.substring(1);
+
+//     if (!Fname2.isEmpty() && Fname2.startsWith("/"))
+//       Fname2 = Fname2.substring(1);
+
+//     webpage += "<tr>";
+//     webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td><td style = 'width:10%'>" + SPIFFS_Filenames[index].fsize + "</td>";
+//     webpage += "<td class='sp'></td>";
+
+//     if (index < SPIFFS_numfiles - 1)
+//     {
+//       webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td><td style = 'width:10%'>" + SPIFFS_Filenames[index + 1].fsize + "</td>";
+//     }
+//     // 奇数の場合の最後のテーブル処理
+//     if ((index < SPIFFS_numfiles - 1) || (SPIFFS_numfiles % 2 == 0))
+//       webpage += "</tr>";
+//     else if ((SPIFFS_numfiles % 2) != 0)
+//     {
+//       webpage += "<td style='width:25%'></td><td style = 'width:10%'></td>";
+//       webpage += "</tr>";
+//     }
+
+//     index = index + 2;
+//   }
+//   webpage += "</table>";
+//   webpage += HTML_Footer();
+// }
+
+// --- SPIFFS_Select_File_For_Function() を修正 ---
 void SPIFFS_Select_File_For_Function(String title, String function)
 {
-  String Fname1, Fname2;
-  int index = 0;
-  SPIFFS_Directory();
-  webpage = HTML_Header();
-  webpage += "<h3>SPIFFS:　Select a File to " + title + "　</h3>";
-  webpage += "<table class='center'>";
-  webpage += "<tr><th>File Name</th><th>File Size</th><th class='sp'></th><th>File Name</th><th>File Size</th></tr>";
-  while (index < SPIFFS_numfiles)
+  SPIFFS_Directory(); // ファイルリストを取得・ソート
+
+  webpage = HTML_Header(); // ヘッダー生成 (CSS含む)
+  webpage += "<h3>SPIFFS: Select a File to " + title + "</h3>"; // タイトル
+
+  if (SPIFFS_numfiles > 0)
   {
-    Fname1 = SPIFFS_Filenames[index].filename;
-    Fname2 = (index + 1 < SPIFFS_numfiles) ? SPIFFS_Filenames[index + 1].filename : "";
+    // テーブル開始 (クラス file-list-table を追加)
+    webpage += "<table class='file-list-table'>";
+    // tbody 開始
+    webpage += "<tbody>";
 
-    if (Fname1.startsWith("/"))
-      Fname1 = Fname1.substring(1);
-
-    if (!Fname2.isEmpty() && Fname2.startsWith("/"))
-      Fname2 = Fname2.substring(1);
-
-    webpage += "<tr>";
-    webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname1 + "'>" + Fname1 + "</a></button></td><td style = 'width:10%'>" + SPIFFS_Filenames[index].fsize + "</td>";
-    webpage += "<td class='sp'></td>";
-
-    if (index < SPIFFS_numfiles - 1)
+    // ファイル情報をループで出力
+    for (int index = 0; index < SPIFFS_numfiles; index++)
     {
-      webpage += "<td style='width:25%'><button><a href='" + function + "~/" + Fname2 + "'>" + Fname2 + "</a></button></td><td style = 'width:10%'>" + SPIFFS_Filenames[index + 1].fsize + "</td>";
-    }
-    // 奇数の場合の最後のテーブル処理
-    if ((index < SPIFFS_numfiles - 1) || (SPIFFS_numfiles % 2 == 0))
-      webpage += "</tr>";
-    else if ((SPIFFS_numfiles % 2) != 0)
-    {
-      webpage += "<td style='width:25%'></td><td style = 'width:10%'></td>";
+      String Fname_orig = SPIFFS_Filenames[index].filename; // 元のファイル名 (表示用, '/' なし)
+      String Fname_url = Fname_orig; // URL生成用のファイル名 ('/' なし)
+
+      // 各ファイルエントリの行 (クラス file-entry を追加)
+      webpage += "<tr class='file-entry'>";
+
+      // ファイル名セル (ボタン付きリンク) - file-name クラスを使用
+      webpage += "<td class='file-name'>";
+      webpage += "<button style='width: 100%; text-align: left; padding: 5px; box-sizing: border-box; white-space: normal; word-break: break-all;'>";
+      // URLには '/' なしのファイル名を使用
+      webpage += "<a href='" + function + "~/" + Fname_url + "' style='display: block; text-decoration: none; color: inherit;'>" + Fname_orig + "</a>";
+      webpage += "</button>";
+      webpage += "</td>";
+
+      // ファイルサイズセル - file-size クラスを使用
+      webpage += "<td class='file-size'>" + SPIFFS_Filenames[index].fsize + "</td>";
+
       webpage += "</tr>";
     }
 
-    index = index + 2;
+    // tbody 終了
+    webpage += "</tbody>";
+    // テーブル終了
+    webpage += "</table>";
   }
-  webpage += "</table>";
-  webpage += HTML_Footer();
+  else
+  {
+    webpage += "<p style='text-align: center; margin-top: 20px;'>No files found in SPIFFS to " + title + "</p>";
+  }
+  webpage += HTML_Footer(); // フッター生成
 }
