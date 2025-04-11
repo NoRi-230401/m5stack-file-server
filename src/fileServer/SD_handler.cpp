@@ -44,7 +44,7 @@ void SD_flServerSetup()
   server.on("/SD_download", HTTP_GET, [](AsyncWebServerRequest *request)
             {
     Serial.println("SD_Downloading file...");
-    SD_Select_File_For_Function("[DOWNLOAD] for PC", "SD_downloadhandler"); // Build webpage ready for display
+    SD_Select_File_For_Function("[DOWNLOAD] for PC", "SD_downloadhandler");
     request->send(200, "text/html", webpage); });
 
   server.on("/SD_upload", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -206,7 +206,7 @@ void SD_handleFileUpload(AsyncWebServerRequest *request, const String &filename,
     if (len)
     {
       request->_tempFile.write(data, len);
-      // Serial.println("Transferred : " + String(len) + " Bytes"); // ログが多いのでコメントアウト推奨
+      // Serial.println("Transferred : " + String(len) + " Bytes");
       SD_uploadSize = SD_uploadSize + len;
     }
 
@@ -267,9 +267,9 @@ void SD_File_Rename()
   webpage += "<table class='file-list-table rename-table'>";
   webpage += "<thead>";
   webpage += "<tr>";
-  webpage += "<th>File name</th>";    // 見出し1
-  webpage += "<th>New Filename</th>"; // 見出し2
-  webpage += "<th>Select</th>";       // 見出し3
+  webpage += "<th>File name</th>";
+  webpage += "<th>New Filename</th>";
+  webpage += "<th>Select</th>";
   webpage += "</tr>";
   webpage += "</thead>";
   webpage += "<tbody>";
@@ -487,7 +487,7 @@ bool SD_notFound(AsyncWebServerRequest *request)
       Serial.println("Error: File not found or is a directory: " + fullPath);
       request->send(404, "text/plain", "File not found or is a directory");
     }
-    return true; // ハンドルされた
+    return true;
   }
   else if (url.startsWith("/SD_streamhandler"))
   {
@@ -530,14 +530,14 @@ bool SD_notFound(AsyncWebServerRequest *request)
       Serial.println("Error: File not found for streaming: " + fullPath);
       request->send(404, "text/plain", "File not found for streaming");
     }
-    return true; // ハンドルされた
+    return true;
   }
   else if (url.startsWith("/SD_deletehandler"))
   {
     Serial.println("SD_Delete handler started for: " + filename);
     SD_Handle_File_Delete(filename); // ファイル名のみ渡す
     request->send(200, "text/html", webpage);
-    return true; // ハンドルされた
+    return true;
   }
   else if (url.startsWith("/SD_renamehandler"))
   {
@@ -545,10 +545,10 @@ bool SD_notFound(AsyncWebServerRequest *request)
     // filename は使わず、フォームの引数から処理する
     SD_Handle_File_Rename(request, "", request->args()); // filename引数は空文字で渡す
     request->send(200, "text/html", webpage);
-    return true; // ハンドルされた
+    return true;
   }
 
-  return false; // 上記のいずれにも一致しない場合はハンドルされなかった
+  return false;
 }
 
 void SD_Select_File_For_Function(String title, String function)
@@ -556,7 +556,7 @@ void SD_Select_File_For_Function(String title, String function)
   SDdir_FilesList(); // ファイルのみリストアップ
 
   webpage = HTML_Header();
-  webpage += "<h3>SD: Select a File to " + title + " (" + SdPath + ")</h3>"; // パス表示を追加
+  webpage += "<h3>SD: Select a File to " + title + " (" + SdPath + ")</h3>";
 
   if (SD_numfiles > 0)
   {
@@ -566,8 +566,8 @@ void SD_Select_File_For_Function(String title, String function)
 
     for (int index = 0; index < SD_numfiles; index++)
     {
-      String Fname_orig = SD_Filenames[index].filename; // 元のファイル名 (表示用)
-      String Fname_url = Fname_orig;                    // URL生成用のファイル名
+      String Fname_orig = SD_Filenames[index].filename;
+      String Fname_url = Fname_orig;
 
       // URLエンコードが必要な文字を処理 (簡易版: スペースのみ)
       // より堅牢にするには、他の文字 (% $ & + , / : ; = ? @ など) もエンコードが必要
@@ -617,7 +617,7 @@ void SD_Select_File_For_Function(String title, String function)
 }
 
 // -------------------------------------------------------
-// SDdir_* 関数群 (変更なし)
+// SDdir_* 関数群
 // -------------------------------------------------------
 void SDdir_flserverSetup()
 {
@@ -879,7 +879,7 @@ void SDdir_Select_Dir_For_Function(String title, String function)
 {
   SDdir_DirList(); // ディレクトリのみリストアップ
   webpage = HTML_Header();
-  webpage += "<h3>SD: Select a Directory to " + title + " (" + SdPath + ")</h3>"; // パス表示
+  webpage += "<h3>SD: Select a Directory to " + title + " (" + SdPath + ")</h3>";
 
   if (SD_numfiles > 0)
   {
@@ -921,7 +921,6 @@ void SDdir_Select_Dir_For_Function(String title, String function)
 
       // ディレクトリの場合はサイズセルは空にするか、タイプを表示
       webpage += "<td class='file-size'>Directory</td>"; // file-size クラスを使うが内容は変更
-
       webpage += "</tr>";
     }
     webpage += "</tbody>";
@@ -991,7 +990,7 @@ void SDdir_FilesList()
   SD_Filenames.clear();
   if (SdPath == "")
     SdPath = "/";
-  // Serial.println("Listing files in: " + SdPath); // ログが多いのでコメントアウト推奨
+  // Serial.println("Listing files in: " + SdPath);
   File root = SD.open(SdPath, "r");
 
   if (root && root.isDirectory())
@@ -1081,18 +1080,16 @@ bool SDdir_notFound(AsyncWebServerRequest *request)
     request->send(200, "text/html", webpage);
     return true;
   }
-
-  return false; // 上記以外はハンドルしない
+  return false;
 }
 
 void SDdir_InputNewDirName(String Heading, String Command, String Arg_name)
 {
   webpage = HTML_Header();
   webpage += "<h3>" + Heading + "</h3>";
-  // フォームの action を修正
-  webpage += "<form method='GET' action='/" + Command + "'>";                                                                                                   // method='GET' を明示
-  webpage += "New Directory Name: <input type='text' name='" + Arg_name + "' required pattern='[^/\\]+' title='Directory name cannot contain / or \'><br><br>"; // 簡単な入力検証を追加
-  webpage += "<input type='submit' value='Create'>";                                                                                                            // ボタンのラベルを修正
+  webpage += "<form method='GET' action='/" + Command + "'>";
+  webpage += "New Directory Name: <input type='text' name='" + Arg_name + "' required pattern='[^/\\]+' title='Directory name cannot contain / or \'><br><br>";
+  webpage += "<input type='submit' value='Create'>";
   webpage += "</form>";
   webpage += "<br><a href='/SD_dir'>[Cancel and Back to Directory]</a>"; // キャンセルリンク
   webpage += HTML_Footer();

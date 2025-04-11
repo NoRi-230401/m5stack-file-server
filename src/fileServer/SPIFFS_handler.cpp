@@ -100,41 +100,6 @@ void SPIFFS_Directory()
   std::sort(SPIFFS_Filenames.begin(), SPIFFS_Filenames.end(), compareFileinfo);
 }
 
-/*
-void SPIFFS_Directory()
-{
-  SPIFFS_numfiles = 0;
-  SPIFFS_Filenames.clear();
-  File root = SPIFFS.open("/");
-
-  if (root)
-  {
-    root.rewindDirectory();
-    File file = root.openNextFile();
-
-    while (file)
-    {
-      fileinfo tmp;
-      tmp.filename = String(file.name()).substring(1);
-      tmp.ftype = (file.isDirectory() ? "Dir" : "File");
-      if (tmp.ftype == "File")
-        tmp.fsize = ConvBytesUnits(file.size(), 1);
-      else
-        tmp.fsize = "";
-
-      if (tmp.filename != "")
-      {
-        SPIFFS_Filenames.push_back(tmp);
-        SPIFFS_numfiles++;
-      }
-      file = root.openNextFile();
-    }
-    root.close();
-  }
-  std::sort(SPIFFS_Filenames.begin(), SPIFFS_Filenames.end(), compareFileinfo);
-}
-*/
-
 void SPIFFS_Dir(AsyncWebServerRequest *request)
 {
   SPIFFS_Directory();
@@ -174,64 +139,14 @@ void SPIFFS_UploadFileSelect()
   webpage += HTML_Footer();
 }
 
-void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
-{
-  String file = filename;
-  if (!index)
-  {
-    if (!filename.startsWith("/"))
-      file = "/" + filename;
-
-    request->_tempFile = SPIFFS.open(file, "w");
-
-    if (!request->_tempFile)
-      Serial.println("Error creating file for SPIFFS upload...");
-
-    SPIFFS_uploadSize = 0;
-    SPIFFS_startTime = millis();
-  }
-
-  if (request->_tempFile)
-  {
-    if (len)
-    {
-      request->_tempFile.write(data, len);
-      // Serial.println("Transferred : " + String(len) + " Bytes");
-      SPIFFS_uploadSize = SPIFFS_uploadSize + len;
-    }
-
-    if (final)
-    {
-      request->_tempFile.close();
-      SPIFFS_uploadTime = millis() - SPIFFS_startTime;
-      Serial.println("FileName = " + file);
-      Serial.println("SPIFFS_uploadSize = " + String(SPIFFS_uploadSize) + " Bytes");
-      Serial.println("SPIFFS_uploadTime = " + String(SPIFFS_uploadTime) + " mSEC");
-      request->redirect("/SPIFFS_dir");
-    }
-  }
-}
-
 // void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
 // {
 //   String file = filename;
 //   if (!index)
 //   {
-//     int lastSlash = filename.lastIndexOf('/');
-//     if (lastSlash != -1)
-//     {
-//       file = filename.substring(lastSlash + 1);
-//     }
-//     lastSlash = filename.lastIndexOf('\\'); // Windows形式のパス区切りも考慮
-//     if (lastSlash != -1)
-//     {
-//       file = filename.substring(lastSlash + 1);
-//     }
+//     if (!filename.startsWith("/"))
+//       file = "/" + filename;
 
-//     if (!file.startsWith("/"))
-//       file = "/" + file;
-
-//     Serial.println("SPIFFS Upload target filename = " + file);
 //     request->_tempFile = SPIFFS.open(file, "w");
 
 //     if (!request->_tempFile)
@@ -246,7 +161,7 @@ void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filen
 //     if (len)
 //     {
 //       request->_tempFile.write(data, len);
-//       // Serial.println("Transferred : " + String(len) + " Bytes"); // ログが多いのでコメントアウト推奨
+//       // Serial.println("Transferred : " + String(len) + " Bytes");
 //       SPIFFS_uploadSize = SPIFFS_uploadSize + len;
 //     }
 
@@ -254,13 +169,63 @@ void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filen
 //     {
 //       request->_tempFile.close();
 //       SPIFFS_uploadTime = millis() - SPIFFS_startTime;
-//       Serial.println("Upload Complete: " + String(request->_tempFile.name()));
+//       Serial.println("FileName = " + file);
 //       Serial.println("SPIFFS_uploadSize = " + String(SPIFFS_uploadSize) + " Bytes");
 //       Serial.println("SPIFFS_uploadTime = " + String(SPIFFS_uploadTime) + " mSEC");
-//       // request->redirect("/SPIFFS_dir");
+//       request->redirect("/SPIFFS_dir");
 //     }
 //   }
 // }
+
+void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
+{
+  String file = filename;
+  if (!index)
+  {
+    int lastSlash = filename.lastIndexOf('/');
+    if (lastSlash != -1)
+    {
+      file = filename.substring(lastSlash + 1);
+    }
+    lastSlash = filename.lastIndexOf('\\'); // Windows形式のパス区切りも考慮
+    if (lastSlash != -1)
+    {
+      file = filename.substring(lastSlash + 1);
+    }
+
+    if (!file.startsWith("/"))
+      file = "/" + file;
+
+    Serial.println("SPIFFS Upload target filename = " + file);
+    request->_tempFile = SPIFFS.open(file, "w");
+
+    if (!request->_tempFile)
+      Serial.println("Error creating file for SPIFFS upload...");
+
+    SPIFFS_uploadSize = 0;
+    SPIFFS_startTime = millis();
+  }
+
+  if (request->_tempFile)
+  {
+    if (len)
+    {
+      request->_tempFile.write(data, len);
+      // Serial.println("Transferred : " + String(len) + " Bytes"); // ログが多いのでコメントアウト推奨
+      SPIFFS_uploadSize = SPIFFS_uploadSize + len;
+    }
+
+    if (final)
+    {
+      request->_tempFile.close();
+      SPIFFS_uploadTime = millis() - SPIFFS_startTime;
+      Serial.println("Upload Complete: " + String(request->_tempFile.name()));
+      Serial.println("SPIFFS_uploadSize = " + String(SPIFFS_uploadSize) + " Bytes");
+      Serial.println("SPIFFS_uploadTime = " + String(SPIFFS_uploadTime) + " mSEC");
+      request->redirect("/SPIFFS_dir");
+    }
+  }
+}
 
 void SPIFFS_Handle_File_Delete(String filename)
 {
@@ -305,9 +270,9 @@ void SPIFFS_File_Rename()
   webpage += "<table class='file-list-table rename-table'>";
   webpage += "<thead>";
   webpage += "<tr>";
-  webpage += "<th>File name</th>";    // 見出し1
-  webpage += "<th>New Filename</th>"; // 見出し2
-  webpage += "<th>Select</th>";       // 見出し3
+  webpage += "<th>File name</th>";
+  webpage += "<th>New Filename</th>";
+  webpage += "<th>Select</th>";
   webpage += "</tr>";
   webpage += "</thead>";
   webpage += "<tbody>";

@@ -60,9 +60,11 @@ String HTML_Header()
   page += "function confirmR() {if (confirm('Can I reboot?')){window.open('/shutdown?reboot=on', '_blank');} else {alert('stopped');}}";
   page += "</script>";
   // ------------------------------------------
-  page += "<style>";
 
-  // --- ファイル一覧テーブル用の基本スタイル(スマホで使用される)
+  page += "<style>";
+  // ------------------------------------------------
+  // - ファイル一覧テーブル用の基本スタイル
+  // ------------------------------------------------
   page += ".file-list-table { width: 95%; border-collapse: collapse; margin-left:auto; margin-right:auto; border: 1px solid #ccc; }";
   page += ".file-list-table thead th { border: 1px solid #ddd; text-align: left; padding: 8px; box-sizing: border-box; background-color: #e9e9e9; font-weight: bold; }";
   page += ".file-list-table tbody td { border: 1px solid #ddd; text-align: left; padding: 8px; box-sizing: border-box; vertical-align: top; }";
@@ -74,13 +76,12 @@ String HTML_Header()
   page += ".file-list-table tbody tr:nth-child(even) { background-color: #f8f8f8; }";
   page += ".file-list-table tbody tr:nth-child(odd) { background-color: #ffffff; }";
 
+  // ------------------------------------------------
   // --- PC向けスタイル (画面幅が 769px 以上の場合) ---
+  // ------------------------------------------------
   page += "@media screen and (min-width: 769px) {";
   page += "  .file-list-table { width: 80%; border: none; }";
-  // ↓↓↓ 変更: rename-table 以外で thead を非表示にする ↓↓↓
   page += "  .file-list-table:not(.rename-table) thead { display: none; }";
-  // ↑↑↑ 変更ここまで ↑↑↑
-  // page += "  .file-list-table thead { display: none; }";
   page += "  .file-list-table > tbody { ";
   page += "    display: flex; ";
   page += "    flex-wrap: wrap; ";
@@ -137,7 +138,7 @@ String HTML_Header()
   page += "    background-color: #ffffff !important; ";                    // 白
   page += "  }";
 
-// --- rename-table 専用のPC向けスタイル ---
+  // --- <rename-table専用>
   page += "  .rename-table thead {";
   page += "      display: table-header-group; /* thead を表示 */";
   page += "  }";
@@ -148,8 +149,8 @@ String HTML_Header()
   page += "  .rename-table thead th:nth-child(1) { width: 45%; } /* File name 列 */";
   page += "  .rename-table thead th:nth-child(2) { width: 40%; } /* New Filename 列 */";
   page += "  .rename-table thead th:nth-child(3) { width: 15%; text-align: center; } /* Select 列 */";
-  
-  /* --- SD_rename画面専用のPC向けスタイル (1行表示に戻す) --- */
+
+  /* --- <rename画面>専用スタイル (1行表示に戻す) --- */
   page += "  .rename-table > tbody {";
   page += "    display: table-row-group; /* Flexboxを解除 */";
   page += "    border: none;";
@@ -184,14 +185,16 @@ String HTML_Header()
   page += "  .rename-table > tbody > tr.file-entry:nth-child(odd) { background-color: #ffffff !important; }";
   page += "}";
 
-  // --- スマホ向けスタイル (画面幅が 768px 以下の場合) ---
+  // ------------------------------------------------
+  // - スマホ向けスタイル (画面幅が 768px 以下の場合) -
+  // ------------------------------------------------
   page += "@media screen and (max-width: 768px) {";
   page += "  body {font-size: 1.4rem;} div {font-size: 1.4rem;}";
   page += "  p {font-size: 1.4rem;} h5 {font-size: 1.4rem;}";
   page += "  img {max-width:100%;height:auto;}";
   page += "  .file-list-table { width: 95%; font-size: 1.2rem; border: 1px solid #ccc; }";
   page += "  .file-list-table thead { display: none; }";
-  page += "  .file-list-table > tbody { display: table-row-group; border: none; }"; 
+  page += "  .file-list-table > tbody { display: table-row-group; border: none; }";
   page += "  .file-list-table > tbody > tr.file-entry { display: table-row; width: 100%; border: none; }";
   page += "  .file-list-table > tbody > tr.file-entry > td { ";
   page += "    display: table-cell; ";                      // 通常のセル表示
@@ -211,7 +214,9 @@ String HTML_Header()
   page += "  .file-list-table > tbody > tr.file-entry:nth-child(odd) { background-color: #ffffff !important; }";
   page += "}";
 
-  // -------------- その他の共通スタイル --------------
+  // ------------------------------------------------
+  // -----　　 その他の共通スタイル 　　　　------------
+  // ------------------------------------------------
   page += "html {font-size: 62.5%;}"; // remの基準
   page += "body {width:100%;margin: 0; padding: 0; font-family:Arial,Helvetica,sans-serif;font-size:1.6rem;color:#2f4f4f;background-color:#fffacd;text-align:center;}";
   // bodyのデフォルトサイズと余白調整
@@ -236,34 +241,37 @@ String HTML_Header()
   // page += ".sp {background-color:silver;white-space:nowrap;width:2%;}"; // file-list-tableでは使わない想定
 
   // --- TOPNAV スタイル ---
-  // page += ".topnav {overflow: hidden; background-color:lightPink; padding: 5px 0; text-align: center;}";
-  page += ".topnav {overflow: hidden; background-color:lightPink; padding: 3px 0; text-align: center;}";
-
-  page += ".topnav a, .topnav input[type='button'] {display: inline-block; color:blue; text-align:center; padding:10px 12px; margin: 2px 5px; text-decoration:none; font-size:1.4rem; border: none; background-color: transparent; cursor: pointer; vertical-align: middle;}"; // ボタンもリンク風に、インラインブロック、マージン調整
-
+  // page += ".topnav {overflow: hidden; background-color:lightPink; padding: 3px 0; text-align: center;}";
+  // page += ".topnav a, .topnav input[type='button'] {display: inline-block; color:blue; text-align:center; padding:10px 12px; margin: 2px 5px; text-decoration:none; font-size:1.4rem; border: none; background-color: transparent; cursor: pointer; vertical-align: middle;}";
+  // page += ".topnav a:hover, .topnav input[type='button']:hover {background-color:deepskyblue;color:white;}";
+  // page += ".topnav a.active {background-color:lightblue;color:blue;}";
+  page += ".topnav {overflow: hidden; background-color:lightPink; padding: 2px 0; text-align: center;}";
+  page += ".topnav a, .topnav input[type='button'] {display: inline-block; color:blue; text-align:center; padding: 6px 10px; margin: 1px 4px; text-decoration:none; font-size:1.4rem; border: none; background-color: transparent; cursor: pointer; vertical-align: middle;}";
   page += ".topnav a:hover, .topnav input[type='button']:hover {background-color:deepskyblue;color:white;}";
   page += ".topnav a.active {background-color:lightblue;color:blue;}";
-
+  
   // --- TOPNAV2 スタイル ---
-  // page += ".topnav2 {overflow: hidden; background-color:lightcyan; padding: 8px 0; text-align: center; line-height: 1.5;}";
-  page += ".topnav2 {overflow: hidden; background-color:lightcyan; padding: 5px 0; text-align: center; line-height: 1.5;}";
-  page += ".topnav2 a, .topnav2 span {display: inline-block; color:blue; text-align:center; padding:8px 10px; margin: 2px 4px; text-decoration:none; font-size:1.5rem; vertical-align: middle;}";
-
+  // page += ".topnav2 {overflow: hidden; background-color:lightcyan; padding: 5px 0; text-align: center; line-height: 1.5;}";
+  // page += ".topnav2 a, .topnav2 span {display: inline-block; color:blue; text-align:center; padding:8px 10px; margin: 2px 4px; text-decoration:none; font-size:1.5rem; vertical-align: middle;}";
+  // page += ".topnav2 a:hover {background-color:deepskyblue;color:white;}";
+  // page += ".topnav2 a.active {background-color:lightblue;color:blue;}";
+  // page += ".topnav2 span { color: #555; }"; // path表示用のスタイル
+  page += ".topnav2 {overflow: hidden; background-color:lightcyan; padding: 3px 0; text-align: center; line-height: 1.3;}";
+  page += ".topnav2 a, .topnav2 span {display: inline-block; color:blue; text-align:center; padding: 5px 8px; margin: 1px 3px; text-decoration:none; font-size:1.5rem; vertical-align: middle;}";
   page += ".topnav2 a:hover {background-color:deepskyblue;color:white;}";
   page += ".topnav2 a.active {background-color:lightblue;color:blue;}";
-  page += ".topnav2 span { color: #555; }"; // path表示用のスタイル
+  page += ".topnav2 span { color: #555; }";
 
   // --- ボタンの基本スタイル ---
   page += "input[type='button'], input[type='submit'] { padding: 8px 15px; font-size: 1.4rem; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background-color: #f0f0f0; margin: 5px;}";
   page += "input[type='button']:hover, input[type='submit']:hover { background-color: #e0e0e0; }";
   page += "button { padding: 8px 15px; font-size: 1.4rem; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background-color: #f0f0f0; margin: 5px;}";
-  page += "button a { text-decoration: none; color: inherit; }"; // ボタン内のリンクスタイル解除
+  page += "button a { text-decoration: none; color: inherit; }";
   page += "button:hover { background-color: #e0e0e0; }";
 
   // --- フォーム要素のスタイル ---
   page += "input[type='text'], input[type='file'] { padding: 8px; font-size: 1.4rem; border: 1px solid #ccc; border-radius: 4px; margin: 5px; box-sizing: border-box;}";
   page += "form { margin: 1em 0; }"; // フォームのマージン
-
   // --- end of style ---------------------------------------------------------------
   page += "</style></head><body>";
 
@@ -321,7 +329,7 @@ String HTML_Header()
     page += "</div>";
   }
 
-  page += "<br>"; // メインコンテンツとのスペース用
+  // page += "<br>"; // メインコンテンツとのスペース用
   return page;
 }
 
@@ -645,11 +653,10 @@ void Home()
 String HTML_Footer()
 {
   String page;
-  page += "<br><br>";
+  
   page += "<footer>";
   page += "<p class='ps'><i>" + getTmNTP() + "　　" + PROG_NAME + "　" + VERSION + "</i></p>";
   page += "</footer>";
-  page += "<br>";
   page += "</body>";
   page += "</html>";
   return page;
