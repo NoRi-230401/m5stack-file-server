@@ -16,8 +16,8 @@ String getTmNTP();
 void adjustRTC();
 String getTmRTC();
 bool getSetting(int flType, const String filename);
-String urlEncode(const String& input);
-String urlDecode(const String& input);
+String urlEncode(const String &input);
+String urlDecode(const String &input);
 // -------------------------------------------------------
 
 static uint32_t HEAP_INF[8];
@@ -278,29 +278,36 @@ bool getSetting(int flType, const String filename)
 
   return true;
 }
- 
-
 
 // URLエンコード関数
-String urlEncode(const String& input) {
+String urlEncode(const String &input)
+{
   String encodedString = "";
   char c;
   char code0;
   char code1;
-  for (int i = 0; i < input.length(); i++) {
+  for (int i = 0; i < input.length(); i++)
+  {
     c = input.charAt(i);
-    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~')
+    {
       encodedString += c;
-    } else if (c == ' ') {
+    }
+    else if (c == ' ')
+    {
       encodedString += "%20";
-    } else {
+    }
+    else
+    {
       code1 = (c & 0xf) + '0';
-      if ((c & 0xf) > 9) {
+      if ((c & 0xf) > 9)
+      {
         code1 = (c & 0xf) - 10 + 'A';
       }
       c = (c >> 4) & 0xf;
       code0 = c + '0';
-      if (c > 9) {
+      if (c > 9)
+      {
         code0 = c - 10 + 'A';
       }
       encodedString += '%';
@@ -312,51 +319,72 @@ String urlEncode(const String& input) {
 }
 
 // URLデコード関数
-String urlDecode(const String& input) {
+String urlDecode(const String &input)
+{
   String decodedString = "";
   char c;
   char code0;
   char code1;
-  for (int i = 0; i < input.length(); i++) {
+  for (int i = 0; i < input.length(); i++)
+  {
     c = input.charAt(i);
-    if (c == '+') { // '+' はスペースとしてデコードする場合もあるが、ここでは%20のみ対応
+    if (c == '+')
+    { // '+' はスペースとしてデコードする場合もあるが、ここでは%20のみ対応
       decodedString += ' ';
-    } else if (c == '%') {
+    }
+    else if (c == '%')
+    {
       i++;
-      if (i < input.length()) {
+      if (i < input.length())
+      {
         code0 = input.charAt(i);
         i++;
-        if (i < input.length()) {
+        if (i < input.length())
+        {
           code1 = input.charAt(i);
           char decodedChar = 0;
           // 16進文字を数値に変換
-          if (code0 >= '0' && code0 <= '9') decodedChar = (code0 - '0') << 4;
-          else if (code0 >= 'A' && code0 <= 'F') decodedChar = (code0 - 'A' + 10) << 4;
-          else if (code0 >= 'a' && code0 <= 'f') decodedChar = (code0 - 'a' + 10) << 4;
-          else { // 不正なエンコード形式
-             decodedString += '%'; // '%'をそのまま追加
-             i-=2; // インデックスを戻す
-             continue;
+          if (code0 >= '0' && code0 <= '9')
+            decodedChar = (code0 - '0') << 4;
+          else if (code0 >= 'A' && code0 <= 'F')
+            decodedChar = (code0 - 'A' + 10) << 4;
+          else if (code0 >= 'a' && code0 <= 'f')
+            decodedChar = (code0 - 'a' + 10) << 4;
+          else
+          {                       // 不正なエンコード形式
+            decodedString += '%'; // '%'をそのまま追加
+            i -= 2;               // インデックスを戻す
+            continue;
           }
 
-          if (code1 >= '0' && code1 <= '9') decodedChar |= (code1 - '0');
-          else if (code1 >= 'A' && code1 <= 'F') decodedChar |= (code1 - 'A' + 10);
-          else if (code1 >= 'a' && code1 <= 'f') decodedChar |= (code1 - 'a' + 10);
-          else { // 不正なエンコード形式
-             decodedString += '%';
-             decodedString += code0;
-             i--;
-             continue;
+          if (code1 >= '0' && code1 <= '9')
+            decodedChar |= (code1 - '0');
+          else if (code1 >= 'A' && code1 <= 'F')
+            decodedChar |= (code1 - 'A' + 10);
+          else if (code1 >= 'a' && code1 <= 'f')
+            decodedChar |= (code1 - 'a' + 10);
+          else
+          { // 不正なエンコード形式
+            decodedString += '%';
+            decodedString += code0;
+            i--;
+            continue;
           }
           decodedString += decodedChar;
-        } else { // %XX の形式でない
+        }
+        else
+        { // %XX の形式でない
           decodedString += '%';
           decodedString += code0;
         }
-      } else { // 文字列末尾が %
+      }
+      else
+      { // 文字列末尾が %
         decodedString += '%';
       }
-    } else {
+    }
+    else
+    {
       decodedString += c;
     }
   }

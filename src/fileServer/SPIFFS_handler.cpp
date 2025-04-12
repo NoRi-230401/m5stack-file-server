@@ -480,7 +480,7 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
   else if (url.startsWith("/SPIFFS_delete_confirm"))
   {
     Serial.println("SPIFFS_Delete confirm page requested for: " + filename_encoded);
-    SPIFFS_Generate_Confirm_Page(filename); // エンコードされたファイル名を渡す
+    SPIFFS_Generate_Confirm_Page(filename_encoded); // エンコードされたファイル名を渡す
     request->send(200, "text/html", webpage);
     return true;
   }
