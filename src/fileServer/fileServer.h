@@ -44,13 +44,15 @@ extern String HTML_Footer();
 extern String getContentType(String filenametype);
 extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 extern void prt(String message);
-// extern void error_stop();
 extern void getHeapInf();
 extern void prtHeapInf(String message);
 extern String ConvBytesUnits(uint64_t bytes, int dp, int unit=UNIT_AUTO);
 extern void adjustRTC();
 extern String getTmRTC();
 extern String getTmNTP();
+extern String urlEncode(const String& input);
+extern String urlDecode(const String& input);
+// -------------------------------------------------------
 
 #define FS_SPIFFS 1
 #define FS_SD 2

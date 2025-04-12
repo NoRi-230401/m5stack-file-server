@@ -51,7 +51,6 @@ String HTML_Header()
   page += "<title>" + SERVER_NAME + "</title>";
   page += "<base target='_self'>";
   page += "<meta charset='UTF-8'>";
-  // favicon
   page += "<link rel='icon' href='/favicon.ico'>";
   page += "<meta name='viewport' content='width=device-width,initial-scale=1.0'>";
   // ---javaScript ---------------------------
@@ -92,12 +91,12 @@ String HTML_Header()
   page += "    display: flex; ";
   page += "    width: 50%; "; // 2列表示
   page += "    box-sizing: border-box; ";
-  page += "    border: none; ";                             // trのボーダーも消す
-  page += "    background-color: transparent !important; "; // trの背景色はtdで制御
+  page += "    border: none; ";
+  page += "    background-color: transparent !important; ";
   page += "  }";
   page += "  .file-list-table > tbody > tr.file-entry > td { ";
-  page += "    border: none; ";                  // tdのボーダー基本消す
-  page += "    border-bottom: 1px solid #eee; "; // 下線のみ表示
+  page += "    border: none; ";
+  page += "    border-bottom: 1px solid #eee; ";
   page += "    padding: 8px; ";
   page += "    box-sizing: border-box; ";
   page += "    background-color: transparent !important; "; // tdの背景色はtrの交互色で制御
@@ -180,7 +179,10 @@ String HTML_Header()
   page += "  }";
   page += "  .rename-table td.file-name { width: 45%; }";
   page += "  .rename-table td.rename-new-name { width: 40%; }";
-  page += "  .rename-table td.rename-select { width: 15%; text-align: center; }";
+
+  // page += "  .rename-table td.rename-select { width: 15%; text-align: center; }";
+  page += "  .rename-table td.rename-select { width: 15%; text-align: center; vertical-align: middle; }";
+
   page += "  .rename-table > tbody > tr.file-entry:nth-child(even) { background-color: #f8f8f8 !important; }";
   page += "  .rename-table > tbody > tr.file-entry:nth-child(odd) { background-color: #ffffff !important; }";
   page += "}";
@@ -212,10 +214,14 @@ String HTML_Header()
   page += "  .file-list-table > tbody > tr.file-entry > td.file-size { border-right: none; text-align: right; }";
   page += "  .file-list-table > tbody > tr.file-entry:nth-child(even) { background-color: #f8f8f8 !important; }";
   page += "  .file-list-table > tbody > tr.file-entry:nth-child(odd) { background-color: #ffffff !important; }";
+
+  // rename-table の select 列を中央揃えにするスタイルを追加
+  page += "  .rename-table td.rename-select { text-align: center; vertical-align: middle; }";
+
   page += "}";
 
   // ------------------------------------------------
-  // -----　　 その他の共通スタイル 　　　　------------
+  // -----　　 その他の共通スタイル
   // ------------------------------------------------
   page += "html {font-size: 62.5%;}"; // remの基準
   page += "body {width:100%;margin: 0; padding: 0; font-family:Arial,Helvetica,sans-serif;font-size:1.6rem;color:#2f4f4f;background-color:#fffacd;text-align:center;}";
@@ -223,7 +229,9 @@ String HTML_Header()
   page += "footer {padding:1.0rem;background-color:cyan;font-size:1.4rem;}";
 
   // --- 一般的なテーブルスタイル (ファイル一覧以外で使用する場合) ---
-  page += "table:not(.file-list-table) {font-family:arial,sans-serif;border-collapse:collapse;width:90%; margin: 1em auto;}"; // ファイル一覧以外に適用、幅とマージン調整
+  page += "table:not(.file-list-table) {font-family:arial,sans-serif;border-collapse:collapse;width:90%; margin: 1em auto;}";
+  // ファイル一覧以外に適用、幅とマージン調整
+  
   page += "table:not(.file-list-table) td, table:not(.file-list-table) th {border:1px solid #dddddd;text-align:left;padding:0.8rem;}";
   page += "table:not(.file-list-table) tr:nth-child(even) {background-color:#dddddd;}";
   page += "table.center {margin-left:auto;margin-right:auto;}"; // 中央寄せクラス
@@ -241,21 +249,12 @@ String HTML_Header()
   // page += ".sp {background-color:silver;white-space:nowrap;width:2%;}"; // file-list-tableでは使わない想定
 
   // --- TOPNAV スタイル ---
-  // page += ".topnav {overflow: hidden; background-color:lightPink; padding: 3px 0; text-align: center;}";
-  // page += ".topnav a, .topnav input[type='button'] {display: inline-block; color:blue; text-align:center; padding:10px 12px; margin: 2px 5px; text-decoration:none; font-size:1.4rem; border: none; background-color: transparent; cursor: pointer; vertical-align: middle;}";
-  // page += ".topnav a:hover, .topnav input[type='button']:hover {background-color:deepskyblue;color:white;}";
-  // page += ".topnav a.active {background-color:lightblue;color:blue;}";
   page += ".topnav {overflow: hidden; background-color:lightPink; padding: 2px 0; text-align: center;}";
   page += ".topnav a, .topnav input[type='button'] {display: inline-block; color:blue; text-align:center; padding: 6px 10px; margin: 1px 4px; text-decoration:none; font-size:1.4rem; border: none; background-color: transparent; cursor: pointer; vertical-align: middle;}";
   page += ".topnav a:hover, .topnav input[type='button']:hover {background-color:deepskyblue;color:white;}";
   page += ".topnav a.active {background-color:lightblue;color:blue;}";
   
   // --- TOPNAV2 スタイル ---
-  // page += ".topnav2 {overflow: hidden; background-color:lightcyan; padding: 5px 0; text-align: center; line-height: 1.5;}";
-  // page += ".topnav2 a, .topnav2 span {display: inline-block; color:blue; text-align:center; padding:8px 10px; margin: 2px 4px; text-decoration:none; font-size:1.5rem; vertical-align: middle;}";
-  // page += ".topnav2 a:hover {background-color:deepskyblue;color:white;}";
-  // page += ".topnav2 a.active {background-color:lightblue;color:blue;}";
-  // page += ".topnav2 span { color: #555; }"; // path表示用のスタイル
   page += ".topnav2 {overflow: hidden; background-color:lightcyan; padding: 3px 0; text-align: center; line-height: 1.3;}";
   page += ".topnav2 a, .topnav2 span {display: inline-block; color:blue; text-align:center; padding: 5px 8px; margin: 1px 3px; text-decoration:none; font-size:1.5rem; vertical-align: middle;}";
   page += ".topnav2 a:hover {background-color:deepskyblue;color:white;}";
@@ -653,7 +652,7 @@ void Home()
 String HTML_Footer()
 {
   String page;
-  
+  page += "<br>";
   page += "<footer>";
   page += "<p class='ps'><i>" + getTmNTP() + "　　" + PROG_NAME + "　" + VERSION + "</i></p>";
   page += "</footer>";

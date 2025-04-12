@@ -10,7 +10,8 @@ void SPIFFS_Dir(AsyncWebServerRequest *request);
 void SPIFFS_Directory();
 void SPIFFS_UploadFileSelect();
 void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final);
-void SPIFFS_Handle_File_Delete(String filename);
+void SPIFFS_Handle_File_Delete(String encoded_filename);
+void SPIFFS_Generate_Confirm_Page(String encoded_filename);
 void SPIFFS_File_Rename();
 void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args);
 bool SPIFFS_notFound(AsyncWebServerRequest *request);
@@ -139,44 +140,6 @@ void SPIFFS_UploadFileSelect()
   webpage += HTML_Footer();
 }
 
-// void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
-// {
-//   String file = filename;
-//   if (!index)
-//   {
-//     if (!filename.startsWith("/"))
-//       file = "/" + filename;
-
-//     request->_tempFile = SPIFFS.open(file, "w");
-
-//     if (!request->_tempFile)
-//       Serial.println("Error creating file for SPIFFS upload...");
-
-//     SPIFFS_uploadSize = 0;
-//     SPIFFS_startTime = millis();
-//   }
-
-//   if (request->_tempFile)
-//   {
-//     if (len)
-//     {
-//       request->_tempFile.write(data, len);
-//       // Serial.println("Transferred : " + String(len) + " Bytes");
-//       SPIFFS_uploadSize = SPIFFS_uploadSize + len;
-//     }
-
-//     if (final)
-//     {
-//       request->_tempFile.close();
-//       SPIFFS_uploadTime = millis() - SPIFFS_startTime;
-//       Serial.println("FileName = " + file);
-//       Serial.println("SPIFFS_uploadSize = " + String(SPIFFS_uploadSize) + " Bytes");
-//       Serial.println("SPIFFS_uploadTime = " + String(SPIFFS_uploadTime) + " mSEC");
-//       request->redirect("/SPIFFS_dir");
-//     }
-//   }
-// }
-
 void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
 {
   String file = filename;
@@ -211,7 +174,7 @@ void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filen
     if (len)
     {
       request->_tempFile.write(data, len);
-      // Serial.println("Transferred : " + String(len) + " Bytes"); // ログが多いのでコメントアウト推奨
+      // Serial.println("Transferred : " + String(len) + " Bytes");
       SPIFFS_uploadSize = SPIFFS_uploadSize + len;
     }
 
@@ -227,15 +190,16 @@ void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filen
   }
 }
 
-void SPIFFS_Handle_File_Delete(String filename)
+void SPIFFS_Handle_File_Delete(String encoded_filename)
 {
+  String filename = urlDecode(encoded_filename);
   webpage = HTML_Header();
-  String fullPath = filename;
+  String fullPath = filename; // デコード後のファイル名を使用
 
   if (!fullPath.startsWith("/"))
     fullPath = "/" + fullPath;
 
-  Serial.println("SPIFFS Delete target filename = " + fullPath);
+  Serial.println("SPIFFS Delete execute target filename = " + fullPath + " (decoded)");
   File dataFile = SPIFFS.open(fullPath, "r");
 
   if (dataFile)
@@ -244,19 +208,38 @@ void SPIFFS_Handle_File_Delete(String filename)
     if (SPIFFS.remove(fullPath))
     {
       webpage += "<h3>SPIFFS: File '" + filename + "' has been deleted</h3>";
-      webpage += "<a href='/SPIFFS_dir'>[Enter]</a><br><br>";
+      webpage += "<a href='/SPIFFS_dir'>[OK]</a><br><br>"; // Dir表示へ
     }
     else
     {
       webpage += "<h3>SPIFFS: Failed to delete file [ " + filename + " ]</h3>";
-      webpage += "<a href='/SPIFFS_dir'>[Enter]</a><br><br>";
+      webpage += "<a href='/SPIFFS_delete'>[Back to Select]</a><br><br>"; // 削除選択画面へ戻る
     }
   }
   else
   {
     webpage += "<h3>SPIFFS: File [ " + filename + " ] does not exist</h3>";
-    webpage += "<a href='/SPIFFS_dir'>[Enter]</a><br><br>";
+    webpage += "<a href='/SPIFFS_delete'>[Back to Select]</a><br><br>"; // 削除選択画面へ戻る
   }
+  webpage += HTML_Footer();
+}
+
+void SPIFFS_Generate_Confirm_Page(String encoded_filename)
+{
+  webpage = HTML_Header();
+  String decoded_filename = urlDecode(encoded_filename);
+
+  webpage += "<h3>Confirm File Deletion (SPIFFS)</h3>";
+  webpage += "<p>Are you sure you want to delete the file:</p>";
+  webpage += "<p style='font-weight: bold; color: red;'>" + decoded_filename + "</p>";
+  webpage += "<br>";
+
+  // はい（削除実行）ボタン - エンコードされたファイル名を渡す
+  webpage += "<a href='/SPIFFS_delete_execute~/" + encoded_filename + "' style='padding: 10px 20px; background-color: #dc3545; color: white; text-decoration: none; border-radius: 5px; margin-right: 10px;'>Yes, Delete</a>";
+
+  // いいえ（キャンセル）ボタン
+  webpage += "<a href='/SPIFFS_delete' style='padding: 10px 20px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 5px;'>No, Cancel</a>";
+
   webpage += HTML_Footer();
 }
 
@@ -404,38 +387,24 @@ void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, 
 
 bool SPIFFS_notFound(AsyncWebServerRequest *request)
 {
-  String filename = "";
+  String filename_encoded = ""; // エンコードされたファイル名を保持
   String url = request->url();
 
-  String decodedUrl = url;
-  decodedUrl.replace("%20", " "); // スペースなど、必要に応じて他のエンコード文字もデコード
-  decodedUrl.replace("%21", "!");
-  decodedUrl.replace("%23", "#");
-  decodedUrl.replace("%24", "$");
-  decodedUrl.replace("%25", "%");
-  decodedUrl.replace("%26", "&");
-  decodedUrl.replace("%27", "'");
-  decodedUrl.replace("%28", "(");
-  decodedUrl.replace("%29", ")");
-  decodedUrl.replace("%2A", "*");
-  decodedUrl.replace("%2B", "+");
-  decodedUrl.replace("%2C", ",");
-  // 必要に応じて他の文字も追加
-
-  // ファイル名部分の抽出 ('~/' の後)
-  int separatorIndex = decodedUrl.indexOf("~/");
+  // ファイル名部分の抽出 ('~/' の後) - ★エンコードされたまま取得
+  int separatorIndex = url.indexOf("~/");
   if (separatorIndex != -1)
   {
-    filename = decodedUrl.substring(separatorIndex + 2);
+    filename_encoded = url.substring(separatorIndex + 2); // エンコードされたファイル名
   }
 
   // ハンドラ分岐
   if (url.startsWith("/SPIFFS_downloadhandler"))
   {
-    Serial.println("SPIFFS_Download handler started for: " + filename);
+    String dl_filename_decoded = urlDecode(filename_encoded); // ★ 修正: デコード
+    Serial.println("SPIFFS_Download handler started for: " + dl_filename_decoded + " (decoded)");
     SPIFFS_startTime = millis();
 
-    String fullPath = filename;
+    String fullPath = dl_filename_decoded; // デコード後のファイル名を使用
     if (!fullPath.startsWith("/"))
       fullPath = "/" + fullPath; // SPIFFSパス
 
@@ -443,26 +412,24 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
     File file = SPIFFS.open(fullPath, "r");
 
     if (file)
-    {                                                  // SPIFFSはディレクトリがないので isDirectory チェック不要
-      String contentType = getContentType("download"); // 強制ダウンロード
+    {
+      String contentType = getContentType("download");
       AsyncWebServerResponse *response = request->beginResponse(
           contentType,
           file.size(),
           [file](uint8_t *buffer, size_t maxLen, size_t index) mutable -> size_t
           {
             size_t bytesRead = file.read(buffer, maxLen);
-            // ラムダ内でのファイルcloseは避ける
             return bytesRead;
           });
       response->setContentLength(file.size());
-      response->addHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+      response->addHeader("Content-Disposition", "attachment; filename=\"" + dl_filename_decoded + "\""); // デコード後を使用
       response->addHeader("Server", "ESP Async Web Server");
       request->send(response);
 
       SPIFFS_downloadSize = file.size();
       SPIFFS_downloadTime = millis() - SPIFFS_startTime;
       Serial.println("SPIFFS download handler initiated...");
-      // file.close(); // ここでは閉じない
     }
     else
     {
@@ -473,10 +440,12 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
   }
   else if (url.startsWith("/SPIFFS_streamhandler"))
   {
-    Serial.println("SPIFFS_Stream handler started for: " + filename);
+    String stream_filename_decoded = urlDecode(filename_encoded);
+    Serial.println("SPIFFS_Stream handler started for: " + stream_filename_decoded + " (decoded)");
     SPIFFS_startTime = millis();
 
-    String fullPath = filename;
+    String fullPath = stream_filename_decoded;
+
     if (!fullPath.startsWith("/"))
       fullPath = "/" + fullPath; // SPIFFSパス
 
@@ -484,13 +453,13 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
 
     if (SPIFFS.exists(fullPath))
     {
-      File file = SPIFFS.open(fullPath, "r"); // サイズ取得のために開く
+      File file = SPIFFS.open(fullPath, "r");
       if (file)
       {
-        String contentType = getContentType(filename);
+        String contentType = getContentType(stream_filename_decoded); // デコード後のファイル名で判定
         AsyncWebServerResponse *response = request->beginResponse(SPIFFS, fullPath, contentType);
         SPIFFS_downloadSize = file.size();
-        file.close(); // サイズ取得後に閉じる
+        file.close();
         SPIFFS_downloadTime = millis() - SPIFFS_startTime;
         request->send(response);
         Serial.println("SPIFFS stream handler initiated...");
@@ -508,23 +477,28 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
     }
     return true; // ハンドルされた
   }
-  else if (url.startsWith("/SPIFFS_deletehandler"))
+  else if (url.startsWith("/SPIFFS_delete_confirm"))
   {
-    Serial.println("SPIFFS_Delete handler started for: " + filename);
-    SPIFFS_Handle_File_Delete(filename); // ファイル名のみ渡す ('/' なし)
+    Serial.println("SPIFFS_Delete confirm page requested for: " + filename_encoded);
+    SPIFFS_Generate_Confirm_Page(filename); // エンコードされたファイル名を渡す
     request->send(200, "text/html", webpage);
-    return true; // ハンドルされた
+    return true;
+  }
+  else if (url.startsWith("/SPIFFS_delete_execute"))
+  {
+    Serial.println("SPIFFS_Delete execute handler started for: " + filename_encoded);
+    SPIFFS_Handle_File_Delete(filename_encoded);
+    request->send(200, "text/html", webpage);
+    return true;
   }
   else if (url.startsWith("/SPIFFS_renamehandler"))
   {
     Serial.println("SPIFFS Rename handler started...");
-    // filename は使わず、フォームの引数から処理する
-    SPIFFS_Handle_File_Rename(request, "", request->args()); // filename引数は空文字で渡す
+    SPIFFS_Handle_File_Rename(request, "", request->args());
     request->send(200, "text/html", webpage);
-    return true; // ハンドルされた
+    return true;
   }
-
-  return false; // 上記のいずれにも一致しない場合はハンドルされなかった
+  return false;
 }
 
 void SPIFFS_Select_File_For_Function(String title, String function)
@@ -540,35 +514,23 @@ void SPIFFS_Select_File_For_Function(String title, String function)
 
     for (int index = 0; index < SPIFFS_numfiles; index++)
     {
-      String Fname_orig = SPIFFS_Filenames[index].filename; // 元のファイル名 (表示用, '/' なし)
-      String Fname_url = Fname_orig;                        // URL生成用のファイル名 ('/' なし)
+      String Fname_orig = SPIFFS_Filenames[index].filename;
+      String Fname_encoded = urlEncode(Fname_orig);
 
-      // URLエンコード (簡易版)
-      String Fname_encoded = Fname_url;
-      Fname_encoded.replace(" ", "%20");
-      Fname_encoded.replace("!", "%21");
-      Fname_encoded.replace("#", "%23");
-      Fname_encoded.replace("$", "%24");
-      Fname_encoded.replace("%", "%25");
-      Fname_encoded.replace("&", "%26");
-      Fname_encoded.replace("'", "%27");
-      Fname_encoded.replace("(", "%28");
-      Fname_encoded.replace(")", "%29");
-      Fname_encoded.replace("*", "%2A");
-      Fname_encoded.replace("+", "%2B");
-      Fname_encoded.replace(",", "%2C");
+      String target_function = function;
+      if (function == "SPIFFS_deletehandler")
+      {
+        target_function = "SPIFFS_delete_confirm";
+      }
 
-      // 各ファイルエントリの行 (クラス file-entry を追加)
       webpage += "<tr class='file-entry'>";
-
-      // ファイル名セル (ボタン付きリンク) - file-name クラスを使用
       webpage += "<td class='file-name'>";
       webpage += "<button style='width: 100%; text-align: left; padding: 5px; box-sizing: border-box; white-space: normal; word-break: break-all;'>";
-      webpage += "<a href='" + function + "~/" + Fname_encoded + "' style='display: block; text-decoration: none; color: inherit;'>" + Fname_orig + "</a>";
+
+      webpage += "<a href='" + target_function + "~/" + Fname_encoded + "' ...>" + Fname_orig + "</a>";
+
       webpage += "</button>";
       webpage += "</td>";
-
-      // ファイルサイズセル - file-size クラスを使用
       webpage += "<td class='file-size'>" + SPIFFS_Filenames[index].fsize + "</td>";
       webpage += "</tr>";
     }
