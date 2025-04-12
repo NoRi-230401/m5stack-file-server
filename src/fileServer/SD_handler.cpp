@@ -83,6 +83,33 @@ void SD_flServerSetup()
     request->send(200, "text/html", webpage); });
 }
 
+// void SD_Dir(AsyncWebServerRequest *request)
+// {
+//   SD_Directory();
+//   webpage = HTML_Header();
+//   webpage += "<h3>SD: Content (" + SdPath + ")</h3>";
+//   if (SD_numfiles > 0)
+//   {
+//     webpage += "<table class='file-list-table'>";
+//     webpage += "<tbody>";
+//     for (int index = 0; index < SD_numfiles; index++)
+//     {
+//       webpage += "<tr class='file-entry'>";
+//       webpage += "<td class='file-type'>" + SD_Filenames[index].ftype + "</td>";
+//       webpage += "<td class='file-name'>" + SD_Filenames[index].filename + "</td>";
+//       webpage += "<td class='file-size'>" + SD_Filenames[index].fsize + "</td>";
+//       webpage += "</tr>";
+//     }
+//     webpage += "</tbody>";
+//     webpage += "</table>";
+//   }
+//   else
+//   {
+//     webpage += "<p style='text-align: center; margin-top: 20px;'>No files or directories found in " + SdPath + "</p>";
+//   }
+//   webpage += HTML_Footer();
+// }
+
 void SD_Dir(AsyncWebServerRequest *request)
 {
   SD_Directory();
@@ -95,8 +122,14 @@ void SD_Dir(AsyncWebServerRequest *request)
     for (int index = 0; index < SD_numfiles; index++)
     {
       webpage += "<tr class='file-entry'>";
-      webpage += "<td class='file-type'>" + SD_Filenames[index].ftype + "</td>";
-      webpage += "<td class='file-name'>" + SD_Filenames[index].filename + "</td>";
+      // Name列: Dirの場合はアイコンを追加
+      webpage += "<td class='file-name'>";
+      if (SD_Filenames[index].ftype == "Dir") {
+        webpage += "<span style='color: #007bff;'>&#128193;</span> "; // フォルダアイコン 📁
+      }
+      webpage += SD_Filenames[index].filename;
+      webpage += "</td>";
+      // Size列: 変更なし
       webpage += "<td class='file-size'>" + SD_Filenames[index].fsize + "</td>";
       webpage += "</tr>";
     }
@@ -109,6 +142,7 @@ void SD_Dir(AsyncWebServerRequest *request)
   }
   webpage += HTML_Footer();
 }
+
 
 const String SD_SYSTEM_FILE = "System Volume Information";
 void SD_Directory()
