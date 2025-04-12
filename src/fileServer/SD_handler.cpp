@@ -86,15 +86,12 @@ void SD_flServerSetup()
 void SD_Dir(AsyncWebServerRequest *request)
 {
   SD_Directory();
-
   webpage = HTML_Header();
   webpage += "<h3>SD: Content (" + SdPath + ")</h3>";
-
   if (SD_numfiles > 0)
   {
     webpage += "<table class='file-list-table'>";
     webpage += "<tbody>";
-
     for (int index = 0; index < SD_numfiles; index++)
     {
       webpage += "<tr class='file-entry'>";
@@ -224,14 +221,12 @@ void SD_handleFileUpload(AsyncWebServerRequest *request, const String &filename,
   }
 }
 
-void SD_Handle_File_Delete(String encoded_filename) // 引数はエンコードされたまま受け取る
+void SD_Handle_File_Delete(String encoded_filename)
 {
-
-  String filename = urlDecode(encoded_filename); // ★ 修正: urlDecodeを使用
-  
   webpage = HTML_Header();
-  String fullPath = filename; // デコード後のファイル名を使用
+  String decoded_filename = urlDecode(encoded_filename);
 
+  String fullPath = decoded_filename;
   if (!fullPath.startsWith("/"))
     fullPath = "/" + fullPath;
 
@@ -246,24 +241,23 @@ void SD_Handle_File_Delete(String encoded_filename) // 引数はエンコード�
     dataFile.close(); // ファイルを閉じてから削除
     if (SD.remove(fullPath))
     {
-      webpage += "<h3>SD: File '" + filename + "' in " + SdPath + " has been deleted</h3>";
-      webpage += "<a href='/SD_dir'>[OK]</a><br><br>"; // Dir表示へ
+      webpage += "<h3>SD: File '" + decoded_filename + "' in " + SdPath + " has been deleted</h3>";
+      webpage += "<a href='/SD_dir'>[OK]</a><br><br>";
     }
     else
     {
-      webpage += "<h3>SD: Failed to delete file [ " + filename + " ] in " + SdPath + "</h3>";
-      webpage += "<a href='/SD_delete'>[Back to Select]</a><br><br>"; // 削除選択画面へ戻る
+      webpage += "<h3>SD: Failed to delete file [ " + decoded_filename + " ] in " + SdPath + "</h3>";
+      webpage += "<a href='/SD_delete'>[Back to Select]</a><br><br>";
     }
   }
   else
   {
-    webpage += "<h3>SD: File [ " + filename + " ] in " + SdPath + " does not exist</h3>";
-    webpage += "<a href='/SD_delete'>[Back to Select]</a><br><br>"; // 削除選択画面へ戻る
+    webpage += "<h3>SD: File [ " + decoded_filename + " ] in " + SdPath + " does not exist</h3>";
+    webpage += "<a href='/SD_delete'>[Back to Select]</a><br><br>";
   }
   webpage += HTML_Footer();
 }
 
-// --- ★ 追加: 確認ページ生成関数 ---
 void SD_Generate_Confirm_Page(String encoded_filename)
 {
   webpage = HTML_Header();
@@ -344,7 +338,7 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
       {
         oldfilename_form = request->arg(i - 2);
         newfilename_form = request->arg(i - 1);
-        break; // 最初に見つかったものを採用
+        break;
       }
     }
   }
@@ -412,7 +406,7 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
       if (SD.rename(oldfilepath, newfilepath))
       {
         webpage += "<h3>SD: Item '" + oldfilename_form + "' in " + SdPath + " has been renamed to '" + newfilename_form + "'</h3>";
-        webpage += "<a href='/SD_dir'>[OK]</a><br><br>"; // 成功したらDir表示へ
+        webpage += "<a href='/SD_dir'>[OK]</a><br><br>";
       }
       else
       {
@@ -426,30 +420,29 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
     webpage += "<h3>SD: Rename Error - Original item '" + oldfilename_form + "' not found in " + SdPath + ".</h3>";
     webpage += "<a href='/SD_rename'>[Back]</a><br><br>";
   }
-
   webpage += HTML_Footer();
 }
 
 bool SD_notFound(AsyncWebServerRequest *request)
 {
-  String filename_encoded = ""; // エンコードされたファイル名を保持
+  String filename_encoded = "";
   String url = request->url();
 
   // ファイル名部分の抽出 ('~/' の後) - ★エンコードされたまま取得
   int separatorIndex = url.indexOf("~/");
   if (separatorIndex != -1)
   {
-    filename_encoded = url.substring(separatorIndex + 2); // エンコードされたファイル名
+    filename_encoded = url.substring(separatorIndex + 2);
   }
   
   // ハンドラ分岐
   if (url.startsWith("/SD_downloadhandler"))
   {
-    String dl_filename_decoded = urlDecode(filename_encoded); // ★ 修正: デコード
+    String dl_filename_decoded = urlDecode(filename_encoded);
     Serial.println("SD_Download handler started for: " + dl_filename_decoded + " (decoded)");
     SD_startTime = millis();
 
-    String fullPath = dl_filename_decoded; // デコード後のファイル名を使用
+    String fullPath = dl_filename_decoded;
     if (!fullPath.startsWith("/"))
       fullPath = "/" + fullPath;
     if (SdPath != "/")
@@ -489,12 +482,11 @@ bool SD_notFound(AsyncWebServerRequest *request)
   }
   else if (url.startsWith("/SD_streamhandler"))
   {
-    String stream_filename_decoded = urlDecode(filename_encoded); // ★ 修正: デコード
+    String stream_filename_decoded = urlDecode(filename_encoded);
     Serial.println("SD_Stream handler started for: " + stream_filename_decoded + " (decoded)");
     SD_startTime = millis();
 
-    String fullPath = stream_filename_decoded; // デコード後のファイル名を使用
-    // String fullPath = stream_filename;
+    String fullPath = stream_filename_decoded;
     if (!fullPath.startsWith("/"))
       fullPath = "/" + fullPath;
     if (SdPath != "/")
@@ -855,7 +847,6 @@ void SDdir_Handle_mkdir(AsyncWebServerRequest *request)
 
 void SDdir_DirMake()
 {
-  // HTMLフォームを表示する関数を呼び出す
   SDdir_InputNewDirName("Make New Directory in " + SdPath, "SDdir_mkdirhandler", "filename");
 }
 
@@ -1024,7 +1015,7 @@ void SDdir_FilesList()
 
 bool SDdir_notFound(AsyncWebServerRequest *request)
 {
-  String filename_encoded = ""; // エンコードされたファイル名を保持
+  String filename_encoded = "";
   String url = request->url();
 
   // ファイル名部分の抽出 ('~/' の後) - ★エンコードされたまま取得
@@ -1037,7 +1028,6 @@ bool SDdir_notFound(AsyncWebServerRequest *request)
   if (url.startsWith("/SDdir_chdirhandler"))
   {
     Serial.println("SDdir_chdir handler started for: " + filename_encoded);
-    // ★ 修正: エンコードされたファイル名をそのまま渡す
     SDdir_Handle_chdir(filename_encoded);
     request->send(200, "text/html", webpage);
     return true;
@@ -1052,14 +1042,14 @@ bool SDdir_notFound(AsyncWebServerRequest *request)
   else if (url.startsWith("/SDdir_rmdir_confirm"))
   {
     Serial.println("SDdir_rmdir confirm page requested for: " + filename_encoded);
-    SDdir_Generate_Confirm_Page(filename_encoded); // エンコードされたファイル名を渡す
+    SDdir_Generate_Confirm_Page(filename_encoded);
     request->send(200, "text/html", webpage);
     return true;
   }
   else if (url.startsWith("/SDdir_rmdir_execute"))
   {
     Serial.println("SDdir_rmdir execute handler started for: " + filename_encoded);
-    SDdir_Handle_rmdir(filename_encoded); // エンコードされたファイル名を渡して削除実行
+    SDdir_Handle_rmdir(filename_encoded);
     request->send(200, "text/html", webpage);
     return true;
   }

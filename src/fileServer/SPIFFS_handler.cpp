@@ -192,9 +192,9 @@ void SPIFFS_handleFileUpload(AsyncWebServerRequest *request, const String &filen
 
 void SPIFFS_Handle_File_Delete(String encoded_filename)
 {
-  String filename = urlDecode(encoded_filename);
+  String decoded_filename = urlDecode(encoded_filename);
   webpage = HTML_Header();
-  String fullPath = filename; // デコード後のファイル名を使用
+  String fullPath = decoded_filename;
 
   if (!fullPath.startsWith("/"))
     fullPath = "/" + fullPath;
@@ -207,19 +207,19 @@ void SPIFFS_Handle_File_Delete(String encoded_filename)
     dataFile.close();
     if (SPIFFS.remove(fullPath))
     {
-      webpage += "<h3>SPIFFS: File '" + filename + "' has been deleted</h3>";
-      webpage += "<a href='/SPIFFS_dir'>[OK]</a><br><br>"; // Dir表示へ
+      webpage += "<h3>SPIFFS: File '" + decoded_filename + "' has been deleted</h3>";
+      webpage += "<a href='/SPIFFS_dir'>[OK]</a><br><br>";
     }
     else
     {
-      webpage += "<h3>SPIFFS: Failed to delete file [ " + filename + " ]</h3>";
-      webpage += "<a href='/SPIFFS_delete'>[Back to Select]</a><br><br>"; // 削除選択画面へ戻る
+      webpage += "<h3>SPIFFS: Failed to delete file [ " + decoded_filename + " ]</h3>";
+      webpage += "<a href='/SPIFFS_delete'>[Back to Select]</a><br><br>";
     }
   }
   else
   {
-    webpage += "<h3>SPIFFS: File [ " + filename + " ] does not exist</h3>";
-    webpage += "<a href='/SPIFFS_delete'>[Back to Select]</a><br><br>"; // 削除選択画面へ戻る
+    webpage += "<h3>SPIFFS: File [ " + decoded_filename + " ] does not exist</h3>";
+    webpage += "<a href='/SPIFFS_delete'>[Back to Select]</a><br><br>";
   }
   webpage += HTML_Footer();
 }
@@ -376,7 +376,7 @@ void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, 
       }
     }
   }
-  else // 元のファイルが存在しない場合
+  else
   {
     webpage += "<h3>SPIFFS: Rename Error - Original file '" + oldfilename_form + "' not found.</h3>";
     webpage += "<a href='/SPIFFS_rename'>[Back]</a><br><br>";
@@ -387,26 +387,26 @@ void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, 
 
 bool SPIFFS_notFound(AsyncWebServerRequest *request)
 {
-  String filename_encoded = ""; // エンコードされたファイル名を保持
+  String filename_encoded = "";
   String url = request->url();
 
   // ファイル名部分の抽出 ('~/' の後) - ★エンコードされたまま取得
   int separatorIndex = url.indexOf("~/");
   if (separatorIndex != -1)
   {
-    filename_encoded = url.substring(separatorIndex + 2); // エンコードされたファイル名
+    filename_encoded = url.substring(separatorIndex + 2);
   }
 
   // ハンドラ分岐
   if (url.startsWith("/SPIFFS_downloadhandler"))
   {
-    String dl_filename_decoded = urlDecode(filename_encoded); // ★ 修正: デコード
+    String dl_filename_decoded = urlDecode(filename_encoded);
     Serial.println("SPIFFS_Download handler started for: " + dl_filename_decoded + " (decoded)");
     SPIFFS_startTime = millis();
 
-    String fullPath = dl_filename_decoded; // デコード後のファイル名を使用
+    String fullPath = dl_filename_decoded;
     if (!fullPath.startsWith("/"))
-      fullPath = "/" + fullPath; // SPIFFSパス
+      fullPath = "/" + fullPath;
 
     Serial.println("Download target full path = " + fullPath);
     File file = SPIFFS.open(fullPath, "r");
@@ -423,7 +423,7 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
             return bytesRead;
           });
       response->setContentLength(file.size());
-      response->addHeader("Content-Disposition", "attachment; filename=\"" + dl_filename_decoded + "\""); // デコード後を使用
+      response->addHeader("Content-Disposition", "attachment; filename=\"" + dl_filename_decoded + "\"");
       response->addHeader("Server", "ESP Async Web Server");
       request->send(response);
 
@@ -447,7 +447,7 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
     String fullPath = stream_filename_decoded;
 
     if (!fullPath.startsWith("/"))
-      fullPath = "/" + fullPath; // SPIFFSパス
+      fullPath = "/" + fullPath;
 
     Serial.println("Stream target full path = " + fullPath);
 
@@ -456,7 +456,7 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
       File file = SPIFFS.open(fullPath, "r");
       if (file)
       {
-        String contentType = getContentType(stream_filename_decoded); // デコード後のファイル名で判定
+        String contentType = getContentType(stream_filename_decoded);
         AsyncWebServerResponse *response = request->beginResponse(SPIFFS, fullPath, contentType);
         SPIFFS_downloadSize = file.size();
         file.close();
@@ -475,12 +475,12 @@ bool SPIFFS_notFound(AsyncWebServerRequest *request)
       Serial.println("Error: File not found for streaming: " + fullPath);
       request->send(404, "text/plain", "File not found for streaming");
     }
-    return true; // ハンドルされた
+    return true;
   }
   else if (url.startsWith("/SPIFFS_delete_confirm"))
   {
     Serial.println("SPIFFS_Delete confirm page requested for: " + filename_encoded);
-    SPIFFS_Generate_Confirm_Page(filename_encoded); // エンコードされたファイル名を渡す
+    SPIFFS_Generate_Confirm_Page(filename_encoded);
     request->send(200, "text/html", webpage);
     return true;
   }
