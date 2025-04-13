@@ -83,33 +83,6 @@ void SD_flServerSetup()
     request->send(200, "text/html", webpage); });
 }
 
-// void SD_Dir(AsyncWebServerRequest *request)
-// {
-//   SD_Directory();
-//   webpage = HTML_Header();
-//   webpage += "<h3>SD: Content (" + SdPath + ")</h3>";
-//   if (SD_numfiles > 0)
-//   {
-//     webpage += "<table class='file-list-table'>";
-//     webpage += "<tbody>";
-//     for (int index = 0; index < SD_numfiles; index++)
-//     {
-//       webpage += "<tr class='file-entry'>";
-//       webpage += "<td class='file-type'>" + SD_Filenames[index].ftype + "</td>";
-//       webpage += "<td class='file-name'>" + SD_Filenames[index].filename + "</td>";
-//       webpage += "<td class='file-size'>" + SD_Filenames[index].fsize + "</td>";
-//       webpage += "</tr>";
-//     }
-//     webpage += "</tbody>";
-//     webpage += "</table>";
-//   }
-//   else
-//   {
-//     webpage += "<p style='text-align: center; margin-top: 20px;'>No files or directories found in " + SdPath + "</p>";
-//   }
-//   webpage += HTML_Footer();
-// }
-
 void SD_Dir(AsyncWebServerRequest *request)
 {
   SD_Directory();
@@ -300,7 +273,8 @@ void SD_Generate_Confirm_Page(String encoded_filename)
   webpage += "<h3>Confirm File Deletion (SD)</h3>";
   webpage += "<p>Are you sure you want to delete the file:</p>";
   webpage += "<p style='font-weight: bold; color: red;'>" + decoded_filename + "</p>";
-  webpage += "<p>in path: " + SdPath + "?</p>";
+  // webpage += "<p>in path: " + SdPath + "?</p>";
+  webpage += "<p>in path:&nbsp;「&nbsp;" + SdPath + "&nbsp;」&nbsp;?</p>";
   webpage += "<br>";
 
   // はい（削除実行）ボタン - エンコードされたファイル名を渡す
@@ -314,80 +288,132 @@ void SD_Generate_Confirm_Page(String encoded_filename)
 
 void SD_File_Rename()
 {
-  SD_Directory();
+  SD_Directory(); // ファイルとディレクトリ両方を取得
   webpage = HTML_Header();
   webpage += "<h3>SD: Select a Dir/File to [RENAME] (" + SdPath + ")</h3>";
-  webpage += "<FORM action='/SD_renamehandler'>";
-  webpage += "<table class='file-list-table rename-table'>";
+  // methodをGETに変更し、actionを修正 (元のコードに合わせる)
+  webpage += "<form action='/SD_renamehandler' method='GET'>";
+  webpage += "<table class='file-list-table rename-table'>"; // テーブル開始
+
+  // --- thead (ヘッダー) ---
   webpage += "<thead>";
   webpage += "<tr>";
-  webpage += "<th>File name</th>";
-  webpage += "<th>New Filename</th>";
-  webpage += "<th>Select</th>";
+  // ヘッダーを2列に変更
+  webpage += "<th class='rename-select-header'>Select / File Name</th>"; // 1列目ヘッダー
+  webpage += "<th class='rename-new-header'>New Filename</th>";          // 2列目ヘッダー
   webpage += "</tr>";
   webpage += "</thead>";
-  webpage += "<tbody>";
 
+  // --- tbody (ボディ) ---
+  webpage += "<tbody>";
   if (SD_numfiles > 0)
   {
-    int index = 0;
-    while (index < SD_numfiles)
+    for (int index = 0; index < SD_numfiles; index++)
     {
-      webpage += "<tr class='file-entry'>";
-      webpage += "<td class='file-name'><input type='text' name='oldfile' style='color:blue; width: 95%; box-sizing: border-box;' value='" + SD_Filenames[index].filename + "' readonly></td>";
+      String current_filename = SD_Filenames[index].filename;
+      String current_ftype = SD_Filenames[index].ftype;
+      String radio_id = "choice_" + String(index); // ラジオボタン用の一意なID
 
-      webpage += "<td class='rename-new-name'><input type='text' name='newfile' style='width: 95%; box-sizing: border-box;'></td>";
-      webpage += "<td class='rename-select'><input type='radio' name='choice'></td>";
-      webpage += "</tr>";
-      index++;
+      webpage += "<tr class='file-entry'>"; // 各行
+
+      // --- 1列目: Select / File Name ---
+      webpage += "<td class='rename-select-cell'>";
+      // 非表示のラジオボタン: name='choice', value=ファイル名
+      webpage += "<input type='radio' name='choice' value='" + current_filename + "' id='" + radio_id + "' style='display: none;'>";
+      // 隠しフィールド: name='oldfile', value=ファイル名 (ハンドラでの取得を容易にするため)
+      webpage += "<input type='hidden' name='oldfile' value='" + current_filename + "'>";
+      // ラベル (ボタン風): radio_idに対応付け
+      webpage += "<label for='" + radio_id + "' class='rename-select-label'>";
+      if (current_ftype == "Dir") {
+        webpage += "<span style='color: #007bff;'>&#128193;</span> "; // フォルダアイコン
+      }
+      webpage += current_filename; // ファイル名表示
+      webpage += "</label>";
+      webpage += "</td>";
+
+      // --- 2列目: New Filename ---
+      webpage += "<td class='rename-new-name'>";
+      // テキスト入力: name='newfile' (各行で同じname属性)
+      webpage += "<input type='text' name='newfile' style='width: 95%; box-sizing: border-box;'>";
+      webpage += "</td>";
+
+      webpage += "</tr>"; // 行終了
     }
   }
   else
   {
-    webpage += "<tr><td colspan='3' style='text-align: center; padding: 20px;'>No files or directories found in " + SdPath + " to rename.</td></tr>";
+    // ファイルがない場合の表示 (colspanを2に変更)
+    webpage += "<tr><td colspan='2' style='text-align: center; padding: 20px;'>No files or directories found in " + SdPath + " to rename.</td></tr>";
   }
-
   webpage += "</tbody>";
-  webpage += "</table><br>";
-  webpage += "<input type='submit' value='Enter'>";
-  webpage += "</form>";
+  webpage += "</table><br>"; // テーブル終了
+
+  // 送信ボタン
+  webpage += "<input type='submit' value='Rename Selected'>";
+  webpage += "</form>"; // フォーム終了
   webpage += HTML_Footer();
 }
 
 void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args)
 {
-  // 'filename' 引数は SD_notFound から渡されるが、この関数では使わない。
-  // フォームから送信された 'oldfile', 'newfile', 'choice' を使う。
   String oldfilename_form = "";
   String newfilename_form = "";
   webpage = HTML_Header();
 
-  // フォームデータの解析: 'choice'が'on'になっている行の'oldfile'と'newfile'を取得
-  for (int i = 0; i < Args; i++)
-  {
-    if (request->argName(i) == "choice" && request->arg(i) == "on")
-    {
-      // 'choice' が 'on' の場合、その前の2つの引数が newfile と oldfile のはず
-      if (i >= 2 && request->argName(i - 1) == "newfile" && request->argName(i - 2) == "oldfile")
-      {
-        oldfilename_form = request->arg(i - 2);
-        newfilename_form = request->arg(i - 1);
-        break;
+  // 1. 選択されたファイル名 (choice の value) を取得
+  if (request->hasParam("choice")) {
+      oldfilename_form = request->arg("choice");
+  } else {
+      // choice が選択されていない場合のエラー処理
+      webpage += "<h3>SD: Rename Error - No file selected.</h3>";
+      webpage += "<a href='/SD_rename'>[Back]</a><br><br>";
+      webpage += HTML_Footer();
+      request->send(200, "text/html", webpage); // エラーページを送信して終了
+      return;
+  }
+
+  // 2. 対応する newfile を取得
+  //    フォームの引数をループして、選択された oldfile に対応する newfile を探す
+  bool found_newfile = false;
+  String current_oldfile_check = ""; // ループ内で oldfile を追跡
+  for (int i = 0; i < Args; i++) {
+      String argName = request->argName(i);
+      String argValue = request->arg(i);
+
+      if (argName == "oldfile") {
+          current_oldfile_check = argValue; // 現在の行の oldfile を記録
+      } else if (argName == "newfile" && current_oldfile_check == oldfilename_form) {
+          // oldfile が選択されたものと一致し、かつ引数名が newfile なら、それが対応する新しい名前
+          newfilename_form = argValue;
+          found_newfile = true;
+          break; // 見つかったらループを抜ける
       }
-    }
+      // choice パラメータはここでは無視 (既に取得済みのため)
+  }
+
+  // newfile が見つからなかった場合 (通常は発生しないはず)
+  if (!found_newfile) {
+       Serial.println("Error: Could not find corresponding newfile parameter for selected oldfile: " + oldfilename_form);
+       webpage += "<h3>SD: Rename Error - Internal error processing form data.</h3>";
+       webpage += "<a href='/SD_rename'>[Back]</a><br><br>";
+       webpage += HTML_Footer();
+       request->send(200, "text/html", webpage); // エラーページを送信して終了
+       return;
   }
 
   Serial.println("Rename requested:");
-  Serial.println("  Old filename (from form): " + oldfilename_form);
+  Serial.println("  Old filename (from choice): " + oldfilename_form);
   Serial.println("  New filename (from form): " + newfilename_form);
   Serial.println("  Current Path (SdPath): " + SdPath);
 
-  // 入力チェック
-  if (oldfilename_form == "" || newfilename_form == "")
+  // --- 3. 以降の入力チェックとリネーム処理 ---
+  // 入力チェック (newfilename が空でないかもチェック)
+  if (oldfilename_form == "" || newfilename_form == "") // newfilenameもチェック
   {
-    webpage += "<h3>SD: Rename Error - No file selected or new name missing.</h3>";
+    webpage += "<h3>SD: Rename Error - File selected but new name is missing.</h3>";
     webpage += "<a href='/SD_rename'>[Back]</a><br><br>";
     webpage += HTML_Footer();
+    request->send(200, "text/html", webpage); // ★ send を追加
     return;
   }
   if (newfilename_form.indexOf('/') != -1 || newfilename_form.indexOf('\\') != -1)
@@ -395,6 +421,7 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
     webpage += "<h3>SD: Rename Error - New filename cannot contain '/' or '\'.</h3>";
     webpage += "<a href='/SD_rename'>[Back]</a><br><br>";
     webpage += HTML_Footer();
+    request->send(200, "text/html", webpage); // ★ send を追加
     return;
   }
   if (oldfilename_form == newfilename_form)
@@ -402,10 +429,11 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
     webpage += "<h3>SD: Rename Error - New filename is the same as the old filename.</h3>";
     webpage += "<a href='/SD_rename'>[Back]</a><br><br>";
     webpage += HTML_Footer();
+    request->send(200, "text/html", webpage); // ★ send を追加
     return;
   }
 
-  // フルパスの構築
+  // フルパスの構築 (変更なし)
   String oldfilepath = oldfilename_form;
   if (!oldfilepath.startsWith("/"))
     oldfilepath = "/" + oldfilepath;
@@ -421,14 +449,12 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
   Serial.println("  Old full path: " + oldfilepath);
   Serial.println("  New full path: " + newfilepath);
 
-  // ファイル/ディレクトリの存在確認とリネーム実行
-  File currentItem = SD.open(oldfilepath, "r"); // ファイルまたはディレクトリを開く試み
+  // ファイル/ディレクトリの存在確認とリネーム実行 (変更なし)
+  File currentItem = SD.open(oldfilepath, "r");
 
-  if (currentItem) // 存在する場合
+  if (currentItem)
   {
-    currentItem.close(); // 確認のため開いただけなので閉じる
-
-    // 新しい名前のファイル/ディレクトリが既に存在しないか確認
+    currentItem.close();
     if (SD.exists(newfilepath))
     {
       webpage += "<h3>SD: Rename Error - New filename '" + newfilename_form + "' already exists in " + SdPath + ".</h3>";
@@ -436,7 +462,6 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
     }
     else
     {
-      // リネーム実行
       if (SD.rename(oldfilepath, newfilepath))
       {
         webpage += "<h3>SD: Item '" + oldfilename_form + "' in " + SdPath + " has been renamed to '" + newfilename_form + "'</h3>";
@@ -449,13 +474,19 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
       }
     }
   }
-  else // 元のファイル/ディレクトリが存在しない場合
+  else
   {
     webpage += "<h3>SD: Rename Error - Original item '" + oldfilename_form + "' not found in " + SdPath + ".</h3>";
     webpage += "<a href='/SD_rename'>[Back]</a><br><br>";
   }
+
   webpage += HTML_Footer();
+  // ★注意: 各分岐で send しているので、ここには不要。もし分岐内で send していないパスがあれば、ここに追加する。
+  // request->send(200, "text/html", webpage); // ← この行は不要（各分岐で送信済みのため）
+  // ★ただし、元のコードでは入力チェック部分で return していただけで send していなかったので、
+  //   上記コードでは入力チェック部分にも request->send を追加しています。
 }
+
 
 bool SD_notFound(AsyncWebServerRequest *request)
 {
@@ -935,7 +966,8 @@ void SDdir_Generate_Confirm_Page(String encoded_filename)
   webpage += "<h3>Confirm Directory Deletion</h3>";
   webpage += "<p>Are you sure you want to delete the directory:</p>";
   webpage += "<p style='font-weight: bold; color: red;'>" + decoded_filename + "</p>";
-  webpage += "<p>in path: " + SdPath + "?</p>";
+  // webpage += "<p>in path: " + SdPath + "?</p>";
+  webpage += "<p>in path:&nbsp;「&nbsp;" + SdPath + "&nbsp;」&nbsp;?</p>";
   webpage += "<p style='color: grey;'>Note: Only empty directories can be deleted.</p>";
   webpage += "<br>";
 
@@ -1090,7 +1122,6 @@ bool SDdir_notFound(AsyncWebServerRequest *request)
 
   return false;
 }
-
 
 void SDdir_InputNewDirName(String Heading, String Command, String Arg_name)
 {

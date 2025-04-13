@@ -134,54 +134,83 @@ String HTML_Header()
    page += "    background-color: #ffffff !important; ";                    // 白
    page += "  }";
 
-   // --- <rename-table専用>
+   // --- <rename-table専用> ---
    page += "  .rename-table thead {";
-   page += "      display: table-header-group; /* thead を表示 */";
+   page += "      display: table-header-group;";
    page += "  }";
    page += "  .rename-table thead th {";
-   page += "      /* 基本スタイルは .file-list-table thead th から継承されるはず */";
-   page += "      /* 必要なら上書き */";
+   page += "      /* 継承されるスタイル */";
    page += "  }";
-   page += "  .rename-table thead th:nth-child(1) { width: 45%; } /* File name 列 */";
-   page += "  .rename-table thead th:nth-child(2) { width: 40%; } /* New Filename 列 */";
-   page += "  .rename-table thead th:nth-child(3) { width: 15%; text-align: center; } /* Select 列 */";
+   // ヘッダー列幅を調整 (例: 60% と 40%)
+   page += "  .rename-table thead th.rename-select-header { width: 60%; }"; // 1列目
+   page += "  .rename-table thead th.rename-new-header { width: 40%; }";    // 2列目
+   // page += "  .rename-table thead th:nth-child(3) { ... }"; // 3列目削除
 
-   /* --- <rename画面>専用スタイル (1行表示に戻す) --- */
+   /* --- <rename画面>専用スタイル (tbody) --- */
    page += "  .rename-table > tbody {";
-   page += "    display: table-row-group; /* Flexboxを解除 */";
+   page += "    display: table-row-group;";
    page += "    border: none;";
    page += "  }";
    page += "  .rename-table > tbody > tr.file-entry {";
-   page += "    display: table-row; /* Flexboxを解除 */";
-   page += "    width: 100%;        /* 幅を100%に戻す */";
+   page += "    display: table-row;";
+   page += "    width: 100%;";
    page += "    border: none;";
    page += "    background-color: transparent !important;";
    page += "  }";
    page += "  .rename-table > tbody > tr.file-entry > td {";
-   page += "    display: table-cell; /* 通常のセル表示 */";
+   page += "    display: table-cell;";
    page += "    border: none;";
    page += "    border-bottom: 1px solid #ddd;";
-   page += "    border-right: 1px solid #ddd;";
-   page += "    padding: 8px;";
+   page += "    border-right: 1px solid #ddd;"; // 右境界線を追加
+   page += "    padding: 0; /* ラベル/入力にpaddingを持たせるためtdは0に */";
    page += "    box-sizing: border-box;";
    page += "    background-color: transparent !important;";
    page += "    text-align: left;";
-   page += "    vertical-align: top;";
-   page += "    flex-basis: auto; /* flexプロパティをリセット */";
+   page += "    vertical-align: middle; /* 垂直方向中央揃え */";
+   page += "    /* flex関連リセット */";
+   page += "    flex-basis: auto;";
    page += "    flex-grow: 0;";
    page += "    flex-shrink: 1;";
    page += "  }";
+   // 最後のセルの右境界線を削除
    page += "  .rename-table > tbody > tr.file-entry > td:last-child {";
    page += "    border-right: none;";
    page += "  }";
-   page += "  .rename-table td.file-name { width: 45%; }";
-   page += "  .rename-table td.rename-new-name { width: 40%; }";
 
-   page += "  .rename-table td.rename-select { width: 15%; text-align: center; vertical-align: middle; }";
+   // 各セルの幅指定 (theadに合わせて)
+   page += "  .rename-table td.rename-select-cell { width: 60%; }";            // 1列目セル
+   page += "  .rename-table td.rename-new-name { width: 40%; padding: 8px; }"; // 2列目セル (入力欄にpadding)
 
+   // ラベル (ボタン風) のスタイル
+   page += "  .rename-table label.rename-select-label {";
+   page += "      display: block;"; // セル全体に広がる
+   page += "      width: 100%;";
+   page += "      padding: 8px;"; // 内側の余白
+   page += "      margin: 0;";
+   page += "      box-sizing: border-box;";
+   page += "      cursor: pointer;";
+   page += "      background-color: transparent;"; // デフォルト背景なし
+   page += "      border: none;";
+   page += "      text-align: left;";
+   page += "      white-space: normal;";                    // 折り返し許可
+   page += "      word-break: break-all;";                  // 強制改行
+   page += "      transition: background-color 0.2s ease;"; // ホバー/選択効果用
+   page += "  }";
+   // ラベルホバー時のスタイル
+   page += "  .rename-table label.rename-select-label:hover {";
+   page += "      background-color: #f0f0f0;"; // 薄いグレー
+   page += "  }";
+   // 選択されたラジオボタンに対応するラベルのスタイル
+   // input[type=radio]:checked + input[type=hidden] + label の順序に合わせる
+   page += "  .rename-table input[type='radio']:checked + input[type='hidden'] + label.rename-select-label {";
+   page += "      background-color: lightblue;"; // 選択時の背景色
+   page += "      font-weight: bold;";
+   page += "  }";
+
+   // 交互背景色はそのまま
    page += "  .rename-table > tbody > tr.file-entry:nth-child(even) { background-color: #f8f8f8 !important; }";
    page += "  .rename-table > tbody > tr.file-entry:nth-child(odd) { background-color: #ffffff !important; }";
-   page += "}";
+   page += "}"; // PC向け @media 終了
 
    // ------------------------------------------------
    // - スマホ向けスタイル (画面幅が 768px 以下の場合) -
@@ -213,10 +242,19 @@ String HTML_Header()
    page += "  .file-list-table > tbody > tr.file-entry:nth-child(even) { background-color: #f8f8f8 !important; }";
    page += "  .file-list-table > tbody > tr.file-entry:nth-child(odd) { background-color: #ffffff !important; }";
 
-   // rename-table の select 列を中央揃えにするスタイルを追加 (変更なし)
-   page += "  .rename-table td.rename-select { text-align: center; vertical-align: middle; }";
+   // rename-table のスマホ向けスタイル調整 (PC向けと同様の構造を適用)
+   // 基本的にPC向けスタイルが適用されるはずだが、必要に応じて上書き
+   page += "  .rename-table { /* スマホでのテーブル全体の調整が必要なら記述 */ }";
+   page += "  .rename-table thead { /* スマホでヘッダー表示が必要なら display: table-header-group; */ }";
+   page += "  .rename-table thead th.rename-select-header { width: 60%; }"; // スマホでの列幅
+   page += "  .rename-table thead th.rename-new-header { width: 40%; }";
+   page += "  .rename-table > tbody > tr.file-entry > td { /* スマホでのセル共通スタイルの調整 */ }";
+   page += "  .rename-table td.rename-select-cell { width: 60%; }"; // スマホでのセル幅
+   page += "  .rename-table td.rename-new-name { width: 40%; padding: 8px; }";
+   page += "  .rename-table label.rename-select-label { /* スマホでのラベルスタイルの調整 */ }";
+   // 選択時のスタイルなどはPC向けが継承されるはず
 
-   page += "}";
+   page += "}"; // スマホ向け @media 終了
 
    // ------------------------------------------------
    // -----　　 その他の共通スタイル
@@ -246,11 +284,64 @@ String HTML_Header()
    page += ".ps {font-size:1.4rem;padding:0;margin:0}";
    // page += ".sp {background-color:silver;white-space:nowrap;width:2%;}"; // file-list-tableでは使わない想定
 
+   // // --- TOPNAV スタイル ---
+   // page += ".topnav {overflow: hidden; background-color:lightPink; padding: 2px 0; text-align: center;}";
+   // page += ".topnav a, .topnav input[type='button'] {display: inline-block; color:blue; text-align:center; padding: 6px 10px; margin: 1px 4px; text-decoration:none; font-size:1.4rem; border: none; background-color: transparent; cursor: pointer; vertical-align: middle;}";
+   // page += ".topnav a:hover, .topnav input[type='button']:hover {background-color:deepskyblue;color:white;}";
+   // page += ".topnav a.active {background-color:lightblue;color:blue;}";
+
    // --- TOPNAV スタイル ---
    page += ".topnav {overflow: hidden; background-color:lightPink; padding: 2px 0; text-align: center;}";
-   page += ".topnav a, .topnav input[type='button'] {display: inline-block; color:blue; text-align:center; padding: 6px 10px; margin: 1px 4px; text-decoration:none; font-size:1.4rem; border: none; background-color: transparent; cursor: pointer; vertical-align: middle;}";
-   page += ".topnav a:hover, .topnav input[type='button']:hover {background-color:deepskyblue;color:white;}";
-   page += ".topnav a.active {background-color:lightblue;color:blue;}";
+
+   // --- Topnav のリンク (a タグ) スタイル ---
+   page += ".topnav a {";
+   page += "  display: inline-block;";
+   page += "  color: blue;";
+   page += "  text-align: center;";
+   page += "  padding: 6px 10px;";
+   page += "  margin: 1px 4px;";
+   page += "  text-decoration: none;";
+   page += "  font-size: 1.4rem;";
+   page += "  border: none;";                  // 枠線なし
+   page += "  background-color: transparent;"; // 背景透明
+   page += "  cursor: pointer;";
+   page += "  vertical-align: middle;";
+   page += "}";
+   page += ".topnav a:hover { background-color: deepskyblue; color: white; }"; // リンクのホバー効果
+   page += ".topnav a.active { background-color: lightblue; color: blue; }";   // アクティブなリンク
+
+   // --- Topnav のボタン (input type='button') スタイル ---
+   page += ".topnav input[type='button'] {";
+   page += "  display: inline-block;";     // 横並びのため
+   page += "  padding: 5px 12px;";         // パディングを少し調整
+   page += "  margin: 1px 4px;";           // マージン
+   page += "  font-size: 1.4rem;";         // フォントサイズ
+   page += "  color: #333;";               // 文字色 (例: 暗いグレー)
+   page += "  background-color: #f0f0f0;"; // 背景色 (例: 薄いグレー)
+   page += "  border: 1px solid #ccc;";    // 枠線 (例: グレー)
+   page += "  border-radius: 4px;";        // 角丸
+   page += "  cursor: pointer;";           // カーソル
+   page += "  vertical-align: middle;";    // 垂直位置揃え
+   page += "  text-decoration: none;";     // 下線なし
+   page += "}";
+   // ボタンのホバー効果
+   page += ".topnav input[type='button']:hover {";
+   page += "  background-color: #e0e0e0;"; // ホバー時の背景色 (少し濃いグレー)
+   page += "  border-color: #bbb;";        // ホバー時の枠線色
+   page += "  color: #000;";               // ホバー時の文字色 (黒)
+   page += "}";
+
+   // --- 'PowOff' ボタンを少し目立たせる (オプション) ---
+   page += ".topnav input[value='PowOff'] {"; // value属性で選択
+   page += "  background-color: #f8d7da;";    // 背景色 (薄い赤)
+   page += "  border-color: #f5c6cb;";        // 枠線 (赤系)
+   page += "  color: #721c24;";               // 文字色 (濃い赤)
+   page += "}";
+   page += ".topnav input[value='PowOff']:hover {";
+   page += "  background-color: #f5c6cb;"; // ホバー時の背景色
+   page += "  border-color: #f1b0b7;";
+   page += "  color: #721c24;";
+   page += "}";
 
    // --- TOPNAV2 スタイル ---
    page += ".topnav2 {overflow: hidden; background-color:lightcyan; padding: 3px 0; text-align: center; line-height: 1.3;}";
@@ -262,6 +353,7 @@ String HTML_Header()
    // --- ボタンの基本スタイル ---
    page += "input[type='button'], input[type='submit'] { padding: 8px 15px; font-size: 1.4rem; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background-color: #f0f0f0; margin: 5px;}";
    page += "input[type='button']:hover, input[type='submit']:hover { background-color: #e0e0e0; }";
+
    page += "button { padding: 8px 15px; font-size: 1.4rem; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background-color: #f0f0f0; margin: 5px;}";
    page += "button a { text-decoration: none; color: inherit; }";
    page += "button:hover { background-color: #e0e0e0; }";

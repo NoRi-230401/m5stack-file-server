@@ -106,7 +106,6 @@ void SPIFFS_Dir(AsyncWebServerRequest *request)
   SPIFFS_Directory();
   webpage = HTML_Header();
   webpage += "<h3>SPIFFS: Content</h3>";
-
   if (SPIFFS_numfiles > 0)
   {
     webpage += "<table class='file-list-table'>";
@@ -114,7 +113,7 @@ void SPIFFS_Dir(AsyncWebServerRequest *request)
     for (int index = 0; index < SPIFFS_numfiles; index++)
     {
       webpage += "<tr class='file-entry'>";
-      webpage += "<td class='file-type'>" + SPIFFS_Filenames[index].ftype + "</td>";
+      // webpage += "<td class='file-type'>" + SPIFFS_Filenames[index].ftype + "</td>";
       webpage += "<td class='file-name'>" + SPIFFS_Filenames[index].filename + "</td>";
       webpage += "<td class='file-size'>" + SPIFFS_Filenames[index].fsize + "</td>";
       webpage += "</tr>";
@@ -245,79 +244,138 @@ void SPIFFS_Generate_Confirm_Page(String encoded_filename)
 
 void SPIFFS_File_Rename()
 {
-  SPIFFS_Directory();
+  SPIFFS_Directory(); // ファイルリストを取得
   webpage = HTML_Header();
   webpage += "<h3>SPIFFS: Select a File to [RENAME]</h3>";
-  webpage += "<FORM action='/SPIFFS_renamehandler'>";
+  // methodをGETに明示 (元のコードに合わせる)
+  webpage += "<form action='/SPIFFS_renamehandler' method='GET'>";
+  webpage += "<table class='file-list-table rename-table'>"; // テーブル開始 (SDと同じクラス名を使用)
 
-  webpage += "<table class='file-list-table rename-table'>";
+  // --- thead (ヘッダー) ---
   webpage += "<thead>";
   webpage += "<tr>";
-  webpage += "<th>File name</th>";
-  webpage += "<th>New Filename</th>";
-  webpage += "<th>Select</th>";
+  // ヘッダーを2列に変更
+  webpage += "<th class='rename-select-header'>Select / File Name</th>"; // 1列目ヘッダー
+  webpage += "<th class='rename-new-header'>New Filename</th>";          // 2列目ヘッダー
   webpage += "</tr>";
   webpage += "</thead>";
-  webpage += "<tbody>";
 
+  // --- tbody (ボディ) ---
+  webpage += "<tbody>";
   if (SPIFFS_numfiles > 0)
   {
-    int index = 0;
-    while (index < SPIFFS_numfiles)
+    for (int index = 0; index < SPIFFS_numfiles; index++)
     {
-      webpage += "<tr class='file-entry'>";
-      webpage += "<td class='file-name'><input type='text' name='oldfile' style='color:blue; width: 95%; box-sizing: border-box;' value='" + SPIFFS_Filenames[index].filename + "' readonly></td>";
-      webpage += "<td class='rename-new-name'><input type='text' name='newfile' style='width: 95%; box-sizing: border-box;'></td>";
-      webpage += "<td class='rename-select'><input type='radio' name='choice'></td>";
-      webpage += "</tr>";
-      index++;
+      String current_filename = SPIFFS_Filenames[index].filename;
+      // String current_ftype = SPIFFS_Filenames[index].ftype; // SPIFFSはファイルのみ
+      String radio_id = "choice_" + String(index); // ラジオボタン用の一意なID
+
+      webpage += "<tr class='file-entry'>"; // 各行
+
+      // --- 1列目: Select / File Name ---
+      webpage += "<td class='rename-select-cell'>";
+      // 非表示のラジオボタン: name='choice', value=ファイル名
+      webpage += "<input type='radio' name='choice' value='" + current_filename + "' id='" + radio_id + "' style='display: none;'>";
+      // 隠しフィールド: name='oldfile', value=ファイル名 (ハンドラでの取得を容易にするため)
+      webpage += "<input type='hidden' name='oldfile' value='" + current_filename + "'>";
+      // ラベル (ボタン風): radio_idに対応付け
+      webpage += "<label for='" + radio_id + "' class='rename-select-label'>";
+      // フォルダアイコンは不要
+      webpage += current_filename; // ファイル名表示
+      webpage += "</label>";
+      webpage += "</td>";
+
+      // --- 2列目: New Filename ---
+      webpage += "<td class='rename-new-name'>";
+      // テキスト入力: name='newfile' (各行で同じname属性)
+      webpage += "<input type='text' name='newfile' style='width: 95%; box-sizing: border-box;'>";
+      webpage += "</td>";
+
+      webpage += "</tr>"; // 行終了
     }
   }
   else
   {
-    webpage += "<tr><td colspan='3' style='text-align: center; padding: 20px;'>No files found in SPIFFS to rename.</td></tr>";
+    // ファイルがない場合の表示 (colspanを2に変更)
+    webpage += "<tr><td colspan='2' style='text-align: center; padding: 20px;'>No files found in SPIFFS to rename.</td></tr>";
   }
-
   webpage += "</tbody>";
-  webpage += "</table><br>";
-  webpage += "<input type='submit' value='Enter'>";
-  webpage += "</form>";
+  webpage += "</table><br>"; // テーブル終了
+
+  // 送信ボタン (Valueを変更)
+  webpage += "<input type='submit' value='Rename Selected'>";
+  webpage += "</form>"; // フォーム終了
   webpage += HTML_Footer();
 }
 
 void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args)
 {
-  // 'filename' 引数は SPIFFS_notFound から渡されるが、この関数では使わない。
-  // フォームから送信された 'oldfile', 'newfile', 'choice' を使う。
+  // 'filename' 引数は使わない
   String oldfilename_form = "";
   String newfilename_form = "";
   webpage = HTML_Header();
 
-  // フォームデータの解析: 'choice'が'on'になっている行の'oldfile'と'newfile'を取得
+  // 1. 選択されたファイル名 (choice の value) を取得
+  if (request->hasParam("choice"))
+  {
+    oldfilename_form = request->arg("choice");
+  }
+  else
+  {
+    // choice が選択されていない場合のエラー処理
+    webpage += "<h3>SPIFFS: Rename Error - No file selected.</h3>";
+    webpage += "<a href='/SPIFFS_rename'>[Back]</a><br><br>";
+    webpage += HTML_Footer();
+    request->send(200, "text/html", webpage); // エラーページを送信して終了
+    return;
+  }
+
+  // 2. 対応する newfile を取得
+  //    フォームの引数をループして、選択された oldfile に対応する newfile を探す
+  bool found_newfile = false;
+  String current_oldfile_check = ""; // ループ内で oldfile を追跡
   for (int i = 0; i < Args; i++)
   {
-    if (request->argName(i) == "choice" && request->arg(i) == "on")
+    String argName = request->argName(i);
+    String argValue = request->arg(i);
+
+    if (argName == "oldfile")
     {
-      // 'choice' が 'on' の場合、その前の2つの引数が newfile と oldfile のはず
-      if (i >= 2 && request->argName(i - 1) == "newfile" && request->argName(i - 2) == "oldfile")
-      {
-        oldfilename_form = request->arg(i - 2);
-        newfilename_form = request->arg(i - 1);
-        break; // 最初に見つかったものを採用
-      }
+      current_oldfile_check = argValue; // 現在の行の oldfile を記録
     }
+    else if (argName == "newfile" && current_oldfile_check == oldfilename_form)
+    {
+      // oldfile が選択されたものと一致し、かつ引数名が newfile なら、それが対応する新しい名前
+      newfilename_form = argValue;
+      found_newfile = true;
+      break; // 見つかったらループを抜ける
+    }
+    // choice パラメータはここでは無視 (既に取得済みのため)
+  }
+
+  // newfile が見つからなかった場合 (通常は発生しないはず)
+  if (!found_newfile)
+  {
+    Serial.println("Error: Could not find corresponding newfile parameter for selected oldfile: " + oldfilename_form);
+    webpage += "<h3>SPIFFS: Rename Error - Internal error processing form data.</h3>";
+    webpage += "<a href='/SPIFFS_rename'>[Back]</a><br><br>";
+    webpage += HTML_Footer();
+    request->send(200, "text/html", webpage); // エラーページを送信して終了
+    return;
   }
 
   Serial.println("SPIFFS Rename requested:");
-  Serial.println("  Old filename (from form): " + oldfilename_form);
+  Serial.println("  Old filename (from choice): " + oldfilename_form);
   Serial.println("  New filename (from form): " + newfilename_form);
 
-  // 入力チェック
-  if (oldfilename_form == "" || newfilename_form == "")
+  // --- 3. 以降の入力チェックとリネーム処理 ---
+  // 入力チェック (newfilename が空でないかもチェック)
+  if (oldfilename_form == "" || newfilename_form == "") // newfilenameもチェック
   {
-    webpage += "<h3>SPIFFS: Rename Error - No file selected or new name missing.</h3>";
+    webpage += "<h3>SPIFFS: Rename Error - File selected but new name is missing.</h3>";
     webpage += "<a href='/SPIFFS_rename'>[Back]</a><br><br>";
     webpage += HTML_Footer();
+    request->send(200, "text/html", webpage); // ★ send を追加
     return;
   }
   // SPIFFSのファイル名は '/' で始まる必要があるが、入力自体に '/' を含めるのは禁止
@@ -326,6 +384,7 @@ void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, 
     webpage += "<h3>SPIFFS: Rename Error - New filename cannot contain '/' or '\'.</h3>";
     webpage += "<a href='/SPIFFS_rename'>[Back]</a><br><br>";
     webpage += HTML_Footer();
+    request->send(200, "text/html", webpage); // ★ send を追加
     return;
   }
   if (oldfilename_form == newfilename_form)
@@ -333,6 +392,7 @@ void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, 
     webpage += "<h3>SPIFFS: Rename Error - New filename is the same as the old filename.</h3>";
     webpage += "<a href='/SPIFFS_rename'>[Back]</a><br><br>";
     webpage += HTML_Footer();
+    request->send(200, "text/html", webpage); // ★ send を追加
     return;
   }
 
@@ -383,6 +443,8 @@ void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, 
   }
 
   webpage += HTML_Footer();
+  // ★注意: 各分岐で send しているので、ここには不要。
+  // request->send(200, "text/html", webpage); // ← 不要
 }
 
 bool SPIFFS_notFound(AsyncWebServerRequest *request)
