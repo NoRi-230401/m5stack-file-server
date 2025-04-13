@@ -11,7 +11,7 @@
 
 bool setupServer();
 const String PROG_NAME = "m5fileServer";
-const String VERSION = "v1.05b";
+const String VERSION = "v1.06a";
 //---------------------------------------------------------------------------
 // **  SETTINGS  **
 //---------------------------------------------------------------------------

@@ -16,6 +16,8 @@ void SPIFFS_File_Rename();
 void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args);
 bool SPIFFS_notFound(AsyncWebServerRequest *request);
 void SPIFFS_Select_File_For_Function(String title, String function);
+void SPIFFS_Select_File_For_ViewText();
+void SPIFFS_View_Text(AsyncWebServerRequest *request, String encoded_filename);
 // -------------------------------------------------------
 extern AsyncWebServer server;
 extern String webpage;
@@ -42,6 +44,31 @@ void SPIFFS_flServerSetup()
 
   server.on("/SPIFFS_handleupload", HTTP_POST, [](AsyncWebServerRequest *request) {}, [](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
             { SPIFFS_handleFileUpload(request, filename, index, data, len, final); });
+
+// *********
+server.on("/SPIFFS_view_text", HTTP_GET, [](AsyncWebServerRequest *request)
+{
+  String filename_encoded = "";
+  if (request->hasParam("file"))
+  { // パラメータ名を 'file' とする場合
+    filename_encoded = request->arg("file");
+  }
+  else
+  {
+    request->send(400, "text/plain", "Missing file parameter");
+    return;
+  }
+  Serial.println("SPIFFS_View_Text requested for: " + filename_encoded);
+  SPIFFS_View_Text(request, filename_encoded);
+});
+
+server.on("/SPIFFS_vTxt", HTTP_GET, [](AsyncWebServerRequest *request)
+{
+Serial.println("SPIFFS_vTxt: text file viewer...");
+SPIFFS_Select_File_For_ViewText();
+request->send(200, "text/html", webpage); });
+
+// *********
 
   server.on("/SPIFFS_stream", HTTP_GET, [](AsyncWebServerRequest *request)
             {
@@ -310,7 +337,6 @@ void SPIFFS_File_Rename()
 
 void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int Args)
 {
-  // 'filename' 引数は使わない
   String oldfilename_form = "";
   String newfilename_form = "";
   webpage = HTML_Header();
@@ -384,7 +410,7 @@ void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, 
     webpage += "<h3>SPIFFS: Rename Error - New filename cannot contain '/' or '\'.</h3>";
     webpage += "<a href='/SPIFFS_rename'>[Back]</a><br><br>";
     webpage += HTML_Footer();
-    request->send(200, "text/html", webpage); // ★ send を追加
+    request->send(200, "text/html", webpage);
     return;
   }
   if (oldfilename_form == newfilename_form)
@@ -392,7 +418,7 @@ void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, 
     webpage += "<h3>SPIFFS: Rename Error - New filename is the same as the old filename.</h3>";
     webpage += "<a href='/SPIFFS_rename'>[Back]</a><br><br>";
     webpage += HTML_Footer();
-    request->send(200, "text/html", webpage); // ★ send を追加
+    request->send(200, "text/html", webpage);
     return;
   }
 
@@ -605,3 +631,119 @@ void SPIFFS_Select_File_For_Function(String title, String function)
   }
   webpage += HTML_Footer();
 }
+
+void SPIFFS_Select_File_For_ViewText()
+{
+  SPIFFS_Directory();
+  webpage = HTML_Header();
+  webpage += "<h3>SPIFFS: Select a Text File to View</h3>";
+
+  // 許可する拡張子のリスト (小文字で定義)
+  const std::vector<String> allowedExtensions = {
+      ".txt", ".log", ".csv", ".json",".yaml", ".htm", ".html", ".css", ".js", ".xml", ".md", ".ini", ".conf", ".cfg", ".c", ".h", ".cpp",".hpp",".py",".inc"
+      // 必要に応じて他のテキストベースの拡張子を追加する
+  };
+
+  int displayedFileCount = 0; // 表示したファイルの数をカウント
+
+  if (SPIFFS_numfiles > 0)
+  {
+    webpage += "<table class='file-list-table'>";
+    webpage += "<tbody>";
+
+    // 取得した全ファイルをループ
+    for (int index = 0; index < SPIFFS_numfiles; index++)
+    {
+      String Fname_orig = SPIFFS_Filenames[index].filename;
+      String Fname_lower = Fname_orig; // 比較用にファイル名を小文字に変換
+      Fname_lower.toLowerCase();
+
+      bool isAllowed = false; // このファイルを表示するかどうかのフラグ
+
+      // 許可リスト内の拡張子と一致するかチェック
+      for (const String& ext : allowedExtensions) {
+          if (Fname_lower.endsWith(ext)) {
+              isAllowed = true; // 一致したらフラグを立ててループを抜ける
+              break;
+          }
+      }
+
+      // 許可された拡張子の場合のみ、テーブルに行を追加
+      if (isAllowed)
+      {
+        displayedFileCount++; // 表示カウントを増やす
+        String Fname_encoded = urlEncode(Fname_orig);
+        String link_url = "/SPIFFS_view_text?file=" + Fname_encoded;
+
+        webpage += "<tr class='file-entry'>";
+        webpage += "<td class='file-name'>";
+        webpage += "<button style='width: 100%; text-align: left; padding: 5px; box-sizing: border-box; white-space: normal; word-break: break-all;'>";
+        webpage += "<a href='" + link_url + "' style='display: block; text-decoration: none; color: inherit;'>" + Fname_orig + "</a>";
+        webpage += "</button>";
+        webpage += "</td>";
+        webpage += "<td class='file-size'>" + SPIFFS_Filenames[index].fsize + "</td>";
+        webpage += "</tr>";
+      }
+    } // for ループ終了
+
+    webpage += "</tbody>";
+    webpage += "</table>";
+  }
+
+  // 表示するテキストファイルが一つもなかった場合のメッセージ
+  // SD_numfiles > 0 でも、許可された拡張子のファイルがなければ displayedFileCount は 0 のまま
+  if (displayedFileCount == 0)
+  {
+    // 元々ファイルがなかった場合も、テキストファイルがなかった場合もこのメッセージを表示
+    webpage += "<p style='text-align: center; margin-top: 20px;'>No text files found</p>";
+  }
+
+  webpage += HTML_Footer();
+}
+
+void SPIFFS_View_Text(AsyncWebServerRequest *request, String encoded_filename)
+{
+  String decoded_filename = urlDecode(encoded_filename);
+  String fullPath = decoded_filename;
+  if (!fullPath.startsWith("/")) fullPath = "/" + fullPath;
+  // if (SdPath != "/") fullPath = SdPath + fullPath;
+
+  Serial.println("Viewing text file: " + fullPath);
+
+  File file = SPIFFS.open(fullPath, "r");
+  if (!file || file.isDirectory()) {
+      if (file) file.close();
+      webpage = HTML_Header();
+      webpage += "<h3>Error: Cannot view file</h3>";
+      webpage += "<p>File not found or is a directory: " + decoded_filename + "</p>";
+      webpage += "<a href='/SPIFFS_dir'>[Back to Directory]</a>";
+      webpage += HTML_Footer();
+      request->send(404, "text/html", webpage);
+      return;
+  }
+
+  webpage = HTML_Header();
+  webpage += "<h3>Viewing Text: " + decoded_filename + "</h3>";
+  webpage += "<pre>"; // preタグで囲む
+
+  // ファイル内容を読み込んで webpage に追加
+  // 大きなファイルの場合、メモリに注意が必要。
+  // ここでは一括読み込みの例を示す。
+  while (file.available()) {
+      // 一行ずつ読み込むか、バッファで読み込む
+      String line = file.readStringUntil('\n');
+      // HTMLエスケープが必要な場合 (例: < > & を表示したい場合)
+      line.replace("&", "&amp;");
+      line.replace("<", "&lt;");
+      line.replace(">", "&gt;");
+      webpage += line + "\n"; // 改行も維持
+  }
+  file.close();
+
+  webpage += "</pre>";
+  webpage += "<br><a href='/SPIFFS_dir'>[Back to Directory]</a>";
+  webpage += "<br>";
+  webpage += HTML_Footer();
+  request->send(200, "text/html", webpage);
+}
+

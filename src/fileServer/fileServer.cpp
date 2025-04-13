@@ -84,6 +84,7 @@ String HTML_Header()
       page += "<a href='/SPIFFS_dir'>Dir</a>";
       page += "<a href='/SPIFFS_upload'>Upload</a> ";
       page += "<a href='/SPIFFS_download'>Download</a>";
+      page += "<a href='/SPIFFS_vTxt'>ViewTxt</a>";
       page += "<a href='/SPIFFS_stream'>Stream</a>";
       page += "<a href='/SPIFFS_delete'>Delete</a>";
       page += "<a href='/SPIFFS_rename'>Rename</a>";
@@ -100,6 +101,7 @@ String HTML_Header()
       page += "<a href='/SD_dir'>Dir</a>";
       page += "<a href='/SD_upload'>Upload</a> ";
       page += "<a href='/SD_download'>Download</a>";
+      page += "<a href='/SD_vTxt'>ViewTxt</a>";
       page += "<a href='/SD_stream'>Stream</a>";
       page += "<a href='/SD_delete'>Delete</a>";
       page += "<a href='/SD_rename'>Rename</a>";
@@ -118,7 +120,6 @@ String HTML_Header()
    return page;
 }
 
-
 String HTML_Style()
 {
    String page;
@@ -136,6 +137,20 @@ String HTML_Style()
    // 交互背景色
    page += ".file-list-table tbody tr:nth-child(even) { background-color: #f8f8f8; }";
    page += ".file-list-table tbody tr:nth-child(odd) { background-color: #ffffff; }";
+
+   // --- <pre> タグ用のスタイルを追加 ---
+   page += "pre {";
+   page += "  white-space: pre-wrap;";     /* CSS3: 自動折り返し */
+   page += "  word-wrap: break-word;";     /* IEなど: 単語の途中でも折り返し */
+   page += "  font-family: monospace;";    /* 等幅フォント指定 */
+   page += "  font-size: 1.4rem;";         /* 基本のフォントサイズ (PC向け) */
+   page += "  text-align: left;";          /* 左寄せ */
+   page += "  padding: 10px;";             /* 内側余白 */
+   page += "  margin: 1em;";               /* 外側余白 */
+   page += "  background-color: #f8f8f8;"; /* 背景色 (任意) */
+   page += "  border: 1px solid #ddd;";    /* 枠線 (任意) */
+   page += "  overflow-x: auto;";          /* 必要なら横スクロール */
+   page += "}";
 
    // ------------------------------------------------
    // --- PC向けスタイル (画面幅が 769px 以上の場合) ---
@@ -207,7 +222,7 @@ String HTML_Style()
    // ヘッダー列幅を調整 (例: 60% と 40%)
    page += "  .rename-table thead th.rename-select-header { width: 60%; }"; // 1列目
    page += "  .rename-table thead th.rename-new-header { width: 40%; }";    // 2列目
-   
+
    /* --- <rename画面>専用スタイル (tbody) --- */
    page += "  .rename-table > tbody {";
    page += "    display: table-row-group;";
@@ -315,6 +330,12 @@ String HTML_Style()
    page += "  .rename-table td.rename-new-name { width: 40%; padding: 8px; }";
    page += "  .rename-table label.rename-select-label { /* スマホでのラベルスタイルの調整 */ }";
    // 選択時のスタイルなどはPC向けが継承されるはず
+
+   page += "  pre {";
+   page += "    font-size: 1.4rem;"; /* スマホでのフォントサイズを明示的に指定 (他の要素と合わせるか調整) */
+   // page += "    font-size: 14px;"; /* またはピクセル指定 */
+   page += "    /* 必要であれば他のスタイルも上書き */";
+   page += "  }";
 
    page += "}"; // スマホ向け @media 終了
 
@@ -736,7 +757,7 @@ void Home()
       webpage += "<img src = 'SPIFFS_homeImg' alt='homeImg'>";
    }
 
-   webpage += "<h3>[&nbsp;Home&nbsp;]　" + SERVER_NAME + "　IP=" + IP_ADDR + "</h3>";
+   webpage += "<h3>[Home]　" + SERVER_NAME + "　IP=" + IP_ADDR + "</h3>";
    webpage += HTML_Footer();
 }
 
@@ -745,7 +766,7 @@ String HTML_Footer()
    String page;
    page += "<br>";
    page += "<footer>";
-   page += "<p class='ps'><i>" + getTmNTP() + "　　" + PROG_NAME + "　" + VERSION + "</i></p>";
+   page += "<p class='ps'><i>" + getTmNTP() + "　" + PROG_NAME + "&nbsp;" + VERSION + "</i></p>";
    page += "</footer>";
    page += "</body>";
    page += "</html>";
