@@ -1,5 +1,5 @@
 // *******************************************************
-//  m5stack-fileServer          by NoRi 2025-04-01
+//  m5stack-fileServer          by NoRi 2025-04-15
 // -------------------------------------------------------
 // fileServer.cpp
 // *******************************************************
@@ -107,7 +107,7 @@ String HTML_Header()
       page += "<a href='/SD_rename'>Rename</a>";
       page += "</div>";
 
-      // -- SD Path and Directory Operations --
+      // ------- SD Path and Directory Operations ----------
       page += "<div class = 'topnav2'>";
       page += "<span>Path:&nbsp;" + SdPath + "</span>";
       page += "<a href='/SDdir_chTop'>Top</a>";
@@ -132,7 +132,7 @@ String HTML_Style()
    page += ".file-list-table thead th { border: 1px solid #ddd; text-align: left; padding: 8px; box-sizing: border-box; background-color: #e9e9e9; font-weight: bold; }";
    page += ".file-list-table tbody td { border: 1px solid #ddd; text-align: left; padding: 8px; box-sizing: border-box; vertical-align: top; }";
    // 列幅指定 (クラスセレクタ使用)
-   page += ".file-list-table td.file-name { width: 75%; word-break: break-all; }"; // スマホでも折り返し
+   page += ".file-list-table td.file-name { width: 75%; word-break: break-all; }";
    page += ".file-list-table td.file-size { width: 25%; text-align: right; }";
    // 交互背景色
    page += ".file-list-table tbody tr:nth-child(even) { background-color: #f8f8f8; }";
@@ -287,7 +287,7 @@ String HTML_Style()
    // 交互背景色はそのまま
    page += "  .rename-table > tbody > tr.file-entry:nth-child(even) { background-color: #f8f8f8 !important; }";
    page += "  .rename-table > tbody > tr.file-entry:nth-child(odd) { background-color: #ffffff !important; }";
-   page += "}"; // PC向け @media 終了
+   page += "}"; // PC向け @media 終了 ************************************
 
    // ------------------------------------------------
    // - スマホ向けスタイル (画面幅が 768px 以下の場合) -
@@ -302,7 +302,7 @@ String HTML_Style()
    page += "  .file-list-table > tbody > tr.file-entry { display: table-row; width: 100%; border: none; }";
    page += "  .file-list-table > tbody > tr.file-entry > td { ";
    page += "    display: table-cell; ";                      // 通常のセル表示
-                                                             // page += "    width: auto; ";                           // 幅はクラス指定に任せる -> クラス指定を追加
+                                                             // page += "    width: auto; ";
    page += "    border: none; ";                             // PCで消したボーダーは基本なし
    page += "    border-bottom: 1px solid #ddd; ";            // 下線のみ
    page += "    border-right: 1px solid #ddd; ";             // 右にも線を引く (最後のセル以外)
@@ -313,7 +313,8 @@ String HTML_Style()
    page += "    text-align: left; ";                         // 基本左寄せ
    page += "    vertical-align: top; ";
    page += "  }";
-   // スマホ表示時の列幅指定を追加
+
+   // スマホ表示時の列幅指定
    page += "  .file-list-table > tbody > tr.file-entry > td.file-name { width: 75%; }";
    page += "  .file-list-table > tbody > tr.file-entry > td.file-size { width: 25%; border-right: none; text-align: right; }";
    page += "  .file-list-table > tbody > tr.file-entry:nth-child(even) { background-color: #f8f8f8 !important; }";
@@ -323,21 +324,19 @@ String HTML_Style()
    // 基本的にPC向けスタイルが適用されるはずだが、必要に応じて上書き
    page += "  .rename-table { /* スマホでのテーブル全体の調整が必要なら記述 */ }";
    page += "  .rename-table thead { /* スマホでヘッダー表示が必要なら display: table-header-group; */ }";
-   page += "  .rename-table thead th.rename-select-header { width: 60%; }"; // スマホでの列幅
+   page += "  .rename-table thead th.rename-select-header { width: 60%; }";
    page += "  .rename-table thead th.rename-new-header { width: 40%; }";
    page += "  .rename-table > tbody > tr.file-entry > td { /* スマホでのセル共通スタイルの調整 */ }";
-   page += "  .rename-table td.rename-select-cell { width: 60%; }"; // スマホでのセル幅
+   page += "  .rename-table td.rename-select-cell { width: 60%; }";
    page += "  .rename-table td.rename-new-name { width: 40%; padding: 8px; }";
    page += "  .rename-table label.rename-select-label { /* スマホでのラベルスタイルの調整 */ }";
-   // 選択時のスタイルなどはPC向けが継承されるはず
 
    page += "  pre {";
-   page += "    font-size: 1.4rem;"; /* スマホでのフォントサイズを明示的に指定 (他の要素と合わせるか調整) */
-   // page += "    font-size: 14px;"; /* またはピクセル指定 */
+   page += "    font-size: 1.4rem;";
    page += "    /* 必要であれば他のスタイルも上書き */";
    page += "  }";
 
-   page += "}"; // スマホ向け @media 終了
+   page += "}"; // スマホ向け @media 終了 ******************************
 
    // ------------------------------------------------
    // -----　　 その他の共通スタイル
@@ -349,8 +348,8 @@ String HTML_Style()
 
    // --- 一般的なテーブルスタイル (ファイル一覧以外で使用する場合) ---
    page += "table:not(.file-list-table) {font-family:arial,sans-serif;border-collapse:collapse;width:90%; margin: 1em auto;}";
-   // ファイル一覧以外に適用、幅とマージン調整
 
+   // ファイル一覧以外に適用、幅とマージン調整
    page += "table:not(.file-list-table) td, table:not(.file-list-table) th {border:1px solid #dddddd;text-align:left;padding:0.8rem;}";
    page += "table:not(.file-list-table) tr:nth-child(even) {background-color:#dddddd;}";
    page += "table.center {margin-left:auto;margin-right:auto;}"; // 中央寄せクラス
@@ -401,6 +400,7 @@ String HTML_Style()
    page += "  vertical-align: middle;";    // 垂直位置揃え
    page += "  text-decoration: none;";     // 下線なし
    page += "}";
+
    // ボタンのホバー効果
    page += ".topnav input[type='button']:hover {";
    page += "  background-color: #e0e0e0;"; // ホバー時の背景色 (少し濃いグレー)
@@ -558,7 +558,6 @@ void Display_System_Info()
 
    // - NVS
    nvs_stats_t nvsStats;
-   // if (ESP_OK == nvs_get_stats("nvs", &nvsStats))
    if (ESP_OK == nvs_get_stats(NULL, &nvsStats))
    {
       webpage += "<h4>NVS : Non-Volatile Storage</h4>";
@@ -681,7 +680,6 @@ bool fileServerStart()
                 { request->send(SD, HOME_IMG, "image/gif"); });
    }
 
-   // favicon.ico
    if (SD_ENABLE && SD.exists("/favicon.ico"))
    {
       server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -693,7 +691,7 @@ bool fileServerStart()
                 { request->send(SPIFFS, "/favicon.ico", "image/x-icon"); });
    }
 
-   webApiSetup(); // shutdown API use
+   webApiSetup();
 
    server.onNotFound(notFound);
 
@@ -726,7 +724,6 @@ void notFound(AsyncWebServerRequest *request)
    }
 
    Page_Not_Found();
-   // request->send(200, "text/html", webpage);
    request->send(404, "text/html", webpage);
 }
 
@@ -997,6 +994,5 @@ bool SD_cardInfo(void)
       Serial.println("ERR: SD cardType is default Type");
       return false;
    }
-
    return true;
 }

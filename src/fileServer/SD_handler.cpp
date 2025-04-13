@@ -1,5 +1,5 @@
 // *******************************************************
-//  m5stack-fileServer          by NoRi 2025-04-01
+//  m5stack-fileServer          by NoRi 2025-04-15
 // -------------------------------------------------------
 // SD_handler.cpp
 // *******************************************************
@@ -60,7 +60,7 @@ void SD_flServerSetup()
   server.on("/SD_handleupload", HTTP_POST, [](AsyncWebServerRequest *request) {}, [](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
             { SD_handleFileUpload(request, filename, index, data, len, final); });
 
-  // *********
+  // ********************** SD text file viewer ****************
   server.on("/SD_view_text", HTTP_GET, [](AsyncWebServerRequest *request)
             {
               String filename_encoded = "";
@@ -78,15 +78,13 @@ void SD_flServerSetup()
               SD_View_Text(request, filename_encoded);
               // SD_View_Text 内で request->send するのでここでは不要
             });
-  
+
   server.on("/SD_vTxt", HTTP_GET, [](AsyncWebServerRequest *request)
             {
     Serial.println("SD_vTxt: text file viewer...");
     SD_Select_File_For_ViewText();
     request->send(200, "text/html", webpage); });
-
-  // *********
-
+  // *********************************************************************
 
   server.on("/SD_stream", HTTP_GET, [](AsyncWebServerRequest *request)
             {
@@ -94,9 +92,7 @@ void SD_flServerSetup()
     SD_Select_File_For_Function("[STREAM]", "SD_streamhandler");
     request->send(200, "text/html", webpage); });
 
-  
-  
-    server.on("/SD_rename", HTTP_GET, [](AsyncWebServerRequest *request)
+  server.on("/SD_rename", HTTP_GET, [](AsyncWebServerRequest *request)
             {
     Serial.println("SD_Renaming file...");
     SD_File_Rename();
@@ -320,7 +316,7 @@ void SD_Generate_Confirm_Page(String encoded_filename)
 
 void SD_File_Rename()
 {
-  SD_Directory(); // ファイルとディレクトリ両方を取得
+  SD_Directory();
   webpage = HTML_Header();
   webpage += "<h3>SD: Select a Dir/File to [RENAME] (" + SdPath + ")</h3>";
   // methodをGETに変更し、actionを修正 (元のコードに合わせる)
@@ -331,8 +327,8 @@ void SD_File_Rename()
   webpage += "<thead>";
   webpage += "<tr>";
   // ヘッダーを2列に変更
-  webpage += "<th class='rename-select-header'>Select / File Name</th>"; // 1列目ヘッダー
-  webpage += "<th class='rename-new-header'>New Filename</th>";          // 2列目ヘッダー
+  webpage += "<th class='rename-select-header'>Select / File Name</th>";
+  webpage += "<th class='rename-new-header'>New Filename</th>";
   webpage += "</tr>";
   webpage += "</thead>";
 
@@ -379,11 +375,11 @@ void SD_File_Rename()
     webpage += "<tr><td colspan='2' style='text-align: center; padding: 20px;'>No files or directories found in " + SdPath + " to rename.</td></tr>";
   }
   webpage += "</tbody>";
-  webpage += "</table><br>"; // テーブル終了
+  webpage += "</table><br>";
 
   // 送信ボタン
   webpage += "<input type='submit' value='Rename Selected'>";
-  webpage += "</form>"; // フォーム終了
+  webpage += "</form>";
   webpage += HTML_Footer();
 }
 
@@ -474,7 +470,7 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
     return;
   }
 
-  // フルパスの構築 (変更なし)
+  // フルパスの構築
   String oldfilepath = oldfilename_form;
   if (!oldfilepath.startsWith("/"))
     oldfilepath = "/" + oldfilepath;
@@ -490,7 +486,7 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
   Serial.println("  Old full path: " + oldfilepath);
   Serial.println("  New full path: " + newfilepath);
 
-  // ファイル/ディレクトリの存在確認とリネーム実行 (変更なし)
+  // ファイル/ディレクトリの存在確認とリネーム実行
   File currentItem = SD.open(oldfilepath, "r");
 
   if (currentItem)
@@ -522,10 +518,6 @@ void SD_Handle_File_Rename(AsyncWebServerRequest *request, String filename, int 
   }
 
   webpage += HTML_Footer();
-  // ★注意: 各分岐で send しているので、ここには不要。もし分岐内で send していないパスがあれば、ここに追加する。
-  // request->send(200, "text/html", webpage); // ← この行は不要（各分岐で送信済みのため）
-  // ★ただし、元のコードでは入力チェック部分で return していただけで send していなかったので、
-  //   上記コードでは入力チェック部分にも request->send を追加しています。
 }
 
 bool SD_notFound(AsyncWebServerRequest *request)
@@ -696,14 +688,14 @@ void SD_Select_File_For_Function(String title, String function)
 
 void SD_Select_File_For_ViewText()
 {
-  SDdir_FilesList(); // まずカレントディレクトリの全てのファイルを取得
+  SDdir_FilesList();
 
   webpage = HTML_Header();
-  webpage += "<h3>SD: Select a Text File to View (" + SdPath + ")</h3>"; // タイトルを少し変更
+  webpage += "<h3>SD: Select a Text File to View (" + SdPath + ")</h3>";
 
   // 許可する拡張子のリスト (小文字で定義)
   const std::vector<String> allowedExtensions = {
-      ".txt", ".log", ".csv", ".json",".yaml", ".htm", ".html", ".css", ".js", ".xml", ".md", ".ini", ".conf", ".cfg", ".c", ".h", ".cpp",".hpp",".py",".inc"
+      ".txt", ".log", ".csv", ".json", ".yaml", ".htm", ".html", ".css", ".js", ".xml", ".md", ".ini", ".conf", ".cfg", ".c", ".h", ".cpp", ".hpp", ".py", ".inc"
       // 必要に応じて他のテキストベースの拡張子を追加する
   };
 
@@ -724,17 +716,19 @@ void SD_Select_File_For_ViewText()
       bool isAllowed = false; // このファイルを表示するかどうかのフラグ
 
       // 許可リスト内の拡張子と一致するかチェック
-      for (const String& ext : allowedExtensions) {
-          if (Fname_lower.endsWith(ext)) {
-              isAllowed = true; // 一致したらフラグを立ててループを抜ける
-              break;
-          }
+      for (const String &ext : allowedExtensions)
+      {
+        if (Fname_lower.endsWith(ext))
+        {
+          isAllowed = true; // 一致したらフラグを立ててループを抜ける
+          break;
+        }
       }
 
       // 許可された拡張子の場合のみ、テーブルに行を追加
       if (isAllowed)
       {
-        displayedFileCount++; // 表示カウントを増やす
+        displayedFileCount++;
         String Fname_encoded = urlEncode(Fname_orig);
         String link_url = "/SD_view_text?file=" + Fname_encoded;
 
@@ -747,7 +741,7 @@ void SD_Select_File_For_ViewText()
         webpage += "<td class='file-size'>" + SD_Filenames[index].fsize + "</td>";
         webpage += "</tr>";
       }
-    } // for ループ終了
+    }
 
     webpage += "</tbody>";
     webpage += "</table>";
@@ -768,21 +762,25 @@ void SD_View_Text(AsyncWebServerRequest *request, String encoded_filename)
 {
   String decoded_filename = urlDecode(encoded_filename);
   String fullPath = decoded_filename;
-  if (!fullPath.startsWith("/")) fullPath = "/" + fullPath;
-  if (SdPath != "/") fullPath = SdPath + fullPath;
+  if (!fullPath.startsWith("/"))
+    fullPath = "/" + fullPath;
+  if (SdPath != "/")
+    fullPath = SdPath + fullPath;
 
   Serial.println("Viewing text file: " + fullPath);
 
   File file = SD.open(fullPath, "r");
-  if (!file || file.isDirectory()) {
-      if (file) file.close();
-      webpage = HTML_Header();
-      webpage += "<h3>Error: Cannot view file</h3>";
-      webpage += "<p>File not found or is a directory: " + decoded_filename + "</p>";
-      webpage += "<a href='/SD_dir'>[Back to Directory]</a>";
-      webpage += HTML_Footer();
-      request->send(404, "text/html", webpage);
-      return;
+  if (!file || file.isDirectory())
+  {
+    if (file)
+      file.close();
+    webpage = HTML_Header();
+    webpage += "<h3>Error: Cannot view file</h3>";
+    webpage += "<p>File not found or is a directory: " + decoded_filename + "</p>";
+    webpage += "<a href='/SD_dir'>[Back to Directory]</a>";
+    webpage += HTML_Footer();
+    request->send(404, "text/html", webpage);
+    return;
   }
 
   webpage = HTML_Header();
@@ -791,15 +789,16 @@ void SD_View_Text(AsyncWebServerRequest *request, String encoded_filename)
 
   // ファイル内容を読み込んで webpage に追加
   // 大きなファイルの場合、メモリに注意が必要。
-  // ここでは一括読み込みの例を示す。
-  while (file.available()) {
-      // 一行ずつ読み込むか、バッファで読み込む
-      String line = file.readStringUntil('\n');
-      // HTMLエスケープが必要な場合 (例: < > & を表示したい場合)
-      line.replace("&", "&amp;");
-      line.replace("<", "&lt;");
-      line.replace(">", "&gt;");
-      webpage += line + "\n"; // 改行も維持
+  // ここでは一括読み込みをしている。
+  while (file.available())
+  {
+    // 一行ずつ読み込むか、バッファで読み込む
+    String line = file.readStringUntil('\n');
+    // HTMLエスケープが必要な場合 (例: < > & を表示したい場合)
+    line.replace("&", "&amp;");
+    line.replace("<", "&lt;");
+    line.replace(">", "&gt;");
+    webpage += line + "\n"; // 改行も維持
   }
   file.close();
 
@@ -809,8 +808,6 @@ void SD_View_Text(AsyncWebServerRequest *request, String encoded_filename)
   webpage += HTML_Footer();
   request->send(200, "text/html", webpage);
 }
-
-
 
 // -------------------------------------------------------
 // SDdir_* 関数群
@@ -826,26 +823,15 @@ void SDdir_flserverSetup()
   server.on("/SDdir_mkdir", HTTP_GET, [](AsyncWebServerRequest *request)
             {
     Serial.println("SDdir_mkdir ...");
-    SDdir_DirMake(); // 入力フォーム表示
+    SDdir_DirMake();
     request->send(200, "text/html", webpage); });
 
-  // mkdir の実処理ハンドラ (POSTまたはGETで受ける)
   // GETで受ける場合 (SDdir_InputNewDirName からの遷移)
   server.on("/SDdir_mkdirhandler", HTTP_GET, [](AsyncWebServerRequest *request)
             {
         Serial.println("SDdir_mkdir handler (GET) started...");
         SDdir_Handle_mkdir(request);
         request->send(200, "text/html", webpage); });
-  // POSTで受ける場合も考慮するなら追加
-  /*
-  server.on("/SDdir_mkdirhandler", HTTP_POST, [](AsyncWebServerRequest *request) {
-       Serial.println("SDdir_mkdir handler (POST) started...");
-       // POSTの場合、引数は request->arg("arg_name") ではなく
-       // request->getParam("arg_name", true)->value() などで取得する必要がある場合がある
-       SDdir_Handle_mkdir(request);
-       request->send(200, "text/html", webpage);
-   });
-  */
 
   server.on("/SDdir_rmdir", HTTP_GET, [](AsyncWebServerRequest *request)
             {
@@ -1099,7 +1085,7 @@ void SDdir_Select_Dir_For_Function(String title, String function)
       webpage += "<td class='file-name'>";
       webpage += "<button style='width: 100%; text-align: left; padding: 5px; box-sizing: border-box; white-space: normal; word-break: break-all;'>";
       webpage += "<a href='" + target_function + "~/" + Dname_encoded + "' style='display: block; text-decoration: none; color: inherit;'>";
-      webpage += "<span style='color: #007bff;'>&#128193;</span> " + Dname_orig; // フォルダアイコンを追加
+      webpage += "<span style='color: #007bff;'>&#128193;</span> " + Dname_orig;
       webpage += "</a>";
       webpage += "</button>";
       webpage += "</td>";

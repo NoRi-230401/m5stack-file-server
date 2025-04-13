@@ -1,7 +1,7 @@
 // *******************************************************
-//  m5stack-fileServer          by NoRi 2025-04-01
+//  m5stack-fileServer          by NoRi 2025-04-15
 // -------------------------------------------------------
-// util.cpp
+// fs_util.cpp
 // *******************************************************
 #include "fileServer.h"
 
@@ -53,15 +53,6 @@ void prt(String message)
   if (DISP_ON)
     M5.Display.println(message);
 }
-
-// void error_stop()
-// {
-//   prt("\nERR: fail to start server");
-//   delay(10000);
-
-//   while (true)
-//     ;
-// }
 
 String ConvBytesUnits(uint64_t bytes, int dp, int unit)
 { // int dp : 小数点以下の桁数、decimal places
@@ -146,7 +137,6 @@ bool wifiStart()
   }
 
   IP_ADDR = WiFi.localIP().toString();
-  // Serial.println("\nIP Address: " + IP_ADDR);
   return true;
 }
 

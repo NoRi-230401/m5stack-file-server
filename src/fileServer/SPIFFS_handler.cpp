@@ -1,5 +1,5 @@
 // *******************************************************
-//  m5stack-fileServer          by NoRi 2025-04-01
+//  m5stack-fileServer          by NoRi 2025-04-15
 // -------------------------------------------------------
 // SPIFFS_handler.cpp
 // *******************************************************
@@ -45,9 +45,9 @@ void SPIFFS_flServerSetup()
   server.on("/SPIFFS_handleupload", HTTP_POST, [](AsyncWebServerRequest *request) {}, [](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
             { SPIFFS_handleFileUpload(request, filename, index, data, len, final); });
 
-// *********
-server.on("/SPIFFS_view_text", HTTP_GET, [](AsyncWebServerRequest *request)
-{
+  // ********* SPIFFS text file viewer ***********
+  server.on("/SPIFFS_view_text", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
   String filename_encoded = "";
   if (request->hasParam("file"))
   { // パラメータ名を 'file' とする場合
@@ -59,16 +59,14 @@ server.on("/SPIFFS_view_text", HTTP_GET, [](AsyncWebServerRequest *request)
     return;
   }
   Serial.println("SPIFFS_View_Text requested for: " + filename_encoded);
-  SPIFFS_View_Text(request, filename_encoded);
-});
+  SPIFFS_View_Text(request, filename_encoded); });
 
-server.on("/SPIFFS_vTxt", HTTP_GET, [](AsyncWebServerRequest *request)
-{
-Serial.println("SPIFFS_vTxt: text file viewer...");
-SPIFFS_Select_File_For_ViewText();
-request->send(200, "text/html", webpage); });
-
-// *********
+  server.on("/SPIFFS_vTxt", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
+  Serial.println("SPIFFS_vTxt: text file viewer...");
+  SPIFFS_Select_File_For_ViewText();
+  request->send(200, "text/html", webpage); });
+  // ***********************************************
 
   server.on("/SPIFFS_stream", HTTP_GET, [](AsyncWebServerRequest *request)
             {
@@ -140,7 +138,6 @@ void SPIFFS_Dir(AsyncWebServerRequest *request)
     for (int index = 0; index < SPIFFS_numfiles; index++)
     {
       webpage += "<tr class='file-entry'>";
-      // webpage += "<td class='file-type'>" + SPIFFS_Filenames[index].ftype + "</td>";
       webpage += "<td class='file-name'>" + SPIFFS_Filenames[index].filename + "</td>";
       webpage += "<td class='file-size'>" + SPIFFS_Filenames[index].fsize + "</td>";
       webpage += "</tr>";
@@ -271,19 +268,19 @@ void SPIFFS_Generate_Confirm_Page(String encoded_filename)
 
 void SPIFFS_File_Rename()
 {
-  SPIFFS_Directory(); // ファイルリストを取得
+  SPIFFS_Directory();
   webpage = HTML_Header();
   webpage += "<h3>SPIFFS: Select a File to [RENAME]</h3>";
   // methodをGETに明示 (元のコードに合わせる)
   webpage += "<form action='/SPIFFS_renamehandler' method='GET'>";
-  webpage += "<table class='file-list-table rename-table'>"; // テーブル開始 (SDと同じクラス名を使用)
+  webpage += "<table class='file-list-table rename-table'>";
 
   // --- thead (ヘッダー) ---
   webpage += "<thead>";
   webpage += "<tr>";
   // ヘッダーを2列に変更
-  webpage += "<th class='rename-select-header'>Select / File Name</th>"; // 1列目ヘッダー
-  webpage += "<th class='rename-new-header'>New Filename</th>";          // 2列目ヘッダー
+  webpage += "<th class='rename-select-header'>Select / File Name</th>"; 
+  webpage += "<th class='rename-new-header'>New Filename</th>";
   webpage += "</tr>";
   webpage += "</thead>";
 
@@ -327,11 +324,11 @@ void SPIFFS_File_Rename()
     webpage += "<tr><td colspan='2' style='text-align: center; padding: 20px;'>No files found in SPIFFS to rename.</td></tr>";
   }
   webpage += "</tbody>";
-  webpage += "</table><br>"; // テーブル終了
+  webpage += "</table><br>";
 
   // 送信ボタン (Valueを変更)
   webpage += "<input type='submit' value='Rename Selected'>";
-  webpage += "</form>"; // フォーム終了
+  webpage += "</form>";
   webpage += HTML_Footer();
 }
 
@@ -401,7 +398,7 @@ void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, 
     webpage += "<h3>SPIFFS: Rename Error - File selected but new name is missing.</h3>";
     webpage += "<a href='/SPIFFS_rename'>[Back]</a><br><br>";
     webpage += HTML_Footer();
-    request->send(200, "text/html", webpage); // ★ send を追加
+    request->send(200, "text/html", webpage);
     return;
   }
   // SPIFFSのファイル名は '/' で始まる必要があるが、入力自体に '/' を含めるのは禁止
@@ -439,7 +436,7 @@ void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, 
 
   if (currentItem) // 存在する場合
   {
-    currentItem.close(); // 確認のため開いただけなので閉じる
+    currentItem.close();
 
     // 新しい名前のファイルが既に存在しないか確認
     if (SPIFFS.exists(newfilepath))
@@ -469,8 +466,6 @@ void SPIFFS_Handle_File_Rename(AsyncWebServerRequest *request, String filename, 
   }
 
   webpage += HTML_Footer();
-  // ★注意: 各分岐で send しているので、ここには不要。
-  // request->send(200, "text/html", webpage); // ← 不要
 }
 
 bool SPIFFS_notFound(AsyncWebServerRequest *request)
@@ -640,11 +635,11 @@ void SPIFFS_Select_File_For_ViewText()
 
   // 許可する拡張子のリスト (小文字で定義)
   const std::vector<String> allowedExtensions = {
-      ".txt", ".log", ".csv", ".json",".yaml", ".htm", ".html", ".css", ".js", ".xml", ".md", ".ini", ".conf", ".cfg", ".c", ".h", ".cpp",".hpp",".py",".inc"
+      ".txt", ".log", ".csv", ".json", ".yaml", ".htm", ".html", ".css", ".js", ".xml", ".md", ".ini", ".conf", ".cfg", ".c", ".h", ".cpp", ".hpp", ".py", ".inc"
       // 必要に応じて他のテキストベースの拡張子を追加する
   };
 
-  int displayedFileCount = 0; // 表示したファイルの数をカウント
+  int displayedFileCount = 0;
 
   if (SPIFFS_numfiles > 0)
   {
@@ -661,11 +656,13 @@ void SPIFFS_Select_File_For_ViewText()
       bool isAllowed = false; // このファイルを表示するかどうかのフラグ
 
       // 許可リスト内の拡張子と一致するかチェック
-      for (const String& ext : allowedExtensions) {
-          if (Fname_lower.endsWith(ext)) {
-              isAllowed = true; // 一致したらフラグを立ててループを抜ける
-              break;
-          }
+      for (const String &ext : allowedExtensions)
+      {
+        if (Fname_lower.endsWith(ext))
+        {
+          isAllowed = true; // 一致したらフラグを立ててループを抜ける
+          break;
+        }
       }
 
       // 許可された拡張子の場合のみ、テーブルに行を追加
@@ -684,7 +681,7 @@ void SPIFFS_Select_File_For_ViewText()
         webpage += "<td class='file-size'>" + SPIFFS_Filenames[index].fsize + "</td>";
         webpage += "</tr>";
       }
-    } // for ループ終了
+    }
 
     webpage += "</tbody>";
     webpage += "</table>";
@@ -705,21 +702,23 @@ void SPIFFS_View_Text(AsyncWebServerRequest *request, String encoded_filename)
 {
   String decoded_filename = urlDecode(encoded_filename);
   String fullPath = decoded_filename;
-  if (!fullPath.startsWith("/")) fullPath = "/" + fullPath;
-  // if (SdPath != "/") fullPath = SdPath + fullPath;
+  if (!fullPath.startsWith("/"))
+    fullPath = "/" + fullPath;
 
   Serial.println("Viewing text file: " + fullPath);
 
   File file = SPIFFS.open(fullPath, "r");
-  if (!file || file.isDirectory()) {
-      if (file) file.close();
-      webpage = HTML_Header();
-      webpage += "<h3>Error: Cannot view file</h3>";
-      webpage += "<p>File not found or is a directory: " + decoded_filename + "</p>";
-      webpage += "<a href='/SPIFFS_dir'>[Back to Directory]</a>";
-      webpage += HTML_Footer();
-      request->send(404, "text/html", webpage);
-      return;
+  if (!file || file.isDirectory())
+  {
+    if (file)
+      file.close();
+    webpage = HTML_Header();
+    webpage += "<h3>Error: Cannot view file</h3>";
+    webpage += "<p>File not found or is a directory: " + decoded_filename + "</p>";
+    webpage += "<a href='/SPIFFS_dir'>[Back to Directory]</a>";
+    webpage += HTML_Footer();
+    request->send(404, "text/html", webpage);
+    return;
   }
 
   webpage = HTML_Header();
@@ -728,15 +727,16 @@ void SPIFFS_View_Text(AsyncWebServerRequest *request, String encoded_filename)
 
   // ファイル内容を読み込んで webpage に追加
   // 大きなファイルの場合、メモリに注意が必要。
-  // ここでは一括読み込みの例を示す。
-  while (file.available()) {
-      // 一行ずつ読み込むか、バッファで読み込む
-      String line = file.readStringUntil('\n');
-      // HTMLエスケープが必要な場合 (例: < > & を表示したい場合)
-      line.replace("&", "&amp;");
-      line.replace("<", "&lt;");
-      line.replace(">", "&gt;");
-      webpage += line + "\n"; // 改行も維持
+  // ここでは一括読み込みしている。
+  while (file.available())
+  {
+    // 一行ずつ読み込むか、バッファで読み込む
+    String line = file.readStringUntil('\n');
+    // HTMLエスケープが必要な場合 (例: < > & を表示したい場合)
+    line.replace("&", "&amp;");
+    line.replace("<", "&lt;");
+    line.replace(">", "&gt;");
+    webpage += line + "\n"; // 改行も維持
   }
   file.close();
 
@@ -746,4 +746,3 @@ void SPIFFS_View_Text(AsyncWebServerRequest *request, String encoded_filename)
   webpage += HTML_Footer();
   request->send(200, "text/html", webpage);
 }
-

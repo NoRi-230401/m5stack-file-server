@@ -1,5 +1,5 @@
 // *******************************************************
-//  m5stack-fileServer          by NoRi 2025-04-01
+//  m5stack-fileServer          by NoRi 2025-04-15
 // -------------------------------------------------------
 // webApi.cpp
 // *******************************************************
@@ -17,7 +17,6 @@ String HTML_Footer2();
 String HTML_Header2Ng();
 void requestManage();
 void sendReq(int reqNo);
-void handle_test(AsyncWebServerRequest *request);
 void wsHandleTest(String okGetStr);
 
 extern AsyncWebServer server;
@@ -29,13 +28,22 @@ extern String webpage;
 uint16_t SHUTDOWN_TM_SEC;
 int REQUEST_NO = 0; // 0 : no request
 
+// --- test for webApi  ---
+// #define TEST_EXECUTE
+#ifdef TEST_EXECUTE
+void handle_test(AsyncWebServerRequest *request);
+void wsHandleTest(String okGetStr);
+#endif
+
 void webApiSetup()
 {
   server.on("/shutdown", HTTP_GET, [](AsyncWebServerRequest *request)
             { handle_shutdown(request);  serverSend(request); });
 
+#ifdef TEST_EXECUTE
   server.on("/test", HTTP_GET, [](AsyncWebServerRequest *request)
             { handle_test(request);  serverSend(request); });
+#endif
 }
 
 void handle_shutdown(AsyncWebServerRequest *request)
@@ -221,6 +229,7 @@ void sendReq(int reqNo)
   REQUEST_NO = reqNo;
 }
 
+#ifdef TEST_EXECUTE
 // ---- test for webApi -----
 void handle_test(AsyncWebServerRequest *request)
 {
@@ -232,8 +241,8 @@ void handle_test(AsyncWebServerRequest *request)
 void wsHandleTest(String okGetStr)
 {
   // API TEST -> "/test?OK=true"
-  //     return OK=true  else return NG   
-  
+  //     return OK=true  else return NG
+
   if (okGetStr.equalsIgnoreCase("true"))
   {
     webpage = "OK = true";
@@ -243,3 +252,4 @@ void wsHandleTest(String okGetStr)
   Serial.println(webpage);
   return;
 }
+#endif
