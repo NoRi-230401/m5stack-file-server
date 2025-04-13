@@ -6,6 +6,7 @@
 #include "fileServer.h"
 
 String HTML_Header();
+String HTML_Style();
 void Display_System_Info();
 bool fileServerStart();
 void notFound(AsyncWebServerRequest *request);
@@ -53,14 +54,76 @@ String HTML_Header()
    page += "<meta charset='UTF-8'>";
    page += "<link rel='icon' href='/favicon.ico'>";
    page += "<meta name='viewport' content='width=device-width,initial-scale=1.0'>";
-   // ---javaScript ---------------------------
+   // ---javaScript ----
    page += "<script>";
    page += "function confirmP() {if (confirm('Can I turn off?')){window.open('/shutdown', '_blank');} else {alert('stopped');}}";
    page += "function confirmR() {if (confirm('Can I reboot?')){window.open('/shutdown?reboot=on', '_blank');} else {alert('stopped');}}";
    page += "</script>";
    // ------------------------------------------
+   page += HTML_Style();
+   // ------------------------------------------
+   page += "</head>";
+   page += "<body>";
 
+   // -- 1 -- Top Navigation (Home, Status, Reboot, PowerOff) --
+   page += "<div class = 'topnav'>";
+   page += "<a href='/'>Home</a>";
+   page += "<a href='/system'>Status</a>";
+   page += "　";
+   page += "<input type='button' value='Reboot' onclick='confirmR();'>";
+   page += "　";
+   page += "<input type='button' value='PowOff' onclick='confirmP();'>";
+   page += "</div>";
+   page += "<br>";
+
+   // --------------- SPIFFS Menu ------------------------
+   if (SPIFFS_ENABLE)
+   {
+      page += "<div class = 'topnav2'>";
+      page += "<span>SPIFFS:</span>"; // ラベル
+      page += "<a href='/SPIFFS_dir'>Dir</a>";
+      page += "<a href='/SPIFFS_upload'>Upload</a> ";
+      page += "<a href='/SPIFFS_download'>Download</a>";
+      page += "<a href='/SPIFFS_stream'>Stream</a>";
+      page += "<a href='/SPIFFS_delete'>Delete</a>";
+      page += "<a href='/SPIFFS_rename'>Rename</a>";
+      page += "</div>";
+   }
+   page += "<br>";
+
+   // ------------------ SD Menu -------------------------
+   if (SD_ENABLE)
+   {
+      // -- SD File Operations --
+      page += "<div class = 'topnav2'>";
+      page += "<span>SD:</span>"; // ラベル
+      page += "<a href='/SD_dir'>Dir</a>";
+      page += "<a href='/SD_upload'>Upload</a> ";
+      page += "<a href='/SD_download'>Download</a>";
+      page += "<a href='/SD_stream'>Stream</a>";
+      page += "<a href='/SD_delete'>Delete</a>";
+      page += "<a href='/SD_rename'>Rename</a>";
+      page += "</div>";
+
+      // -- SD Path and Directory Operations --
+      page += "<div class = 'topnav2'>";
+      page += "<span>Path:&nbsp;" + SdPath + "</span>";
+      page += "<a href='/SDdir_chTop'>Top</a>";
+      page += "<a href='/SDdir_chUp'>Up</a>";
+      page += "<a href='/SDdir_chdir'>Chdir</a>";
+      page += "<a href='/SDdir_mkdir'>Mkdir</a>";
+      page += "<a href='/SDdir_rmdir'>Rmdir</a>";
+      page += "</div>";
+   }
+   return page;
+}
+
+
+String HTML_Style()
+{
+   String page;
    page += "<style>";
+
    // ------------------------------------------------
    // - ファイル一覧テーブル用の基本スタイル
    // ------------------------------------------------
@@ -144,8 +207,7 @@ String HTML_Header()
    // ヘッダー列幅を調整 (例: 60% と 40%)
    page += "  .rename-table thead th.rename-select-header { width: 60%; }"; // 1列目
    page += "  .rename-table thead th.rename-new-header { width: 40%; }";    // 2列目
-   // page += "  .rename-table thead th:nth-child(3) { ... }"; // 3列目削除
-
+   
    /* --- <rename画面>専用スタイル (tbody) --- */
    page += "  .rename-table > tbody {";
    page += "    display: table-row-group;";
@@ -284,12 +346,6 @@ String HTML_Header()
    page += ".ps {font-size:1.4rem;padding:0;margin:0}";
    // page += ".sp {background-color:silver;white-space:nowrap;width:2%;}"; // file-list-tableでは使わない想定
 
-   // // --- TOPNAV スタイル ---
-   // page += ".topnav {overflow: hidden; background-color:lightPink; padding: 2px 0; text-align: center;}";
-   // page += ".topnav a, .topnav input[type='button'] {display: inline-block; color:blue; text-align:center; padding: 6px 10px; margin: 1px 4px; text-decoration:none; font-size:1.4rem; border: none; background-color: transparent; cursor: pointer; vertical-align: middle;}";
-   // page += ".topnav a:hover, .topnav input[type='button']:hover {background-color:deepskyblue;color:white;}";
-   // page += ".topnav a.active {background-color:lightblue;color:blue;}";
-
    // --- TOPNAV スタイル ---
    page += ".topnav {overflow: hidden; background-color:lightPink; padding: 2px 0; text-align: center;}";
 
@@ -361,64 +417,9 @@ String HTML_Header()
    // --- フォーム要素のスタイル ---
    page += "input[type='text'], input[type='file'] { padding: 8px; font-size: 1.4rem; border: 1px solid #ccc; border-radius: 4px; margin: 5px; box-sizing: border-box;}";
    page += "form { margin: 1em 0; }"; // フォームのマージン
-   // --- end of style ---------------------------------------------------------------
-   page += "</style></head><body>";
 
-   // -- 1 -- Top Navigation (Home, Status, Reboot, PowerOff) --
-   page += "<div class = 'topnav'>";
-   page += "<a href='/'>Home</a>";
-   page += "<a href='/system'>Status</a>";
-   // page += "&nbsp;"; // スペースはCSSマージンで調整
-   page += "　";
-   page += "<input type='button' value='Reboot' onclick='confirmR();'>";
-   page += "　";
-   page += "<input type='button' value='PowOff' onclick='confirmP();'>";
-   page += "</div>";
-   page += "<br>";
-
-   // --------------- SPIFFS Menu ------------------------
-   if (SPIFFS_ENABLE)
-   {
-      page += "<div class = 'topnav2'>";
-      page += "<span>SPIFFS:</span>"; // ラベル
-      page += "<a href='/SPIFFS_dir'>Dir</a>";
-      page += "<a href='/SPIFFS_upload'>Upload</a> ";
-      page += "<a href='/SPIFFS_download'>Download</a>";
-      page += "<a href='/SPIFFS_stream'>Stream</a>";
-      page += "<a href='/SPIFFS_delete'>Delete</a>";
-      page += "<a href='/SPIFFS_rename'>Rename</a>";
-      page += "</div>";
-   }
-   page += "<br>"; // メニュー間のスペースはCSSマージンで調整
-
-   // ------------------ SD Menu -------------------------
-   if (SD_ENABLE)
-   {
-      // -- SD File Operations --
-      page += "<div class = 'topnav2'>";
-      page += "<span>SD:</span>"; // ラベル
-      page += "<a href='/SD_dir'>Dir</a>";
-      page += "<a href='/SD_upload'>Upload</a> ";
-      page += "<a href='/SD_download'>Download</a>";
-      page += "<a href='/SD_stream'>Stream</a>";
-      page += "<a href='/SD_delete'>Delete</a>";
-      page += "<a href='/SD_rename'>Rename</a>";
-      page += "</div>";
-
-      // page += "<br>"; // メニュー間のスペースはCSSマージンで調整
-
-      // -- SD Path and Directory Operations --
-      page += "<div class = 'topnav2'>";
-      page += "<span>Path:&nbsp;" + SdPath + "</span>"; // 現在のパス表示
-      page += "<a href='/SDdir_chTop'>Top</a>";
-      page += "<a href='/SDdir_chUp'>Up</a>";
-      page += "<a href='/SDdir_chdir'>Chdir</a>";
-      page += "<a href='/SDdir_mkdir'>Mkdir</a>";
-      page += "<a href='/SDdir_rmdir'>Rmdir</a>";
-      page += "</div>";
-   }
-
-   // page += "<br>"; // メインコンテンツとのスペース用
+   // ------------- end of style -----------------
+   page += "</style>";
    return page;
 }
 
