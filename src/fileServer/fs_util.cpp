@@ -5,46 +5,25 @@
 // *******************************************************
 #include "fileServer.h"
 
-void getHeapInf();
-void prtHeapInf(String message);
 void prt(String message);
+String ConvBytesUnits(uint64_t bytes, int dp, int unit);
 bool wifiStart();
 bool mdnsStart(void);
-String ConvBytesUnits(uint64_t bytes, int dp, int unit);
-String strTmInfo(struct tm &timeInfo);
-String getTmNTP();
 void adjustRTC();
+String getTmNTP();
 String getTmRTC();
-bool getSetting(int flType, const String filename);
+String strTmInfo(struct tm &timeInfo);
+bool getWiFiSettings(int flType, const String filename);
 String urlEncode(const String &input);
 String urlDecode(const String &input);
+void requestManage();
+void sendReq(int reqNo);
+void STOP();
+void REBOOT();
+void POWER_OFF();
 // -------------------------------------------------------
-
-static uint32_t HEAP_INF[8];
-void getHeapInf()
-{
-  HEAP_INF[0] = ESP.getHeapSize();
-  HEAP_INF[1] = ESP.getFreeHeap();
-  HEAP_INF[2] = ESP.getMinFreeHeap();
-  HEAP_INF[3] = ESP.getMaxAllocHeap();
-
-  HEAP_INF[4] = ESP.getPsramSize();
-  HEAP_INF[5] = ESP.getFreePsram();
-  HEAP_INF[6] = ESP.getMinFreePsram();
-  HEAP_INF[7] = ESP.getMaxAllocPsram();
-}
-
-void prtHeapInf(String message)
-{
-  if (message != "")
-    Serial.println(message);
-
-  for (int i = 0; i < 8; i++)
-  {
-    Serial.println("HeapInf[" + String(i) + "] = " + String(HEAP_INF[i] / 1024) + " KB");
-    // Serial.println("HeapInf[" + String(i) + "] = " + String(HEAP_INF[i]) + " Bytes");
-  }
-}
+uint32_t SHUTDOWN_TM_SEC = 3;  // default 3sec after shutdown api 
+int REQUEST_NO = REQ_NONE;
 
 void prt(String message)
 {
@@ -201,7 +180,7 @@ String strTmInfo(struct tm &timeInfo)
   return String(buf);
 }
 
-bool getSetting(int flType, const String filename)
+bool getWiFiSettings(int flType, const String filename)
 {
   File fs;
   if (flType == FS_SPIFFS)
@@ -225,7 +204,7 @@ bool getSetting(int flType, const String filename)
   }
   else
   {
-    Serial.println("getSetting Err: invalid flType");
+    Serial.println("getWiFiSettings Err: invalid flType");
     return false;
   }
 
@@ -379,4 +358,83 @@ String urlDecode(const String &input)
     }
   }
   return decodedString;
+}
+
+void requestManage()
+{
+  if (RTC_ADJUST_ON && RTC_ENABLE && (millis() - TM_SETUP_DONE > TM_RTC_ADJUST))
+  {
+    adjustRTC();
+    RTC_ADJUST_ON = false;
+  }
+
+  if (REQUEST_NO == REQ_NONE)
+    return;
+
+  int req = REQUEST_NO;
+  switch (req)
+  {
+  case REQ_REBOOT:
+    REQUEST_NO = REQ_NONE;
+    REBOOT();
+    return;
+
+  case REQ_SHUTDOWN:
+    REQUEST_NO = REQ_NONE;
+    // SHUTDOWN_TM_SEC = 0;
+    POWER_OFF();
+    return;
+
+  default:
+    REQUEST_NO = REQ_NONE;
+    Serial.println("requeestManage : invalid request get ");
+  }
+  return;
+}
+
+void sendReq(int reqNo)
+{
+  REQUEST_NO = reqNo;
+}
+
+void STOP()
+{
+  Serial.println(" *** Stop *** fatal error");
+  SD.end();
+  SPIFFS.end();
+  delay(5000);
+
+  for (;;)
+  {
+    delay(1000);
+  }
+}
+
+void REBOOT()
+{
+  Serial.println(" *** Reboot ***");
+  SD.end();
+  SPIFFS.end();
+  delay(SHUTDOWN_TM_SEC * 1000L);
+  ESP.restart();
+
+  for (;;)
+  { // never
+    delay(1000);
+  }
+}
+
+void POWER_OFF()
+{
+  Serial.println(" *** POWER OFF ***");
+
+  SD.end();
+  SPIFFS.end();
+  delay(SHUTDOWN_TM_SEC * 1000L);
+  M5.Power.powerOff();
+
+  for (;;)
+  { // never
+    delay(1000);
+  }
 }

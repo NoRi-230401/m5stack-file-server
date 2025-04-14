@@ -19,6 +19,13 @@
 #include <nvs.h>
 #include <time.h>
 
+// --- used in 'main.cpp' ---- 
+extern bool setupServer();
+extern void requestManage();
+extern void STOP();
+//---------------------------
+
+
 typedef struct
 {
   String filename;
@@ -34,43 +41,45 @@ typedef struct
 #define UNIT_GIGA 5
 #define UNIT_TERA 6
 
+// - File System Types -
+#define FS_SPIFFS 1
+#define FS_SD 2
+
+// -- REQUEST Manager --
+#define REQ_NONE 0
+#define REQ_REBOOT 98
+#define REQ_SHUTDOWN 99
+
 extern bool wifiStart();
 extern bool mdnsStart(void);
-extern bool fileServerStart();
-extern String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
-extern bool SD_ENABLE, SPIFFS_ENABLE;
 extern String HTML_Header();
 extern String HTML_Footer();
 extern String getContentType(String filenametype);
 extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 extern void prt(String message);
-extern void getHeapInf();
-extern void prtHeapInf(String message);
-extern String ConvBytesUnits(uint64_t bytes, int dp, int unit=UNIT_AUTO);
-extern void adjustRTC();
+extern String ConvBytesUnits(uint64_t bytes, int dp, int unit = UNIT_AUTO);
 extern String getTmRTC();
 extern String getTmNTP();
-extern String urlEncode(const String& input);
-extern String urlDecode(const String& input);
-// -------------------------------------------------------
-
-#define FS_SPIFFS 1
-#define FS_SD 2
-extern bool getSetting(int flType, const String filename);
+extern String urlEncode(const String &input);
+extern String urlDecode(const String &input);
+extern bool getWiFiSettings(int flType, const String filename);
 extern bool FS_start(int flType);
 extern uint64_t getFileSize(int flType, String filename);
-
-extern const String VERSION;
-extern const String PROG_NAME;
-extern const String YOUR_SSID;
-extern const String YOUR_SSID_PASS;
-extern const String YOUR_SERVER_NAME;
-extern const bool DISP_ON;
-extern bool RTC_ENABLE;
-extern String SdPath;
-
-extern void STOP();
 extern void webApiSetup();
-extern void requestManage();
+extern void sendReq(int reqNo);
 // -------------------------------------------------------
-#endif  // _M5STACK_FILE_SERVER_H
+extern String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
+extern bool SD_ENABLE, SPIFFS_ENABLE;
+extern const String PROG_NAME,VERSION;
+extern const bool SD_USE, SPIFFS_USE;
+extern bool DISP_ON, RTC_ENABLE;
+extern const String WIFI_TXT;
+extern const String YOUR_SSID, YOUR_SSID_PASS, YOUR_SERVER_NAME;
+extern String SdPath;
+extern bool RTC_ADJUST_ON;
+extern uint32_t TM_SETUP_DONE;
+extern uint32_t TM_RTC_ADJUST;
+extern uint32_t SHUTDOWN_TM_SEC;
+
+// -------------------------------------------------------
+#endif // _M5STACK_FILE_SERVER_H

@@ -8,25 +8,16 @@
 void webApiSetup();
 void handle_shutdown(AsyncWebServerRequest *request);
 void wsHandleShutdown(String reboot_get_str, String time_get_str);
-void STOP();
-void REBOOT();
-void POWER_OFF();
 void serverSend(AsyncWebServerRequest *request);
 String HTML_Header2();
 String HTML_Footer2();
 String HTML_Header2Ng();
-void requestManage();
-void sendReq(int reqNo);
 void wsHandleTest(String okGetStr);
+// -------------------------------------------------------
 
 extern AsyncWebServer server;
 extern String webpage;
 
-#define REQ_REBOOT 98
-#define REQ_SHUTDOWN 99
-#define SHUTDOWN_MIN_TM 3
-uint16_t SHUTDOWN_TM_SEC;
-int REQUEST_NO = 0; // 0 : no request
 
 // --- test for webApi  ---
 // #define TEST_EXECUTE
@@ -54,9 +45,10 @@ void handle_shutdown(AsyncWebServerRequest *request)
   wsHandleShutdown(reboot_get_str, time_get_str);
 }
 
+#define SHUTDOWN_MIN_TM 3L    // minimum shutdown wait time
 void wsHandleShutdown(String reboot_get_str, String time_get_str)
 {
-  uint16_t time_sec = SHUTDOWN_MIN_TM;
+  uint32_t time_sec = SHUTDOWN_MIN_TM;
 
   if (time_get_str != "")
   {
@@ -87,47 +79,6 @@ void wsHandleShutdown(String reboot_get_str, String time_get_str)
   return;
 }
 
-void STOP()
-{
-  Serial.println(" *** Stop *** fatal error");
-  SD.end();
-  SPIFFS.end();
-  delay(5000);
-
-  for (;;)
-  {
-    delay(1000);
-  }
-}
-
-void REBOOT()
-{
-  Serial.println(" *** Reboot ***");
-  SD.end();
-  SPIFFS.end();
-  delay(5000);
-  ESP.restart();
-
-  for (;;)
-  { // never
-    delay(1000);
-  }
-}
-
-void POWER_OFF()
-{
-  Serial.println(" *** POWER OFF ***");
-
-  SD.end();
-  SPIFFS.end();
-  delay(5000);
-  M5.Power.powerOff();
-
-  for (;;)
-  { // never
-    delay(1000);
-  }
-}
 
 void serverSend(AsyncWebServerRequest *request)
 {
@@ -197,36 +148,6 @@ String HTML_Header2Ng()
   page += "</head>";
   page += "<body><pre>";
   return page;
-}
-
-void requestManage()
-{
-  if (REQUEST_NO == 0)
-    return;
-
-  int req = REQUEST_NO;
-  switch (req)
-  {
-  case REQ_REBOOT:
-    REQUEST_NO = 0;
-    REBOOT();
-    return;
-
-  case REQ_SHUTDOWN:
-    REQUEST_NO = 0;
-    POWER_OFF();
-    return;
-
-  default:
-    REQUEST_NO = 0;
-    Serial.println("requeestManage : invalid request get ");
-  }
-  return;
-}
-
-void sendReq(int reqNo)
-{
-  REQUEST_NO = reqNo;
 }
 
 #ifdef TEST_EXECUTE

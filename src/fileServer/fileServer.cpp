@@ -5,6 +5,7 @@
 // *******************************************************
 #include "fileServer.h"
 
+bool setupServer();
 String HTML_Header();
 String HTML_Style();
 void Display_System_Info();
@@ -40,8 +41,118 @@ String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
 bool SD_ENABLE, SPIFFS_ENABLE;
 const String HOME_IMG = "/homeImg.gif";
 
+// NTP connection information.
+#define NTP_SVR1 "ntp.nict.jp"         // NTP server1
+#define NTP_SVR2 "ntp.jst.mfeed.ad.jp" // NTP server2
+#define NTP_GMT_OFFSET 9 * 3600L       // Sec  : GMT offset
+#define NTP_DAYLIGHT_OFFSET 0          // Sec  : daylight offset
+
+// RTC adjust
+uint32_t TM_RTC_ADJUST = 10 * 1000L;   // mSec : adjust after setup()
+uint32_t TM_SETUP_DONE = 0;
+bool RTC_ENABLE = false;
+
 AsyncWebServer server(80);
 String webpage;
+
+bool setupServer()
+{
+   prt("-   " + PROG_NAME + "   -\n");
+
+   // --- SD and SPIFFS start ---
+   SD_ENABLE = false;
+   if (SD_USE)
+   {
+      SD_ENABLE = FS_start(FS_SD);
+      if (SD_ENABLE)
+         prt("SD      .....  OK");
+      else
+         prt("SD      .....  NG");
+   }
+
+   SPIFFS_ENABLE = false;
+   if (SPIFFS_USE)
+   {
+      SPIFFS_ENABLE = FS_start(FS_SPIFFS);
+      if (SPIFFS_ENABLE)
+         prt("SPIFFS  .....  OK");
+      else
+         prt("SPIFFS  .....  NG");
+   }
+
+   if (!SPIFFS_ENABLE && !SD_ENABLE)
+   {
+      prt("Both SD and SPIFFS are not available");
+      return false;
+   }
+
+   // ------- Network Settings Read ---------
+   SSID = "";
+   SSID_PASS = "";
+   SERVER_NAME = "";
+
+   if (SD_ENABLE && getWiFiSettings(FS_SD, WIFI_TXT))
+      prt(" Settings read from SD");
+   else if (SPIFFS_ENABLE && getWiFiSettings(FS_SPIFFS, WIFI_TXT))
+      prt(" Settings read from SPIFFS");
+
+   if (SSID == "")
+      SSID = YOUR_SSID;
+   prt(" SSID: " + SSID);
+
+   if (SSID_PASS == "")
+      SSID_PASS = YOUR_SSID_PASS;
+
+   if (SERVER_NAME == "")
+      SERVER_NAME = YOUR_SERVER_NAME;
+
+   if (SSID == "" || SSID_PASS == "" || SERVER_NAME == "")
+   {
+      prt("SETTINGS.....  NG");
+      return false;
+   }
+
+   // --- wifi and Server Start -------
+   if (!wifiStart())
+   {
+      prt("WiFi    .....  NG");
+      return false;
+   }
+   prt("WiFi    .....  OK");
+
+   if (!mdnsStart())
+   {
+      prt("mDNS    .....  NG");
+      return false;
+   }
+   prt("mDNS    .....  OK");
+
+   // NTP Server config
+   configTime(NTP_GMT_OFFSET, NTP_DAYLIGHT_OFFSET, NTP_SVR1, NTP_SVR2);
+
+   // check RTC enable
+   if (RTC_ENABLE = M5.Rtc.isEnabled())
+   {
+      Serial.println("RTC is enable");
+   }
+   else
+   {
+      Serial.println("RTC is disable");
+      RTC_ADJUST_ON = false;
+   }
+
+   if (!fileServerStart())
+   {
+      prt("fileServer ..  NG");
+      return false;
+   }
+   prt("fileServer ..  OK");
+   prt("\nIP Addr: " + IP_ADDR);
+   prt("\nServerName: " + SERVER_NAME);
+
+   TM_SETUP_DONE = millis();
+   return true;
+}
 
 String HTML_Header()
 {
@@ -56,8 +167,8 @@ String HTML_Header()
    page += "<meta name='viewport' content='width=device-width,initial-scale=1.0'>";
    // ---javaScript ----
    page += "<script>";
-   page += "function confirmP() {if (confirm('Can I turn off?')){window.open('/shutdown', '_blank');} else {alert('stopped');}}";
-   page += "function confirmR() {if (confirm('Can I reboot?')){window.open('/shutdown?reboot=on', '_blank');} else {alert('stopped');}}";
+   page += "function confirmP() {if (confirm('Can I turn off?')){window.open('/shutdown?time=5', '_blank');} else {alert('stopped');}}";
+   page += "function confirmR() {if (confirm('Can I reboot?')){window.open('/shutdown?reboot=on&time=5', '_blank');} else {alert('stopped');}}";
    page += "</script>";
    // ------------------------------------------
    page += HTML_Style();
