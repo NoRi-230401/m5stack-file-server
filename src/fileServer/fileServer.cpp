@@ -40,6 +40,7 @@ extern void SDdir_flserverSetup();
 String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
 bool SD_ENABLE, SPIFFS_ENABLE;
 const String HOME_IMG = "/homeImg.gif";
+// const String githubPage = "https://github.com/NoRi-230401/m5stack-file-server";
 
 // NTP connection information.
 #define NTP_SVR1 "ntp.nict.jp"         // NTP server1
@@ -48,7 +49,7 @@ const String HOME_IMG = "/homeImg.gif";
 #define NTP_DAYLIGHT_OFFSET 0          // Sec  : daylight offset
 
 // RTC adjust
-uint32_t TM_RTC_ADJUST = 10 * 1000L;   // mSec : adjust after setup()
+uint32_t TM_RTC_ADJUST = 10 * 1000L; // mSec : adjust after setup()
 uint32_t TM_SETUP_DONE = 0;
 bool RTC_ENABLE = false;
 
@@ -874,7 +875,10 @@ String HTML_Footer()
    String page;
    page += "<br>";
    page += "<footer>";
-   page += "<p class='ps'><i>" + getTmNTP() + "　" + PROG_NAME + "&nbsp;" + VERSION + "</i></p>";
+   
+   // page += "<p class='ps'><i>" + getTmNTP() + "　" + PROG_NAME + "&nbsp;" + VERSION + "</i></p>";
+   page += "<p class='ps'><i>" + getTmNTP() + "　<a href=" + GITHUB_URL + " target='_blank'>" + PROG_NAME +"</a>　" + VERSION + "</i></p>";
+   
    page += "</footer>";
    page += "</body>";
    page += "</html>";

@@ -70,7 +70,7 @@ extern void sendReq(int reqNo);
 // -------------------------------------------------------
 extern String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
 extern bool SD_ENABLE, SPIFFS_ENABLE;
-extern const String PROG_NAME,VERSION;
+extern const String PROG_NAME,VERSION,GITHUB_URL;
 extern const bool SD_USE, SPIFFS_USE;
 extern bool DISP_ON, RTC_ENABLE;
 extern const String WIFI_TXT;
