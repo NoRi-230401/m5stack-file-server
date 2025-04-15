@@ -131,7 +131,6 @@
 [MIT LICENSE](LICENSE)
 
 *   Author: NoRi
-    *   Github: https://github.com/NoRi-230401/m5stack-file-server
 
 <br>
 
@@ -142,6 +141,7 @@
 
 ## 7. Links
 
+*   Github: https://github.com/NoRi-230401/m5stack-file-server
 *   BINS for M5Core2: https://github.com/NoRi-230401/BinsPack-for-StackChan-Core2
 *   SD-Updater: https://github.com/tobozo/M5Stack-SD-Updater
 

@@ -40,7 +40,6 @@ extern void SDdir_flserverSetup();
 String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
 bool SD_ENABLE, SPIFFS_ENABLE;
 const String HOME_IMG = "/homeImg.gif";
-// const String githubPage = "https://github.com/NoRi-230401/m5stack-file-server";
 
 // NTP connection information.
 #define NTP_SVR1 "ntp.nict.jp"         // NTP server1
@@ -192,7 +191,7 @@ String HTML_Header()
    if (SPIFFS_ENABLE)
    {
       page += "<div class = 'topnav2'>";
-      page += "<span>SPIFFS:</span>"; // ラベル
+      page += "<span>SPIFFS:</span>";
       page += "<a href='/SPIFFS_dir'>Dir</a>";
       page += "<a href='/SPIFFS_upload'>Upload</a> ";
       page += "<a href='/SPIFFS_download'>Download</a>";
@@ -209,7 +208,7 @@ String HTML_Header()
    {
       // -- SD File Operations --
       page += "<div class = 'topnav2'>";
-      page += "<span>SD:</span>"; // ラベル
+      page += "<span>SD:</span>";
       page += "<a href='/SD_dir'>Dir</a>";
       page += "<a href='/SD_upload'>Upload</a> ";
       page += "<a href='/SD_download'>Download</a>";
@@ -875,10 +874,7 @@ String HTML_Footer()
    String page;
    page += "<br>";
    page += "<footer>";
-   
-   // page += "<p class='ps'><i>" + getTmNTP() + "　" + PROG_NAME + "&nbsp;" + VERSION + "</i></p>";
-   page += "<p class='ps'><i>" + getTmNTP() + "　<a href=" + GITHUB_URL + " target='_blank'>" + PROG_NAME +"</a>　" + VERSION + "</i></p>";
-   
+   page += "<p class='ps'><i>" + getTmNTP() + "　<a href=" + GITHUB_URL + " style='text-decoration:none;' target='_blank'>" + PROG_NAME + "</a>　" + VERSION + "</i></p>";
    page += "</footer>";
    page += "</body>";
    page += "</html>";

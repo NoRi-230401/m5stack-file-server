@@ -9,8 +9,8 @@
 
 *   PCやスマートフォンからM5Stack上のファイルへアクセス・管理する手段を提供する。
 *   設定ファイルやログファイル、画像、音声の確認やプログラムの更新などを容易にする。
-*   他のソフトウエアに、このソフトの機能を組み込みやすいように提供する。<br>
-    (他ソフトに組み込んで、ご自由にご活用ください。)
+*   他のソフトウエアに、このソフトの機能を組み込みやすいように提供する。(ご自由にご活用ください。)<br>
+    <br>
 
 **対応デバイス:**
 
@@ -19,13 +19,13 @@
 
 * 現在、`Core2 for AWS` および `CoreS3 SE`で動作確認しています。
 
-    他のデバイスの対応等で、不具合等があればご連絡ください。    
+    不具合等があればご連絡ください。    
 
 
 ---
 
 
-**PCおよびスマホの画面表示(レスポンシブデザイン):**
+**PCおよびスマホの画面表示:**
 
 ![PC画面](images/s-gazo01.png) [PC画面](images/gazo01.png)
 
@@ -137,22 +137,24 @@ bool RTC_ADJUST_ON = true;    // RTC自動調整を行う場合は true
 
 *   author： NoRi
 
-    * Github:　https://github.com/NoRi-230401/m5stack-file-server
-
+    
 <br>
 
 *   同梱した `homeImg.gif` と `favicon.ico`は、スタックチャン公開物のイラストを使用しています。
     -  [おきもくさんの公開物wiki](https://okimoku.com/wiki/%E3%82%A4%E3%83%A9%E3%82%B9%E3%83%88)<br>
-画像の作成・使用許諾してくれた作者さんと公開物をまとめてくれた「おきもくさん」に感謝です。
+画像の作成・使用許諾してくれた作者さんおよび公開物をまとめてくれた「おきもくさん」に感謝です。
 
     * [ｽﾀｯｸﾁｬﾝ](https://github.com/meganetaaan)は、`ししかわさん`が公開しているオープンソースのプロジェクトです。
 
 
 ## 7. Links
 
+* Github:　https://github.com/NoRi-230401/m5stack-file-server
+
 * M5Core2用BINS： https://github.com/NoRi-230401/BinsPack-for-StackChan-Core2
 
 * SD-Updater：
 https://github.com/tobozo/M5Stack-SD-Updater
+
 
 ---
