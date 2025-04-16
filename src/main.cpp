@@ -1,128 +1,59 @@
-// ---------------------------------------------------------
-// * main.cpp *      by NoRi 2025-01-23
 // *******************************************************
-#include <Arduino.h>
-#include <M5Unified.h>
+//  m5stack-fileServer          by NoRi 2025-04-15
+// -------------------------------------------------------
+// main.cpp
+// *******************************************************
+#include "fileServer/fileServer.h"
 
-#include <AsyncTCP.h>          // https://github.com/me-no-dev/AsyncTCP
-#include <ESPAsyncWebServer.h> // https://github.com/me-no-dev/ESPAsyncWebServer
 #if defined(ENABLE_SD_UPDATER)
 #include "SDUpdater.h"
 #endif
 
-#include "credentials.h"
-#include <SPIFFS.h> // Built-in
-#include <WiFi.h>   // Built-in
+//-------------------------------------------
+const String PROG_NAME = "m5fileServer";
+const String VERSION = "v1.07";
+const String GITHUB_URL = "https://github.com/NoRi-230401/m5stack-file-server";
 
-extern void SPIFFS_setupServerV11();
-extern void SD_setupServerV20();
-extern bool StartMDNSservice(const char *Name);
-extern bool StartupErrors;
-extern void Directory();
-extern void SD_Directory();
-AsyncWebServer server(80);
-
-bool wifiStart();
-bool serverStart();
-void error_stop();
-
+//--------------------
+// ***  SETTINGS  ***
+//--------------------
+const bool SD_USE = true;     // 'false' if don't use SD
+const bool SPIFFS_USE = true; // 'false' if don't use SPIFFS
+bool DISP_ON = true;          // 'false' if don't disp message on the display
+bool RTC_ADJUST_ON = true;    // 'false' if don't adjust RTC
+//---------------------------------------------------------------------------
+const String WIFI_TXT = "/wifi.txt";
+// -- write the network settings in the above file(SD or SPIFFS)  --
+//           if those are no present, use in the 3-lines below.
+const String YOUR_SSID = "your_wifi_ssid";
+const String YOUR_SSID_PASS = "your_wifi_ssid_password";
+// const String YOUR_SERVER_NAME = "m5fileServer"; //change if you need
+const String YOUR_SERVER_NAME = "stackchan";
+//---------------------------------------------------------------------------
 
 void setup()
 {
-  // ********** M5 config ***************
   auto cfg = M5.config();
+  cfg.serial_baudrate = 115200;
   M5.begin(cfg);
+
 #if defined(ENABLE_SD_UPDATER)
-  SDU_lobby("ESPAsynch_Server");
+  SDU_lobby(PROG_NAME);
+#else
+  delay(1000); // Wait until the serial setup is complete
 #endif
+
   M5.Display.setBrightness(120);
   M5.Lcd.setTextSize(2);
-  M5.Display.print("\nHello, EPS-File-Server!\n\n");
-  
-  Serial.begin(115200);
-  while (!Serial);
-  Serial.println(__FILE__);
-  Serial.println("Hello, EPS-File-Server!");
-  // *************************************
 
-  if (!wifiStart())    error_stop();
-  if (!serverStart())   error_stop();
+  if (!setupServer())
+    STOP();
 
-  M5.Display.println("\nSUCCESS: System started\n");
-  M5.Display.println("IP Addr: " + WiFi.localIP().toString());
-
-}
-
-
-void error_stop()
-{
-  M5.Display.println("\nERROR: fail to start server");
-  Serial.println("ERROR: fail to start server");
-  delay(10000);
-
-  while (true)
-    ;
-}
-
-bool wifiStart()
-{
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-
-  int count = 1;
-  const int COUNT_MAX = 10;
-  while(WiFi.waitForConnectResult() != WL_CONNECTED )
-  {
-    count++;
-    M5.Display.printf(".");
-    Serial.printf(".");
-    // Serial.printf("STA: Failed!\n");
-    WiFi.disconnect(false);
-    delay(500);
-    WiFi.begin(ssid, password);
-    if (count >= COUNT_MAX)
-    {
-      Serial.printf("\nSTA: Failed!\n");
-      return false;
-    }
-  }
-
-  Serial.println("\nIP Address: " + WiFi.localIP().toString());
-  if (WiFi.scanComplete() == -2)
-    WiFi.scanNetworks(true); // Complete an initial scan for WiFi networks, otherwise = 0 on first display!
-
-  return true;
-}
-
-bool serverStart()
-{
-  if (!StartMDNSservice(ServerName))
-  {
-    Serial.println("Error starting mDNS Service...");
-    ;
-    StartupErrors = true;
-    return false;
-  }
-
-  SPIFFS_setupServerV11();
-  SD_setupServerV20();
-
-  server.begin(); // Start the server
-  if (!StartupErrors)
-  {
-    Serial.println("System started successfully...");
-    Directory();    // Update the SPIFFS file list
-    SD_Directory(); // Update the SD file list
-    return true;
-  }
-  else
-  {
-    Serial.println("There were problems starting all services...");
-    return false;
-  }
+  // ----- setup done -----
 }
 
 void loop()
 {
-  // Nothing to do here yet ... add your requirements to do things!
+  requestManage();
+  delay(1);
 }
