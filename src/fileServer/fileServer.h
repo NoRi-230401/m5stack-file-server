@@ -68,18 +68,19 @@ extern uint64_t getFileSize(int flType, String filename);
 extern void webApiSetup();
 extern void sendReq(int reqNo);
 // -------------------------------------------------------
-extern String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
-extern bool SD_ENABLE, SPIFFS_ENABLE;
 extern const String PROG_NAME,VERSION,GITHUB_URL;
-extern const bool SD_USE, SPIFFS_USE;
-extern bool DISP_ON, RTC_ENABLE;
-extern const String WIFI_TXT;
 extern const String YOUR_SSID, YOUR_SSID_PASS, YOUR_SERVER_NAME;
+extern String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
+
+extern const String WIFI_TXT;
+extern const bool SD_USE, SPIFFS_USE;
+extern bool SD_ENABLE, SPIFFS_ENABLE;
+extern bool DISP_ON, RTC_ENABLE;
 extern String SdPath;
+
 extern bool RTC_ADJUST_ON;
 extern uint32_t TM_SETUP_DONE;
 extern uint32_t TM_RTC_ADJUST;
 extern uint32_t SHUTDOWN_TM_SEC;
-
 // -------------------------------------------------------
 #endif // _M5STACK_FILE_SERVER_H
