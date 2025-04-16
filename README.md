@@ -27,9 +27,9 @@
 
 **PCおよびスマホの画面表示:**
 
-![PC画面](images/s-gazo01.png) [PC画面](images/gazo01.png)
+![PC画面](images/s-gazo01.png) [PC](images/gazo01.png)
 
-![スマホ画面](images/s-gazo02.png)[スマホ画面](images/gazo02.jpg)
+![スマホ画面](images/s-gazo02.png)[スマホ](images/gazo02.jpg)
 
 ---
 
@@ -91,7 +91,7 @@
 
 1.  **ビルドと書き込み、Binファイル提供:**
     *   PlatformIOの開発環境でプロジェクトを開き、ターゲットデバイスを設定してビルドし、M5Stackに書き込みます。
-    `m5stack-core2` `m5stack-core2-sdu` `m5stack-cores3`のデバイス環境を用意しています。他のデバイスの種類で使用する場合には、適宜`platformio.ini`にを追加してご使用ください。
+    `m5stack-core2` `m5stack-core2-sdu` `m5stack-cores3`のデバイス環境を用意しています。他のデバイスで使用する場合には、適宜`platformio.ini`に設定を追加してご使用ください。
 
     *   Binファイルの提供
            *   `m5stack-core2-sdu`で作成されるSD_Updater対応済みのBinファイルは、[`BinsPack`](https://github.com/NoRi-230401/BinsPack-for-StackChan-Core2)で提供します。
@@ -140,8 +140,8 @@ bool RTC_ADJUST_ON = true;    // RTC自動調整を行う場合は true
     
 <br>
 
-*   同梱した `homeImg.gif` と `favicon.ico`は、スタックチャン公開物のイラストを使用しています。
-    -  [おきもくさんの公開物wiki](https://okimoku.com/wiki/%E3%82%A4%E3%83%A9%E3%82%B9%E3%83%88)<br>
+*   同梱した `homeImg.gif` と `favicon.ico`は、「スタックチャン公開物」のイラストを使用しています。
+    -  [おきもくさんの「スタックチャン公開物」wiki](https://okimoku.com/wiki/%E3%82%A4%E3%83%A9%E3%82%B9%E3%83%88)<br>
 画像の作成・使用許諾してくれた作者さんおよび公開物をまとめてくれた「おきもくさん」に感謝です。
 
     * [ｽﾀｯｸﾁｬﾝ](https://github.com/meganetaaan)は、`ししかわさん`が公開しているオープンソースのプロジェクトです。
