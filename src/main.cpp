@@ -11,7 +11,7 @@
 
 //-------------------------------------------
 const String PROG_NAME = "m5fileServer";
-const String VERSION = "v1.07";
+const String VERSION = "v1.08";
 const String GITHUB_URL = "https://github.com/NoRi-230401/m5stack-file-server";
 
 //--------------------
