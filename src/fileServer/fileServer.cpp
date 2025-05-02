@@ -37,7 +37,7 @@ extern uint32_t SD_numfiles;
 extern bool SDdir_notFound(AsyncWebServerRequest *request);
 extern void SDdir_flserverSetup();
 // -------------------------------------------------------
-String SSID, SSID_PASS, SERVER_NAME, IP_ADDR;
+String SSID, SSID_PASS, HOST_NAME, IP_ADDR;
 bool SD_ENABLE, SPIFFS_ENABLE;
 const String HOME_IMG = "/homeImg.gif";
 
@@ -57,7 +57,7 @@ String webpage;
 
 bool setupServer()
 {
-   prt("-   " + PROG_NAME + "   -\n");
+   prt("@ " + PROG_NAME);
 
    // --- SD and SPIFFS start ---
    SD_ENABLE = false;
@@ -89,24 +89,24 @@ bool setupServer()
    // ------- Network Settings Read ---------
    SSID = "";
    SSID_PASS = "";
-   SERVER_NAME = "";
+   HOST_NAME = "";
 
    if (SD_ENABLE && getWiFiSettings(FS_SD, WIFI_TXT))
-      prt(" Settings read from SD");
+      Serial.println(" Settings read from SD");
    else if (SPIFFS_ENABLE && getWiFiSettings(FS_SPIFFS, WIFI_TXT))
-      prt(" Settings read from SPIFFS");
+      Serial.println(" Settings read from SPIFFS");
 
    if (SSID == "")
       SSID = YOUR_SSID;
-   prt(" SSID: " + SSID);
+   Serial.println(" SSID: " + SSID);
 
    if (SSID_PASS == "")
       SSID_PASS = YOUR_SSID_PASS;
 
-   if (SERVER_NAME == "")
-      SERVER_NAME = YOUR_SERVER_NAME;
+   if (HOST_NAME == "")
+      HOST_NAME = YOUR_HOST_NAME;
 
-   if (SSID == "" || SSID_PASS == "" || SERVER_NAME == "")
+   if (SSID == "" || SSID_PASS == "" || HOST_NAME == "")
    {
       prt("SETTINGS.....  NG");
       return false;
@@ -147,8 +147,8 @@ bool setupServer()
       return false;
    }
    prt("fileServer ..  OK");
-   prt("\nIP Addr: " + IP_ADDR);
-   prt("\nServerName: " + SERVER_NAME);
+   prt("IP: " + IP_ADDR);
+   prt("@ " + HOST_NAME);
 
    TM_SETUP_DONE = millis();
    return true;
@@ -160,7 +160,7 @@ String HTML_Header()
    page = "<!DOCTYPE html>";
    page += "<html lang = 'ja'>";
    page += "<head>";
-   page += "<title>" + SERVER_NAME + "</title>";
+   page += "<title>" + HOST_NAME + "</title>";
    page += "<base target='_self'>";
    page += "<meta charset='UTF-8'>";
    page += "<link rel='icon' href='/favicon.ico'>";
@@ -735,7 +735,7 @@ void Display_System_Info()
    webpage += "<table class='center'>";
    webpage += "<tr><th>parameter</th><th>value</th></tr>";
    webpage += "<tr><td>IP Address</td><td>" + String(WiFi.localIP().toString()) + "</td></tr>";
-   webpage += "<tr><td>Server Name (hostName)</td><td>" + SERVER_NAME + "</td></tr>";
+   webpage += "<tr><td>Server Name (hostName)</td><td>" + HOST_NAME + "</td></tr>";
    webpage += "<tr><td>WiFi SSID</td><td>" + String(WiFi.SSID()) + "</td></tr>";
    webpage += "<tr><td>WiFi BSSID</td><td>" + String(WiFi.BSSIDstr()) + "</td></tr>";
    webpage += "<tr><td>WiFi Encryption Type</td><td>" + String(EncryptionType(WiFi.encryptionType(0))) + "</td></tr>";
@@ -865,7 +865,7 @@ void Home()
       webpage += "<img src = 'SPIFFS_homeImg' alt='homeImg'>";
    }
 
-   webpage += "<h3>[Home]　" + SERVER_NAME + "　IP=" + IP_ADDR + "</h3>";
+   webpage += "<h3>[Home]　" + HOST_NAME + "　IP=" + IP_ADDR + "</h3>";
    webpage += HTML_Footer();
 }
 

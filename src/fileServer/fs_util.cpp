@@ -121,14 +121,14 @@ bool wifiStart()
 
 bool mdnsStart(void)
 {
-  if (!MDNS.begin(SERVER_NAME.c_str()))
+  if (!MDNS.begin(HOST_NAME.c_str()))
   {
     Serial.println("ERR: MDNS cannot start");
-    Serial.println("ERR: ServerName = " + SERVER_NAME);
+    Serial.println("ERR: ServerName = " + HOST_NAME);
     return false;
   }
 
-  Serial.println("mDNS ServerName = " + SERVER_NAME);
+  Serial.println("mDNS ServerName = " + HOST_NAME);
   return true;
 }
 
@@ -239,10 +239,10 @@ bool getWiFiSettings(int flType, const String filename)
 
   if (z == 0)
     return false;
-  SERVER_NAME = String(&buf[z]);
-  Serial.println("SERVER_NAME = " + SERVER_NAME);
+  HOST_NAME = String(&buf[z]);
+  Serial.println("HOST_NAME = " + HOST_NAME);
 
-  if (SSID == "" || SSID_PASS == "" || SERVER_NAME == "")
+  if (SSID == "" || SSID_PASS == "" || HOST_NAME == "")
     return false;
 
   return true;

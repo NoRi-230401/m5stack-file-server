@@ -4,9 +4,10 @@
 // main.cpp
 // *******************************************************
 #include "fileServer/fileServer.h"
-
-#if defined(ENABLE_SD_UPDATER)
 #include "SDUpdater.h"
+#if defined(CARDPUTER)
+#include <M5Cardputer.h>
+SPIClass SPI2;
 #endif
 
 //-------------------------------------------
@@ -27,21 +28,33 @@ const String WIFI_TXT = "/wifi.txt";
 //           if those are no present, use in the 3-lines below.
 const String YOUR_SSID = "your_wifi_ssid";
 const String YOUR_SSID_PASS = "your_wifi_ssid_password";
-// const String YOUR_SERVER_NAME = "m5fileServer"; //change if you need
-const String YOUR_SERVER_NAME = "stackchan";
+// const String YOUR_HOST_NAME = "m5fileServer"; //change if you need
+const String YOUR_HOST_NAME = "stackchan";
 //---------------------------------------------------------------------------
 
 void setup()
 {
   auto cfg = M5.config();
   cfg.serial_baudrate = 115200;
-  M5.begin(cfg);
 
+#if defined(CARDPUTER)
+  // ---- CARDPUTER ---------------
+  M5Cardputer.begin(cfg, true);
+  SPI2.begin(
+      M5.getPin(m5::pin_name_t::sd_spi_sclk),
+      M5.getPin(m5::pin_name_t::sd_spi_miso),
+      M5.getPin(m5::pin_name_t::sd_spi_mosi),
+      M5.getPin(m5::pin_name_t::sd_spi_ss));
+#if defined(ENABLE_SD_UPDATER)
+  SDU_lobby_cardputer();
+#endif
+#else
+  // ---- Core2 CoreS3 -------------
+  M5.begin(cfg);
 #if defined(ENABLE_SD_UPDATER)
   SDU_lobby(PROG_NAME);
-#else
-  delay(1000); // Wait until the serial setup is complete
 #endif
+#endif // end of CARDPUTER
 
   M5.Display.setBrightness(120);
   M5.Lcd.setTextSize(2);
