@@ -55,9 +55,42 @@ bool RTC_ENABLE = false;
 AsyncWebServer server(80);
 String webpage;
 
+class Esp2Class : public EspClass
+{
+public:
+   uint16_t getChipFullRevision()
+   {
+      esp_chip_info_t chip_info;
+      esp_chip_info(&chip_info);
+      return chip_info.full_revision;
+   }
+
+   uint8_t getChipRevisionMajor()
+   {
+      uint16_t rev = getChipFullRevision();
+      rev = rev / 100;
+      return (uint8_t)rev;
+   }
+
+   uint8_t getChipRevisionMinor()
+   {
+      uint16_t rev = getChipFullRevision();
+      rev = rev % 100;
+      return (uint8_t)rev;
+   }
+
+   String getChipFullRevisionStr()
+   {
+      String fullRev = "v" + String(getChipRevisionMajor()) + "." + String(getChipRevisionMinor());
+      return fullRev;
+   }
+};
+Esp2Class ESP2;
+
+
 bool setupServer()
 {
-   prt("@ " + PROG_NAME);
+   prt("- " + PROG_NAME + " -");
 
    // --- SD and SPIFFS start ---
    SD_ENABLE = false;
@@ -693,7 +726,8 @@ void Display_System_Info()
    webpage += "<tr><th>parameter</th><th>value</th></tr>";
    //-------------------
    webpage += "<tr><td>CPU Model</td><td>" + String(ESP.getChipModel()) + "</td></tr>";
-   webpage += "<tr><td>Chip revision</td><td>" + String(ESP.getChipRevision()) + "</td></tr>";
+   // webpage += "<tr><td>Chip revision</td><td>" + String(ESP.getChipRevision()) + "</td></tr>";
+   webpage += "<tr><td>Chip revision</td><td>" + ESP2.getChipFullRevisionStr() + "</td></tr>";
    webpage += "<tr><td>SDK Version</td><td>" + String(ESP.getSdkVersion()) + "</td></tr>";
 
    webpage += "<tr><td>Number of Cores</td><td>" + String(ESP.getChipCores()) + "</td></tr>";
