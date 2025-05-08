@@ -14,10 +14,10 @@
 
 **対応デバイス:**
 
-*   M5Stack Core, Core2, CoreS3 など、SDカードスロットを持つESP32ベースのM5Stackデバイス。
+*   M5Stack Core2, CoreS3 ,CardPuter  など、SDカードスロットを持つESP32ベースのM5Stackデバイス。
     *   (SPIFFSのみを使用する場合はSDカードスロットは不要)
 
-* 現在、`Core2 for AWS` および `CoreS3 SE`で動作確認しています。
+* 現在、`Core2 for AWS`　`CoreS3 SE` および `CardPuter`で動作確認しています。
 
     不具合等があればご連絡ください。    
 

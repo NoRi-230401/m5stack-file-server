@@ -15,10 +15,10 @@
 
 **Supported Devices:**
 
-*   ESP32-based M5Stack devices with an SD card slot, such as M5Stack Core, Core2, CoreS3.
+*   ESP32-based M5Stack devices with an SD card slot, such as M5Stack Core2, CoreS3,CardPuter.
     *   (An SD card slot is not required if only using SPIFFS).
 
-*   Currently confirmed to work on `Core2 for AWS` and `CoreS3 SE`. Please contact me if you encounter issues with other devices.
+*   Currently confirmed to work on `Core2 for AWS` `CoreS3 SE` and  `CardPuter`. Please contact me if you encounter issues with other devices.
 
 ---
 
