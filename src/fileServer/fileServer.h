@@ -20,11 +20,14 @@
 #include <time.h>
 
 // --- used in 'main.cpp' ---- 
+extern void SD_start();
+extern void SPIFFS_start();
 extern bool setupServer();
 extern void requestManage();
 extern void STOP();
+extern void prt(String message);
+extern void DISP_start();
 //---------------------------
-
 
 typedef struct
 {
@@ -56,14 +59,12 @@ extern String HTML_Header();
 extern String HTML_Footer();
 extern String getContentType(String filenametype);
 extern bool compareFileinfo(const fileinfo &a, const fileinfo &b);
-extern void prt(String message);
 extern String ConvBytesUnits(uint64_t bytes, int dp, int unit = UNIT_AUTO);
 extern String getTmRTC();
 extern String getTmNTP();
 extern String urlEncode(const String &input);
 extern String urlDecode(const String &input);
 extern bool getWiFiSettings(int flType, const String filename);
-extern bool FS_start(int flType);
 extern uint64_t getFileSize(int flType, String filename);
 extern void webApiSetup();
 extern void sendReq(int reqNo);

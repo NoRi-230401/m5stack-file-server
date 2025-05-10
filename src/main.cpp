@@ -7,12 +7,11 @@
 #include "SDUpdater.h"
 #if defined(CARDPUTER)
 #include <M5Cardputer.h>
-SPIClass SPI2;
 #endif
 
 //-------------------------------------------
 const String PROG_NAME = "m5fileServer";
-const String VERSION = "v1.08";
+const String VERSION = "v1.09";
 const String GITHUB_URL = "https://github.com/NoRi-230401/m5stack-file-server";
 
 //--------------------
@@ -38,26 +37,31 @@ void setup()
   cfg.serial_baudrate = 115200;
 
 #if defined(CARDPUTER)
-  // ---- CARDPUTER ---------------
+  // ------------- CARDPUTER -------------
   M5Cardputer.begin(cfg, true);
-  SPI2.begin(
-      M5.getPin(m5::pin_name_t::sd_spi_sclk),
-      M5.getPin(m5::pin_name_t::sd_spi_miso),
-      M5.getPin(m5::pin_name_t::sd_spi_mosi),
-      M5.getPin(m5::pin_name_t::sd_spi_ss));
+  DISP_start();
+  SD_start();
 #if defined(ENABLE_SD_UPDATER)
   SDU_lobby_cardputer();
 #endif
+
 #else
   // ---- Core2 CoreS3 -------------
   M5.begin(cfg);
 #if defined(ENABLE_SD_UPDATER)
   SDU_lobby(PROG_NAME);
 #endif
-#endif // end of CARDPUTER
+  DISP_start();
+  SD_start();
+#endif
+  // ---end of CARDPUTER ---------------
 
-  M5.Display.setBrightness(120);
-  M5.Lcd.setTextSize(2);
+  SPIFFS_start();
+  if (!SPIFFS_ENABLE && !SD_ENABLE)
+  {
+    prt("Both SD and SPIFFS are not available");
+    STOP();
+  }
 
   if (!setupServer())
     STOP();

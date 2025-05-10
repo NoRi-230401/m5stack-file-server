@@ -21,9 +21,16 @@ void sendReq(int reqNo);
 void STOP();
 void REBOOT();
 void POWER_OFF();
+bool SPIFFS_begin();
+void SPIFFS_start();
+bool SD_begin();
+void SD_start();
+bool SD_cardInfo(void);
+void DISP_start();
 // -------------------------------------------------------
-uint32_t SHUTDOWN_TM_SEC = 3;  // default 3sec after shutdown api 
+uint32_t SHUTDOWN_TM_SEC = 3; // default 3sec after shutdown api
 int REQUEST_NO = REQ_NONE;
+bool SD_ENABLE, SPIFFS_ENABLE;
 
 void prt(String message)
 {
@@ -437,4 +444,117 @@ void POWER_OFF()
   { // never
     delay(1000);
   }
+}
+
+bool SPIFFS_begin()
+{
+  if (!SPIFFS.begin(true))
+  {
+    Serial.println("ERR: SPIFFS begin erro...");
+    return false;
+  }
+  return true;
+}
+
+void SPIFFS_start()
+{
+  SPIFFS_ENABLE = false;
+  if (SPIFFS_USE)
+  {
+    SPIFFS_ENABLE = SPIFFS_begin();
+    if (SPIFFS_ENABLE)
+      prt("SPIFFS  .....  OK");
+    else
+      prt("SPIFFS  .....  NG");
+  }
+}
+
+SPIClass SPI2;
+bool SD_begin()
+{
+  int i;
+
+#if defined(CARDPUTER)
+  // ------------- CARDPUTER -------------
+  SPI2.begin(
+      M5.getPin(m5::pin_name_t::sd_spi_sclk),
+      M5.getPin(m5::pin_name_t::sd_spi_miso),
+      M5.getPin(m5::pin_name_t::sd_spi_mosi),
+      M5.getPin(m5::pin_name_t::sd_spi_ss));
+
+  i = 0;
+  while (!SD.begin(M5.getPin(m5::pin_name_t::sd_spi_ss), SPI2) && i < 10)
+  {
+    delay(500);
+    i++;
+  }
+
+#else
+  // ----------- Core2 and CoreS3 ----------
+  i = 0;
+  while (!SD.begin(GPIO_NUM_4, SPI, 25000000) && i < 10)
+  {
+    delay(500);
+    i++;
+  }
+#endif
+
+  if (i >= 10)
+  {
+    Serial.println("ERR: SD begin erro...");
+    return false;
+  }
+
+  if (!SD_cardInfo())
+    return false;
+
+  return true;
+}
+
+void SD_start()
+{
+  // --- SD and SPIFFS start ---
+  SD_ENABLE = false;
+  if (SD_USE)
+  {
+    SD_ENABLE = SD_begin();
+    if (SD_ENABLE)
+      prt("SD      .....  OK");
+    else
+      prt("SD      .....  NG");
+  }
+}
+
+bool SD_cardInfo(void)
+{
+  sdcard_type_t cardType = SD.cardType();
+  switch (cardType)
+  {
+  case CARD_MMC:
+    Serial.println("MMC detected");
+    break;
+  case CARD_SD:
+    Serial.println("SD detected");
+    break;
+  case CARD_SDHC:
+    Serial.println("SDHC detected");
+    break;
+  case CARD_NONE:
+    Serial.println("ERR: No SD card attached");
+    return false;
+  case CARD_UNKNOWN:
+    Serial.println("ERR: SD card unknown Type");
+    return false;
+  default:
+    Serial.println("ERR: SD cardType is default Type");
+    return false;
+  }
+  return true;
+}
+
+void DISP_start()
+{
+  M5.Display.setBrightness(120);
+  M5.Lcd.setTextSize(2);
+  prt("- " + PROG_NAME + " -");
 }

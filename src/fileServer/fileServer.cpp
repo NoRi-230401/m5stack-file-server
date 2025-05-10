@@ -19,8 +19,8 @@ String getContentType(String filenametype);
 String EncryptionType(wifi_auth_mode_t encryptionType);
 bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 uint64_t getFileSize(int flType, String filename);
-bool FS_start(int flType);
-bool SD_cardInfo(void);
+// bool FS_start(int flType);
+// bool SD_cardInfo(void);
 // -------------------------------------------------------
 extern bool SPIFFS_notFound(AsyncWebServerRequest *request);
 extern void SPIFFS_flServerSetup();
@@ -39,7 +39,7 @@ extern bool SDdir_notFound(AsyncWebServerRequest *request);
 extern void SDdir_flserverSetup();
 // -------------------------------------------------------
 String SSID, SSID_PASS, HOST_NAME, IP_ADDR;
-bool SD_ENABLE, SPIFFS_ENABLE;
+// bool SD_ENABLE, SPIFFS_ENABLE;
 const String HOME_IMG = "/homeImg.gif";
 
 // NTP connection information.
@@ -59,35 +59,6 @@ Esp2Class ESP2;
 
 bool setupServer()
 {
-  prt("- " + PROG_NAME + " -");
-
-  // --- SD and SPIFFS start ---
-  SD_ENABLE = false;
-  if (SD_USE)
-  {
-    SD_ENABLE = FS_start(FS_SD);
-    if (SD_ENABLE)
-      prt("SD      .....  OK");
-    else
-      prt("SD      .....  NG");
-  }
-
-  SPIFFS_ENABLE = false;
-  if (SPIFFS_USE)
-  {
-    SPIFFS_ENABLE = FS_start(FS_SPIFFS);
-    if (SPIFFS_ENABLE)
-      prt("SPIFFS  .....  OK");
-    else
-      prt("SPIFFS  .....  NG");
-  }
-
-  if (!SPIFFS_ENABLE && !SD_ENABLE)
-  {
-    prt("Both SD and SPIFFS are not available");
-    return false;
-  }
-
   // ------- Network Settings Read ---------
   SSID = "";
   SSID_PASS = "";
@@ -1052,63 +1023,4 @@ uint64_t getFileSize(int flType, String filename)
     Serial.println("getFileSize Err: invalid flType");
     return 0;
   }
-}
-
-bool FS_start(int flType)
-{
-  if (flType == FS_SPIFFS)
-  {
-    if (!SPIFFS.begin(true))
-    {
-      Serial.println("ERR: SPIFFS begin erro...");
-      return false;
-    }
-    return true;
-  }
-  else if (flType == FS_SD)
-  {
-    // if (!SD.begin())
-    if (!SD.begin(GPIO_NUM_4, SPI, 25000000))
-    {
-      Serial.println("ERR: SD begin erro...");
-      return false;
-    }
-
-    if (!SD_cardInfo())
-      return false;
-
-    return true;
-  }
-  else
-  {
-    Serial.println("FS_start Err: invalid flType");
-    return false;
-  }
-}
-
-bool SD_cardInfo(void)
-{
-  sdcard_type_t cardType = SD.cardType();
-  switch (cardType)
-  {
-  case CARD_MMC:
-    Serial.println("MMC detected");
-    break;
-  case CARD_SD:
-    Serial.println("SD detected");
-    break;
-  case CARD_SDHC:
-    Serial.println("SDHC detected");
-    break;
-  case CARD_NONE:
-    Serial.println("ERR: No SD card attached");
-    return false;
-  case CARD_UNKNOWN:
-    Serial.println("ERR: SD card unknown Type");
-    return false;
-  default:
-    Serial.println("ERR: SD cardType is default Type");
-    return false;
-  }
-  return true;
 }
