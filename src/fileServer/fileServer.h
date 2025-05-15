@@ -20,13 +20,15 @@
 #include <time.h>
 
 // --- used in 'main.cpp' ---- 
+extern void m5stack_begin();
+extern void prt(String message);
+extern void DISP_start();
+extern void SDU_lobby();
 extern void SD_start();
 extern void SPIFFS_start();
 extern bool setupServer();
 extern void requestManage();
 extern void STOP();
-extern void prt(String message);
-extern void DISP_start();
 //---------------------------
 
 typedef struct
@@ -68,6 +70,8 @@ extern bool getWiFiSettings(int flType, const String filename);
 extern uint64_t getFileSize(int flType, String filename);
 extern void webApiSetup();
 extern void sendReq(int reqNo);
+// extern void disp(String msg);
+
 // -------------------------------------------------------
 extern const String PROG_NAME,VERSION,GITHUB_URL;
 extern const String YOUR_SSID, YOUR_SSID_PASS, YOUR_HOST_NAME;

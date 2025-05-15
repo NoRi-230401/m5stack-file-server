@@ -4,10 +4,6 @@
 // main.cpp
 // *******************************************************
 #include "fileServer/fileServer.h"
-#include "SDUpdater.h"
-#if defined(CARDPUTER)
-#include <M5Cardputer.h>
-#endif
 
 //-------------------------------------------
 const String PROG_NAME = "m5fileServer";
@@ -33,29 +29,11 @@ const String YOUR_HOST_NAME = "stackchan";
 
 void setup()
 {
-  auto cfg = M5.config();
-  cfg.serial_baudrate = 115200;
+  m5stack_begin();
+  SDU_lobby();
 
-#if defined(CARDPUTER)
-  // ------------- CARDPUTER -------------
-  M5Cardputer.begin(cfg, true);
   DISP_start();
   SD_start();
-#if defined(ENABLE_SD_UPDATER)
-  SDU_lobby_cardputer();
-#endif
-
-#else
-  // ---- Core2 CoreS3 -------------
-  M5.begin(cfg);
-#if defined(ENABLE_SD_UPDATER)
-  SDU_lobby(PROG_NAME);
-#endif
-  DISP_start();
-  SD_start();
-#endif
-  // ---end of CARDPUTER ---------------
-
   SPIFFS_start();
   if (!SPIFFS_ENABLE && !SD_ENABLE)
   {
@@ -65,8 +43,6 @@ void setup()
 
   if (!setupServer())
     STOP();
-
-  // ----- setup done -----
 }
 
 void loop()

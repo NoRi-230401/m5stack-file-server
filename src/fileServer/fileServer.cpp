@@ -19,8 +19,6 @@ String getContentType(String filenametype);
 String EncryptionType(wifi_auth_mode_t encryptionType);
 bool compareFileinfo(const fileinfo &a, const fileinfo &b);
 uint64_t getFileSize(int flType, String filename);
-// bool FS_start(int flType);
-// bool SD_cardInfo(void);
 // -------------------------------------------------------
 extern bool SPIFFS_notFound(AsyncWebServerRequest *request);
 extern void SPIFFS_flServerSetup();
